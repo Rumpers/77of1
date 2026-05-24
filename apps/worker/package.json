@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@7of1/ai-providers": "workspace:*",
+    "@7of1/consent": "workspace:*",
     "@7of1/db": "workspace:*",
     "@7of1/queue": "workspace:*",
     "@7of1/types": "workspace:*",

@@ -1,45 +1,112 @@
-// Async generation worker — stub implementation
-// Consumes generation-jobs queue; writes status back to generation_jobs table
+// Async generation worker
+// Consent is checked live before every generation — never cached (ADR-011 Decision 2).
+// Revocation arrives via Redis pub/sub and cancels all queued jobs within ≤60s SLA.
 import { Worker } from "bullmq";
 import { createClient, getSupabaseUrl, getSupabaseServiceKey } from "@7of1/db";
-import { QUEUE_NAME } from "@7of1/queue";
+import { QUEUE_NAME, createBullMQAdapter } from "@7of1/queue";
+import { ConsentStore, createRevocationBus } from "@7of1/consent";
+import type { ConsentGrantType } from "@7of1/consent";
 import type { GenerationJobPayload } from "@7of1/types";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 
-function db() {
-  return createClient(getSupabaseUrl(), getSupabaseServiceKey());
+// Service-role client bypasses RLS — required so consent checks always resolve.
+const supabase = createClient(getSupabaseUrl(), getSupabaseServiceKey());
+const consentStore = new ConsentStore(supabase);
+const queue = createBullMQAdapter(REDIS_URL);
+const revocationBus = createRevocationBus(REDIS_URL);
+
+// ── Revocation sweep ─────────────────────────────────────────────────────────
+// Triggered by Redis pub/sub when a creator revokes consent.
+// Cancels BullMQ-queued jobs and marks the DB rows cancelled within ≤60s SLA.
+async function handleRevocation(creatorId: string): Promise<void> {
+  const sweepStart = Date.now();
+  console.log(`[worker] revocation received creator=${creatorId}`);
+
+  const cancelled = await queue.cancelByCreator(creatorId);
+
+  const { error } = await supabase
+    .from("generation_jobs")
+    .update({
+      status: "cancelled",
+      error_message: "consent_revoked",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("creator_id", creatorId)
+    .in("status", ["queued", "processing"]);
+
+  if (error) {
+    console.error(`[worker] db sweep error creator=${creatorId}: ${error.message}`);
+  }
+  console.log(
+    `[worker] revocation sweep done creator=${creatorId}` +
+      ` bullmq_cancelled=${cancelled} elapsed_ms=${Date.now() - sweepStart}`
+  );
 }
 
+const unsubscribeRevocations = await revocationBus.subscribe(handleRevocation);
+
+// ── Generation worker ─────────────────────────────────────────────────────────
 const worker = new Worker<GenerationJobPayload>(
   QUEUE_NAME,
   async (job) => {
-    const { jobId, creatorId, jobType, fanId } = job.data;
+    const { jobId, creatorId, fanId, jobType } = job.data;
     console.log(
-      `[worker] processing job=${jobId} creator=${creatorId} jobType=${jobType} fan=${fanId}`,
+      `[worker] processing job=${jobId} creator=${creatorId} jobType=${jobType} fan=${fanId}`
     );
 
-    await db()
+    // 1. Live consent check — must pass before any generation call (ADR-011).
+    const GRANT_TYPE: Record<string, ConsentGrantType> = {
+      text: "persona_text",
+      voice: "voice",
+      image: "image",
+      video: "talking_video",
+    };
+    const grantType: ConsentGrantType = GRANT_TYPE[jobType] ?? "persona_text";
+    const consent = await consentStore.checkConsent(creatorId, grantType);
+
+    if (consent.status !== "granted") {
+      await supabase
+        .from("generation_jobs")
+        .update({
+          status: "cancelled",
+          error_message: `consent_${consent.status}`,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", jobId);
+
+      console.log(
+        `[worker] consent denied job=${jobId} creator=${creatorId} reason=${consent.reason}`
+      );
+      throw new Error(`consent_${consent.status}: ${consent.reason}`);
+    }
+
+    // 2. Stamp consent_grant_version on the job row (PRD §23).
+    await supabase
       .from("generation_jobs")
-      .update({ status: "processing" })
+      .update({
+        status: "processing",
+        consent_grant_version: consent.consentGrantVersion,
+      })
       .eq("id", jobId);
 
-    // TODO: implement per-modality generation dispatch
-    // 1. Live-check consent grant is still active (never use cached value)
-    // 2. Load creator persona from DB
-    // 3. Dispatch to provider adapter (text → GMI, voice → ElevenLabs, video → HeyGen)
-    // 4. Write result URL back to generation_jobs
-    // 5. Notify fan page via Realtime
-    throw new Error(`Not implemented: jobType=${jobType}`);
+    console.log(
+      `[worker] consent ok job=${jobId} creator=${creatorId} grant=${consent.grantId}` +
+        ` version=${consent.consentGrantVersion}`
+    );
+
+    // 3. Dispatch to provider adapter (GMI-first — implemented in OF-64+).
+    // TODO: load creator persona, call ITextProvider.generate(), write result_url.
+    throw new Error(`generation not yet implemented for jobType=${jobType}`);
   },
   {
     connection: { url: REDIS_URL },
     concurrency: 5,
-  },
+  }
 );
 
 worker.on("completed", async (job) => {
-  await db()
+  await supabase
     .from("generation_jobs")
     .update({ status: "done", completed_at: new Date().toISOString() })
     .eq("id", job.data.jobId);
@@ -47,8 +114,9 @@ worker.on("completed", async (job) => {
 });
 
 worker.on("failed", async (job, err) => {
-  if (job) {
-    await db()
+  // Consent-denied failures are already stamped in the job processor above.
+  if (job && !err.message.startsWith("consent_")) {
+    await supabase
       .from("generation_jobs")
       .update({
         status: "failed",
@@ -60,9 +128,13 @@ worker.on("failed", async (job, err) => {
   console.error(`[worker] failed job=${job?.id} error=${err.message}`);
 });
 
-process.on("SIGTERM", async () => {
+async function shutdown() {
   await worker.close();
+  await unsubscribeRevocations();
   process.exit(0);
-});
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 console.log(`[worker] started queue=${QUEUE_NAME} redis=${REDIS_URL}`);
