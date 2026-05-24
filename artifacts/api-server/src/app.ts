@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -36,5 +37,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+Sentry.setupExpressErrorHandler(app);
 
 export default app;

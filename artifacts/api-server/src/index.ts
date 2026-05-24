@@ -1,3 +1,5 @@
+import "./instrument.js"; // must be first — Sentry instruments modules on load
+import "./config/env.js"; // validates all required env vars at startup; crashes with clear message if any are missing
 import app from "./app";
 import { logger } from "./lib/logger";
 
