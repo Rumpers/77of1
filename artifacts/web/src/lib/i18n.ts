@@ -18,8 +18,44 @@ type Messages = {
     loading: string;
     not_found: string;
     powered_by: string;
+    disclosure_banner: string;
+    chat_placeholder: string;
+    ai_disclosure_footer: string;
+    trial_remaining: string;
+    trial_exhausted: string;
+    paywall_title: string;
+    paywall_subscribe: string;
+    paywall_credits: string;
+    paywall_escape: string;
+    paywall_signup_cta: string;
+    send: string;
   };
   onboard: {
+    step1: {
+      title: string;
+      subtitle: string;
+      photos_label: string;
+      videos_label: string;
+      photos_hint: string;
+      videos_hint: string;
+      consent_pending_notice: string;
+      uploading: string;
+      continue_button: string;
+      min_photos_hint: string;
+      min_videos_hint: string;
+      upload_error: string;
+    };
+    step2: {
+      title: string;
+      subtitle: string;
+      scenario_label: string;
+      your_response: string;
+      response_placeholder: string;
+      min_scenarios_hint: string;
+      scenarios_done: string;
+      continue_button: string;
+      skip_label: string;
+    };
     step3: {
       title: string;
       subtitle: string;
@@ -65,8 +101,46 @@ const messages: Record<Locale, Messages> = {
       loading: "Loading...",
       not_found: "Creator not found",
       powered_by: "Powered by 7of1",
+      disclosure_banner: "This is an AI twin, not a real person",
+      chat_placeholder: "Message @{handle}'s AI twin…",
+      ai_disclosure_footer: "AI twin · @{handle}_ai",
+      trial_remaining: "{n} free messages left",
+      trial_exhausted: "You've used all 3 free messages",
+      paywall_title: "Continue chatting",
+      paywall_subscribe: "Subscribe ¥980/mo",
+      paywall_credits: "Buy credits ¥490",
+      paywall_escape: "Open in browser to complete payment",
+      paywall_signup_cta: "Create account to save your chat",
+      send: "Send",
     },
     onboard: {
+      step1: {
+        title: "Upload your content",
+        subtitle: "Add photos and videos so your twin looks and sounds like you.",
+        photos_label: "Photos (5–25 images)",
+        videos_label: "Videos (2–3 clips)",
+        photos_hint: "JPG, PNG, WEBP · Max 10 MB each",
+        videos_hint: "MP4, MOV · Max 100 MB each · 15s–5min",
+        consent_pending_notice:
+          "Files are stored securely. AI processing starts only after you complete Step 3 consent.",
+        uploading: "Uploading…",
+        continue_button: "Continue to persona",
+        min_photos_hint: "Add at least 5 photos to continue",
+        min_videos_hint: "Add at least 2 videos to continue",
+        upload_error: "Upload failed. Please try again.",
+      },
+      step2: {
+        title: "Train your persona",
+        subtitle:
+          "Answer each scenario how you'd actually respond to a fan. Your twin will learn from these.",
+        scenario_label: "Scenario {n} of {total}",
+        your_response: "Your response",
+        response_placeholder: "How would you reply to this fan message?",
+        min_scenarios_hint: "Complete {n} more scenarios to continue",
+        scenarios_done: "{n}/{total} scenarios complete",
+        continue_button: "Continue to consent",
+        skip_label: "Skip this scenario",
+      },
       step3: {
         title: "Your consent",
         subtitle:
@@ -153,8 +227,46 @@ const messages: Record<Locale, Messages> = {
       loading: "読み込み中…",
       not_found: "クリエイターが見つかりません",
       powered_by: "7of1 提供",
+      disclosure_banner: "これはAIツインです。本人ではありません",
+      chat_placeholder: "@{handle}のAIツインにメッセージを送る",
+      ai_disclosure_footer: "AIツイン · @{handle}_ai",
+      trial_remaining: "あと{n}回無料メッセージできます",
+      trial_exhausted: "無料メッセージ3回を使い切りました",
+      paywall_title: "チャットを続ける",
+      paywall_subscribe: "サブスクライブ ¥980/月",
+      paywall_credits: "クレジットを購入 ¥490",
+      paywall_escape: "ブラウザで開いて支払いを完了する",
+      paywall_signup_cta: "アカウントを作成してチャットを保存",
+      send: "送信",
     },
     onboard: {
+      step1: {
+        title: "コンテンツをアップロード",
+        subtitle: "写真と動画を追加して、あなたのツインをあなたらしく仕上げましょう。",
+        photos_label: "写真（5〜25枚）",
+        videos_label: "動画（2〜3クリップ）",
+        photos_hint: "JPG、PNG、WEBP · 各最大10 MB",
+        videos_hint: "MP4、MOV · 各最大100 MB · 15秒〜5分",
+        consent_pending_notice:
+          "ファイルは安全に保存されます。AIの処理はステップ3の同意完了後に開始されます。",
+        uploading: "アップロード中…",
+        continue_button: "ペルソナへ進む",
+        min_photos_hint: "続けるには写真を5枚以上追加してください",
+        min_videos_hint: "続けるには動画を2本以上追加してください",
+        upload_error: "アップロードに失敗しました。もう一度お試しください。",
+      },
+      step2: {
+        title: "ペルソナをトレーニング",
+        subtitle:
+          "ファンへの返答を実際のように答えてください。あなたのツインがそこから学習します。",
+        scenario_label: "シナリオ {n}/{total}",
+        your_response: "あなたの返答",
+        response_placeholder: "このファンメッセージにどう返しますか？",
+        min_scenarios_hint: "続けるにはあと{n}つのシナリオを完了してください",
+        scenarios_done: "{n}/{total} シナリオ完了",
+        continue_button: "同意へ進む",
+        skip_label: "このシナリオをスキップ",
+      },
       step3: {
         title: "同意の確認",
         subtitle:
@@ -241,8 +353,45 @@ const messages: Record<Locale, Messages> = {
       loading: "載入中…",
       not_found: "找不到創作者",
       powered_by: "由 7of1 提供",
+      disclosure_banner: "這是AI分身，不是真人",
+      chat_placeholder: "傳訊息給@{handle}的AI分身…",
+      ai_disclosure_footer: "AI分身 · @{handle}_ai",
+      trial_remaining: "還剩{n}次免費訊息",
+      trial_exhausted: "您已用完3次免費訊息",
+      paywall_title: "繼續聊天",
+      paywall_subscribe: "訂閱 ¥980/月",
+      paywall_credits: "購買點數 ¥490",
+      paywall_escape: "在瀏覽器中開啟以完成付款",
+      paywall_signup_cta: "建立帳號以儲存對話",
+      send: "傳送",
     },
     onboard: {
+      step1: {
+        title: "上傳您的內容",
+        subtitle: "新增照片和影片，讓您的分身看起來和聽起來都像您。",
+        photos_label: "照片（5–25 張）",
+        videos_label: "影片（2–3 片）",
+        photos_hint: "JPG、PNG、WEBP · 每張最大 10 MB",
+        videos_hint: "MP4、MOV · 每片最大 100 MB · 15秒–5分鐘",
+        consent_pending_notice:
+          "檔案已安全儲存。AI 處理僅在您完成第 3 步同意後才會開始。",
+        uploading: "上傳中…",
+        continue_button: "繼續設定人格",
+        min_photos_hint: "至少新增 5 張照片才能繼續",
+        min_videos_hint: "至少新增 2 段影片才能繼續",
+        upload_error: "上傳失敗。請重試。",
+      },
+      step2: {
+        title: "訓練您的人格",
+        subtitle: "用您實際回覆粉絲的方式回答每個情境。您的分身將從中學習。",
+        scenario_label: "情境 {n} / {total}",
+        your_response: "您的回覆",
+        response_placeholder: "您會如何回覆這條粉絲訊息？",
+        min_scenarios_hint: "再完成 {n} 個情境才能繼續",
+        scenarios_done: "{n}/{total} 個情境已完成",
+        continue_button: "繼續同意步驟",
+        skip_label: "跳過此情境",
+      },
       step3: {
         title: "同意確認",
         subtitle: "您可以自行選擇願意授權的範圍，隨時可透過 Hermes 或儀表板更改。",
