@@ -1,0 +1,41 @@
+import { Queue } from "bullmq";
+import { QUEUE_NAMES } from "./names.js";
+import { JOB_OPTIONS } from "./options.js";
+
+export interface AllQueues {
+  textGeneration: Queue;
+  voiceGeneration: Queue;
+  videoGeneration: Queue;
+  moderation: Queue;
+  consentRevocation: Queue;
+}
+
+export function createAllQueues(redisUrl: string): AllQueues {
+  const conn = { url: redisUrl };
+  return {
+    textGeneration: new Queue(QUEUE_NAMES.textGeneration, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.textGeneration,
+    }),
+    voiceGeneration: new Queue(QUEUE_NAMES.voiceGeneration, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.voiceGeneration,
+    }),
+    videoGeneration: new Queue(QUEUE_NAMES.videoGeneration, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.videoGeneration,
+    }),
+    moderation: new Queue(QUEUE_NAMES.moderation, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.moderation,
+    }),
+    consentRevocation: new Queue(QUEUE_NAMES.consentRevocation, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.consentRevocation,
+    }),
+  };
+}
+
+export async function closeAllQueues(queues: AllQueues): Promise<void> {
+  await Promise.all(Object.values(queues).map((q) => q.close()));
+}
