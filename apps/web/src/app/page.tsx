@@ -1,8 +1,7 @@
-export default function HomePage() {
-  return (
-    <main>
-      <h1>7of1</h1>
-      <p>7 days, always with you.</p>
-    </main>
-  );
+import { redirect } from 'next/navigation'
+
+// Redirect root to default locale — middleware handles most cases,
+// but this catches direct root hits in standalone mode.
+export default function RootPage() {
+  redirect('/en')
 }

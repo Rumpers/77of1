@@ -1,0 +1,10 @@
+{
+  "fan": {
+    "free_trial": "Start free trial",
+    "send_message": "Send a message",
+    "subscribe": "Subscribe",
+    "loading": "Loading...",
+    "not_found": "Creator not found",
+    "powered_by": "Powered by 7of1"
+  }
+}
