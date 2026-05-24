@@ -1,0 +1,13 @@
+run = "pnpm install && pnpm --filter @7of1/hermes exec tsx src/index.ts"
+entrypoint = "apps/hermes/src/index.ts"
+
+[nix]
+channel = "stable-23_11"
+
+[[ports]]
+localPort = 3001
+externalPort = 80
+
+[deployment]
+run = ["sh", "-c", "pnpm install && pnpm --filter @7of1/hermes exec tsx src/index.ts"]
+deploymentTarget = "cloudrun"
