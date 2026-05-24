@@ -103,7 +103,7 @@ router.patch("/creator/consent/:modalityId", async (req: Request, res: Response)
     type: "consent-revocation",
     creatorId,
     consentGrantId,
-    modality: modalityId,
+    modality: modalityId as string,
     killSwitch: false,
   };
 
