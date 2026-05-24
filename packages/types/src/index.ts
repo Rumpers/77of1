@@ -1,3 +1,8 @@
+export * from "./platform";
+export * from "./credits";
+export * from "./twin-response";
+export * from "./approval";
+
 export type CreatorId = string;
 export type FanSessionId = string;
 export type ConsentGrantId = string;
@@ -24,13 +29,6 @@ export type CreatorPersona = {
   messageStyle: string;
   intensityDial: "warm" | "intimate" | "explicit";
 };
-
-export type GenerationJobStatus =
-  | "queued"
-  | "processing"
-  | "done"
-  | "failed"
-  | "cancelled";
 
 export type GenerationJob = {
   id: string;
