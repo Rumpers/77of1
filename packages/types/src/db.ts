@@ -1,4 +1,4 @@
-// DB row shapes — structural mirror of the PostgreSQL schema (migrations 001–004)
+// DB row shapes — structural mirror of the PostgreSQL schema (migrations 001–007)
 // For API-layer contracts (request/response), see ./platform.ts
 
 // ─── Primitives ──────────────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ export type DbWindowSize = 'daily' | 'weekly' | 'monthly';
 export interface DbCreator {
   id: string;
   telegram_user_id: string | null;
+  replit_user_id: string | null;  // migration 007: Replit Auth identity mapping
   display_name: string;
   created_at: string;
 }
@@ -88,7 +89,9 @@ export interface DbFanSession {
 export interface DbFanAccount {
   fan_id: string;
   creator_id: string;
+  replit_user_id: string | null;  // migration 007: Replit Auth identity mapping
   trial_count: number;
+  credit_balance: number; // migration 005: spendable credits
   created_at: string;
 }
 
@@ -140,4 +143,27 @@ export interface DbCreatorContentEmbedding {
   embedding: number[] | null; // vector(1536) in DB
   source_type: string;
   created_at: string;
+}
+
+// ─── credit_packs ─────────────────────────────────────────────────────────────
+
+export type DbMarket = 'JP' | 'TW' | 'EN';
+export type DbCurrency = 'JPY' | 'TWD' | 'USD';
+
+export interface DbCreditPack {
+  id: string;              // e.g. 'jp_490'
+  market: DbMarket;
+  credits: number;
+  price_cents: number;     // smallest currency unit
+  currency: DbCurrency;
+  stripe_price_id: string;
+  active: boolean;
+  created_at: string;
+}
+
+// ─── stripe_events ────────────────────────────────────────────────────────────
+
+export interface DbStripeEvent {
+  stripe_event_id: string;
+  processed_at: string;
 }
