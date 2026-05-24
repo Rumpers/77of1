@@ -2,6 +2,8 @@ export * from "./platform";
 export * from "./credits";
 export * from "./twin-response";
 export * from "./approval";
+export * from "./db";
+export * from "./providers";
 
 export type CreatorId = string;
 export type FanSessionId = string;
