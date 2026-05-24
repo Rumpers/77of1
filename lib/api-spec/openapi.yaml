@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: 7of1 API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: credits
+    description: Credit operations
+  - name: payments
+    description: Payment operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,213 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /health/queue:
+    get:
+      operationId: healthQueue
+      tags: [health]
+      summary: Queue health check
+      description: Returns BullMQ queue status
+      responses:
+        "200":
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueHealth"
+        "503":
+          description: Degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueHealth"
+
+  /auth/session:
+    get:
+      operationId: getSession
+      tags: [auth]
+      summary: Get current session
+      description: Returns the current Replit Auth session
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/creator-link:
+    get:
+      operationId: creatorLink
+      tags: [auth]
+      summary: Link creator account
+      description: Link a Replit user to a creator account via token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Creator linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Creator not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/fan/signup:
+    post:
+      operationId: fanSignup
+      tags: [auth]
+      summary: Fan signup
+      description: Convert anonymous trial to linked fan account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FanSignupInput"
+      responses:
+        "200":
+          description: Fan signed up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FanSignupResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /credits/deduct:
+    post:
+      operationId: deductCredits
+      tags: [credits]
+      summary: Deduct credits
+      description: Deduct credits from a fan account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeductCreditsInput"
+      responses:
+        "200":
+          description: Credits deducted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditDeductResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Insufficient credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Fan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/checkout:
+    post:
+      operationId: createCheckout
+      tags: [payments]
+      summary: Create Stripe checkout session
+      description: Create a Stripe checkout session for purchasing credits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutInput"
+      responses:
+        "200":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pack not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /webhooks/stripe:
+    post:
+      operationId: stripeWebhook
+      tags: [payments]
+      summary: Stripe webhook
+      description: Handle Stripe webhook events
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +244,171 @@ components:
       properties:
         status:
           type: string
+        service:
+          type: string
       required:
         - status
 
+    QueueHealth:
+      type: object
+      properties:
+        status:
+          type: string
+        queue:
+          type: string
+        counts:
+          type: object
+          properties:
+            pending:
+              type: integer
+            active:
+              type: integer
+            failed:
+              type: integer
+            completed:
+              type: integer
+        workers:
+          type: object
+          properties:
+            count:
+              type: integer
+            status:
+              type: string
+        error:
+          type: ["string", "null"]
+      required:
+        - status
+
+    SessionResponse:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/ReplitUser"
+      required:
+        - authenticated
+
+    ReplitUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        roles:
+          type: string
+        bio:
+          type: string
+        profileImage:
+          type: string
+        url:
+          type: string
+        teams:
+          type: string
+      required:
+        - id
+        - name
+        - roles
+        - bio
+        - profileImage
+        - url
+        - teams
+
+    AuthSession:
+      type: object
+      properties:
+        userId:
+          type: string
+        fanId:
+          type: ["string", "null"]
+        creatorId:
+          type: ["string", "null"]
+        sessionToken:
+          type: string
+      required:
+        - userId
+        - sessionToken
+
+    FanSignupInput:
+      type: object
+      properties:
+        creatorId:
+          type: string
+      required:
+        - creatorId
+
+    FanSignupResult:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/AuthSession"
+      required:
+        - session
+
+    DeductCreditsInput:
+      type: object
+      properties:
+        creatorId:
+          type: string
+        fanId:
+          type: string
+        interactionId:
+          type: string
+        cost:
+          type: integer
+      required:
+        - creatorId
+        - fanId
+        - interactionId
+        - cost
+
+    CreditDeductResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        remainingBalance:
+          type: ["integer", "null"]
+      required:
+        - success
+
+    CheckoutInput:
+      type: object
+      properties:
+        creatorId:
+          type: string
+        fanId:
+          type: string
+        packId:
+          type: string
+      required:
+        - creatorId
+        - fanId
+        - packId
+
+    CheckoutResponse:
+      type: object
+      properties:
+        checkoutUrl:
+          type: ["string", "null"]
+      required:
+        - checkoutUrl
+
+    WebhookResponse:
+      type: object
+      properties:
+        received:
+          type: boolean
+      required:
+        - received
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        remainingBalance:
+          type: ["integer", "null"]
+      required:
+        - error
