@@ -8,6 +8,7 @@ import creatorRouter from "./creator.js";
 import twinRouter from "./twin.js";
 import personaRouter from "./persona.js";
 import assetsRouter from "./assets.js";
+import consentRouter from "./consent.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(creatorRouter);
 router.use(twinRouter);
 router.use(personaRouter);
 router.use(assetsRouter);
+router.use(consentRouter);
 
 export default router;

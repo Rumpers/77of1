@@ -5,6 +5,8 @@ import HomePage from "@/pages/home";
 import FanPage from "@/pages/fan-page";
 import PaymentSuccessPage from "@/pages/payment-success";
 import PaymentCancelPage from "@/pages/payment-cancel";
+import OnboardStep1 from "@/pages/onboard-step1";
+import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
 import { DEFAULT_LOCALE } from "@/lib/i18n";
 
@@ -27,7 +29,20 @@ function Router() {
         {(params) => <HomePage />}
       </Route>
 
-      {/* Creator onboarding wizard Step 3 — consent */}
+      {/* Creator onboarding wizard — deep link dispatcher */}
+      <Route path="/:locale/onboard">
+        {(params) => {
+          const search = typeof window !== "undefined" ? window.location.search : "";
+          const sp = new URLSearchParams(search);
+          const step = sp.get("step") ?? "1";
+          const locale = params.locale ?? DEFAULT_LOCALE;
+          return <Redirect to={`/${locale}/onboard/step${step}`} />;
+        }}
+      </Route>
+
+      {/* Creator onboarding wizard steps */}
+      <Route path="/:locale/onboard/step1" component={OnboardStep1} />
+      <Route path="/:locale/onboard/step2" component={OnboardStep2} />
       <Route path="/:locale/onboard/step3" component={OnboardStep3} />
 
       {/* Fan / creator handle page */}
