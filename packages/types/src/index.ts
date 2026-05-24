@@ -9,15 +9,6 @@ export type ConsentGrantId = string;
 
 export type ConsentModality = "text" | "voice" | "video" | "image";
 
-export type ConsentGrant = {
-  id: ConsentGrantId;
-  creatorId: CreatorId;
-  modality: ConsentModality;
-  version: number;
-  grantedAt: Date;
-  revokedAt?: Date;
-};
-
 export type CreatorPersona = {
   id: CreatorId;
   greetingStyle: string;
@@ -28,20 +19,6 @@ export type CreatorPersona = {
   personalityTraits: string[];
   messageStyle: string;
   intensityDial: "warm" | "intimate" | "explicit";
-};
-
-export type GenerationJob = {
-  id: string;
-  creatorId: CreatorId;
-  fanSessionId: FanSessionId;
-  consentGrantId: ConsentGrantId;
-  consentGrantVersion: number;
-  modality: ConsentModality;
-  status: GenerationJobStatus;
-  createdAt: Date;
-  completedAt?: Date;
-  resultUrl?: string;
-  error?: string;
 };
 
 export type ProviderKind = "gmi" | "elevenlabs" | "heygen" | "openai" | "azure";

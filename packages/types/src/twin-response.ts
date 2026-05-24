@@ -65,7 +65,7 @@ export type TwinResponse =
 export interface JobStatusResponse {
   jobId: string;
   status: GenerationJobStatus;
-  response: TwinResponse | null;   // non-null only when status === 'done'
+  response: TwinResponse | null;   // non-null only when status === 'completed'
   estimatedWaitMs: number | null;  // hint for polling interval
   error: JobError | null;
 }
