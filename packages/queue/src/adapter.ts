@@ -1,19 +1,23 @@
-import type { ConsentGrantId, CreatorId, GenerationJob } from "@7of1/types";
+import type { GenerationJobPayload } from "@7of1/types";
 
-export type JobPayload = {
-  jobId: string;
-  creatorId: CreatorId;
-  consentGrantId: ConsentGrantId;
-  modality: "text" | "voice" | "video" | "image";
-  fanSessionId: string;
-  prompt: string;
-};
+export type JobPayload = GenerationJobPayload;
+
+export interface QueueJobCounts {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+  paused: number;
+}
 
 export interface QueueAdapter {
   enqueue(payload: JobPayload, opts?: { delayMs?: number }): Promise<string>;
-  cancelByCreator(creatorId: CreatorId): Promise<number>;
-  cancelByConsentGrant(consentGrantId: ConsentGrantId): Promise<number>;
+  cancelByCreator(creatorId: string): Promise<number>;
+  getJobCounts(): Promise<QueueJobCounts>;
+  getWorkerCount(): Promise<number>;
   healthCheck(): Promise<boolean>;
+  close(): Promise<void>;
 }
 
 export type QueueAdapterFactory = (redisUrl: string) => QueueAdapter;

@@ -1,36 +1,62 @@
-// Async generation worker
-// Async-by-default lens: voice/video/image generation is always queued, never blocking
+// Async generation worker — stub implementation
+// Consumes generation-jobs queue; writes status back to generation_jobs table
 import { Worker } from "bullmq";
-import type { JobPayload } from "@7of1/queue";
+import { createClient, getSupabaseUrl, getSupabaseServiceKey } from "@7of1/db";
+import { QUEUE_NAME } from "@7of1/queue";
+import type { GenerationJobPayload } from "@7of1/types";
 
-const QUEUE_NAME = "generation";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 
-const worker = new Worker<JobPayload>(
+function db() {
+  return createClient(getSupabaseUrl(), getSupabaseServiceKey());
+}
+
+const worker = new Worker<GenerationJobPayload>(
   QUEUE_NAME,
   async (job) => {
-    const { jobId, creatorId, modality, fanSessionId } = job.data;
-    console.log(`[worker] processing job=${jobId} creator=${creatorId} modality=${modality} fan=${fanSessionId}`);
+    const { jobId, creatorId, jobType, fanId } = job.data;
+    console.log(
+      `[worker] processing job=${jobId} creator=${creatorId} jobType=${jobType} fan=${fanId}`,
+    );
 
-    // TODO: implement per-modality generation
-    // 1. Check consent grant is still active (live-check, not cached)
+    await db()
+      .from("generation_jobs")
+      .update({ status: "processing" })
+      .eq("id", jobId);
+
+    // TODO: implement per-modality generation dispatch
+    // 1. Live-check consent grant is still active (never use cached value)
     // 2. Load creator persona from DB
-    // 3. Dispatch to provider adapter (GMI first, then fallback)
-    // 4. Write result URL back to generation_jobs table
-    // 5. Notify via Supabase Realtime so fan page updates
-    throw new Error(`Not implemented: modality=${modality}`);
+    // 3. Dispatch to provider adapter (text → GMI, voice → ElevenLabs, video → HeyGen)
+    // 4. Write result URL back to generation_jobs
+    // 5. Notify fan page via Realtime
+    throw new Error(`Not implemented: jobType=${jobType}`);
   },
   {
     connection: { url: REDIS_URL },
     concurrency: 5,
-  }
+  },
 );
 
-worker.on("completed", (job) => {
+worker.on("completed", async (job) => {
+  await db()
+    .from("generation_jobs")
+    .update({ status: "done", completed_at: new Date().toISOString() })
+    .eq("id", job.data.jobId);
   console.log(`[worker] done job=${job.id}`);
 });
 
-worker.on("failed", (job, err) => {
+worker.on("failed", async (job, err) => {
+  if (job) {
+    await db()
+      .from("generation_jobs")
+      .update({
+        status: "failed",
+        error_message: err.message,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", job.data.jobId);
+  }
   console.error(`[worker] failed job=${job?.id} error=${err.message}`);
 });
 

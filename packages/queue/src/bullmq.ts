@@ -1,18 +1,32 @@
-import type { QueueAdapter, JobPayload } from "./adapter.js";
-import type { ConsentGrantId, CreatorId } from "@7of1/types";
+import type { QueueAdapter, JobPayload, QueueJobCounts } from "./adapter.js";
 
-const QUEUE_NAME = "generation";
+export const QUEUE_NAME = "generation-jobs";
+
+// Lower number = higher priority (BullMQ convention)
+const JOB_PRIORITY: Record<string, number> = {
+  text: 1,
+  voice: 2,
+  video: 3,
+};
+
+// Dead-letter config: retry 3× with exponential backoff, then keep in failed state
+const JOB_DEFAULT_OPTIONS = {
+  attempts: 3,
+  backoff: { type: "exponential" as const, delay: 2000 },
+  removeOnComplete: { count: 1000, age: 86400 },
+  // removeOnFail defaults to false — keep all failed jobs as DLQ
+  removeOnFail: false,
+} as const;
 
 export function createBullMQAdapter(redisUrl: string): QueueAdapter {
-  let Queue: typeof import("bullmq").Queue | undefined;
   let queue: InstanceType<typeof import("bullmq").Queue> | undefined;
 
   async function getQueue() {
     if (!queue) {
-      const bullmq = await import("bullmq");
-      Queue = bullmq.Queue;
+      const { Queue } = await import("bullmq");
       queue = new Queue(QUEUE_NAME, {
         connection: { url: redisUrl },
+        defaultJobOptions: JOB_DEFAULT_OPTIONS,
       });
     }
     return queue;
@@ -21,29 +35,40 @@ export function createBullMQAdapter(redisUrl: string): QueueAdapter {
   return {
     async enqueue(payload: JobPayload, opts = {}) {
       const q = await getQueue();
-      const job = await q.add(payload.modality, payload, {
+      const priority = JOB_PRIORITY[payload.jobType] ?? 10;
+      const job = await q.add(payload.jobType, payload, {
         jobId: payload.jobId,
+        priority,
         delay: opts.delayMs,
-        removeOnComplete: { age: 86400 },
-        removeOnFail: { age: 86400 * 7 },
       });
       return job.id ?? payload.jobId;
     },
 
-    async cancelByCreator(creatorId: CreatorId) {
+    async cancelByCreator(creatorId: string) {
       const q = await getQueue();
       const jobs = await q.getJobs(["waiting", "delayed"]);
-      const matching = jobs.filter((j) => j.data?.creatorId === creatorId);
+      const matching = jobs.filter((j) => (j.data as JobPayload | null)?.creatorId === creatorId);
       await Promise.all(matching.map((j) => j.remove()));
       return matching.length;
     },
 
-    async cancelByConsentGrant(consentGrantId: ConsentGrantId) {
+    async getJobCounts(): Promise<QueueJobCounts> {
       const q = await getQueue();
-      const jobs = await q.getJobs(["waiting", "delayed"]);
-      const matching = jobs.filter((j) => j.data?.consentGrantId === consentGrantId);
-      await Promise.all(matching.map((j) => j.remove()));
-      return matching.length;
+      const raw = await q.getJobCounts(
+        "waiting",
+        "active",
+        "completed",
+        "failed",
+        "delayed",
+        "paused",
+      );
+      return raw as unknown as QueueJobCounts;
+    },
+
+    async getWorkerCount() {
+      const q = await getQueue();
+      const workers = await q.getWorkers();
+      return workers.length;
     },
 
     async healthCheck() {
@@ -53,6 +78,13 @@ export function createBullMQAdapter(redisUrl: string): QueueAdapter {
         return true;
       } catch {
         return false;
+      }
+    },
+
+    async close() {
+      if (queue) {
+        await queue.close();
+        queue = undefined;
       }
     },
   };
