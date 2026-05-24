@@ -1,0 +1,27 @@
+kind = "api"
+title = "Hermes Bot"
+version = "1.0.0"
+id = "artifacts/hermes"
+
+[[services]]
+localPort = 3001
+name = "Hermes"
+paths = ["/hermes"]
+
+[services.development]
+run = "pnpm --filter @workspace/hermes run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/hermes", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/hermes/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "3001"
+NODE_ENV = "production"
