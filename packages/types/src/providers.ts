@@ -4,6 +4,13 @@ export interface TextContext {
   ragChunks: string[];
   intensityDial: "warm" | "intimate" | "explicit";
   language: "en" | "ja" | "zh-TW";
+  // OF-62: hard-stop list for post-generation filtering. Sourced from
+  // creator_config.forbidden_topics. Optional for backwards compatibility;
+  // adapter falls back to prompt-injection-only enforcement when absent.
+  forbiddenTopics?: string[];
+  // OF-62: fan endearment for graceful decline phrasing when hard-stop
+  // retries are exhausted. Sourced from creator_personas.fan_endearment.
+  fanEndearment?: string;
 }
 
 export interface TextResponse {

@@ -90,15 +90,4 @@ export interface GenerationJob {
   estimatedDurationMs: number | null;
 }
 
-// ─── Replit Auth session ─────────────────────────────────────────────────────
-
-export type ReplitUserType = 'fan' | 'creator';
-
-export interface ReplitAuthSession {
-  userId: string;               // Replit user ID
-  userType: ReplitUserType;
-  linkedCreatorId?: string;     // present when userType === 'creator'
-  linkedFanId?: string;         // present when userType === 'fan'
-  accessToken: string;
-  expiresAt: string;            // ISO 8601
-}
+// ReplitAuthSession and AnonymousTrialSession live in ./auth.ts (OF-58).

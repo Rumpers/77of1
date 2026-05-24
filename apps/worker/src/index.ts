@@ -95,8 +95,30 @@ const worker = new Worker<GenerationJobPayload>(
         ` version=${consent.consentGrantVersion}`
     );
 
-    // 3. Dispatch to provider adapter (GMI-first — implemented in OF-64+).
-    // TODO: load creator persona, call ITextProvider.generate(), write result_url.
+    // 3. Dispatch to provider adapter (OF-62: text → persona builder → GMI)
+    if (jobType === "text") {
+      const { dispatchTextGeneration } = await import("./text-dispatch.js");
+      const result = await dispatchTextGeneration(
+        { jobId, creatorId, fanId, prompt: job.data.prompt },
+        supabase
+      );
+      await supabase
+        .from("generation_jobs")
+        .update({
+          status: "done",
+          result_url: null,
+          completed_at: new Date().toISOString(),
+          // Store text response inline for Slice 1; blob storage in Slice 2
+          error_message: null,
+        })
+        .eq("id", jobId);
+      console.log(
+        `[worker] text done job=${jobId} tokens=${result.tokensUsed}` +
+          ` model=${result.modelId} latency=${result.latencyMs}ms`
+      );
+      return;
+    }
+
     throw new Error(`generation not yet implemented for jobType=${jobType}`);
   },
   {

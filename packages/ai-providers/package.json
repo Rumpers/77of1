@@ -9,6 +9,7 @@
     "@supabase/supabase-js": "^2.43.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/persona-builder.test.ts && tsx src/hard-stop.test.ts"
   }
 }

@@ -45,6 +45,12 @@ importers:
 
   apps/twin-engine:
     dependencies:
+      '@7of1/ai-providers':
+        specifier: workspace:*
+        version: link:../../packages/ai-providers
+      '@7of1/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@7of1/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -58,6 +64,9 @@ importers:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.0(@types/node@20.19.41)
 
   apps/web:
     dependencies:

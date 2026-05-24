@@ -1,4 +1,5 @@
 export * from "./platform";
+export * from "./auth";
 export * from "./credits";
 export * from "./twin-response";
 export * from "./approval";
