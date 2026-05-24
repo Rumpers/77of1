@@ -4,6 +4,10 @@ import authRouter from "./auth.js";
 import creditsRouter from "./credits.js";
 import paymentsRouter from "./payments.js";
 import onboardingRouter from "./onboarding.js";
+import creatorRouter from "./creator.js";
+import twinRouter from "./twin.js";
+import personaRouter from "./persona.js";
+import assetsRouter from "./assets.js";
 
 const router: IRouter = Router();
 
@@ -12,5 +16,9 @@ router.use(authRouter);
 router.use(creditsRouter);
 router.use(paymentsRouter);
 router.use(onboardingRouter);
+router.use(creatorRouter);
+router.use(twinRouter);
+router.use(personaRouter);
+router.use(assetsRouter);
 
 export default router;
