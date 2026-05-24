@@ -1,0 +1,14 @@
+{
+  "name": "@7of1/queue",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@7of1/types": "workspace:*",
+    "bullmq": "^5.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
