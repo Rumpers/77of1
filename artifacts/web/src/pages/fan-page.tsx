@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { useParams } from "wouter";
 import { getCreatorConfig } from "@/lib/creator-fixtures";
 import { getMessages, isValidLocale, DEFAULT_LOCALE } from "@/lib/i18n";
+import { sendFanOtp, verifyFanOtp } from "@/lib/auth";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,15 @@ export default function FanPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const MAX_TRIAL = 3;
 
+  // OTP auth state (shown inside paywall after trial exhausted)
+  type OtpStep = "email" | "code" | "done";
+  const [otpStep, setOtpStep] = useState<OtpStep>("email");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [fanAuthenticated, setFanAuthenticated] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -173,10 +183,34 @@ export default function FanPage() {
     }
   }
 
-  const remaining = MAX_TRIAL - trialCount;
-  const trialExhausted = trialCount >= MAX_TRIAL;
+  async function handleOtpSend() {
+    if (!otpEmail.includes("@") || otpBusy) return;
+    setOtpBusy(true);
+    setOtpError("");
+    const { error } = await sendFanOtp(otpEmail);
+    setOtpBusy(false);
+    if (error) { setOtpError(error); return; }
+    setOtpStep("code");
+  }
 
-  const authCallback = `/${locale}/${handle}`;
+  async function handleOtpVerify() {
+    if (otpCode.length < 6 || otpBusy) return;
+    setOtpBusy(true);
+    setOtpError("");
+    const { fanId, error } = await verifyFanOtp(otpEmail, otpCode, handle);
+    setOtpBusy(false);
+    if (error) { setOtpError(t.otp_error_invalid); return; }
+    if (fanId) {
+      setOtpStep("done");
+      setFanAuthenticated(true);
+      setTimeout(() => setShowPaywall(false), 800);
+    }
+  }
+
+  const remaining = MAX_TRIAL - trialCount;
+  // Authenticated fans bypass the trial gate.
+  const trialExhausted = !fanAuthenticated && trialCount >= MAX_TRIAL;
+
   const CJK_FONT = `"Hiragino Kaku Gothic Pro", "Noto Sans CJK JP", "Microsoft JhengHei", system-ui, sans-serif`;
   const fontFamily = locale === "en" ? "system-ui, -apple-system, sans-serif" : CJK_FONT;
 
@@ -485,20 +519,102 @@ export default function FanPage() {
               {isWebview() ? t.paywall_escape : t.paywall_escape}
             </a>
 
-            {/* Replit auth CTA */}
-            <a
-              href={`/_replit/auth?callback=${encodeURIComponent(authCallback)}`}
-              style={{
-                display: "block",
-                textAlign: "center",
-                fontSize: "0.8125rem",
-                color: "#999",
-                textDecoration: "underline",
-                padding: "0.25rem 0",
-              }}
-            >
-              {t.paywall_signup_cta}
-            </a>
+            {/* Supabase email OTP — webview-safe, no OAuth popup */}
+            <div style={{ borderTop: "1px solid #2a2a2a", paddingTop: "0.875rem", marginTop: "0.25rem" }}>
+              {otpStep === "done" ? (
+                <p style={{ textAlign: "center", color: "#4ade80", fontSize: "0.9rem", margin: 0 }}>
+                  ✓ {t.paywall_signup_cta}
+                </p>
+              ) : otpStep === "email" ? (
+                <>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
+                    {t.otp_title}
+                  </p>
+                  <p style={{ margin: "0 0 0.75rem", fontSize: "0.75rem", color: "#666", textAlign: "center" }}>
+                    {t.otp_subtitle}
+                  </p>
+                  <input
+                    type="email"
+                    value={otpEmail}
+                    onChange={(e) => setOtpEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleOtpSend()}
+                    placeholder={t.otp_email_placeholder}
+                    autoComplete="email"
+                    inputMode="email"
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "#1a1a1a", border: "1px solid #333",
+                      borderRadius: "10px", color: "#f0f0f0",
+                      padding: "0.625rem 0.75rem", fontSize: "0.9375rem",
+                      marginBottom: "0.5rem", outline: "none",
+                    }}
+                  />
+                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
+                  <button
+                    onClick={handleOtpSend}
+                    disabled={otpBusy || !otpEmail.includes("@")}
+                    style={{
+                      width: "100%", background: config.brand_color, color: "#fff",
+                      border: "none", borderRadius: "10px", padding: "0.75rem",
+                      fontSize: "0.9375rem", fontWeight: 600,
+                      cursor: otpBusy || !otpEmail.includes("@") ? "not-allowed" : "pointer",
+                      opacity: otpBusy || !otpEmail.includes("@") ? 0.5 : 1,
+                    }}
+                  >
+                    {otpBusy ? t.otp_sending : t.otp_send_button}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: "0 0 0.625rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
+                    {t.otp_check_email}
+                  </p>
+                  <input
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onKeyDown={(e) => e.key === "Enter" && handleOtpVerify()}
+                    placeholder={t.otp_code_placeholder}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "#1a1a1a", border: "1px solid #333",
+                      borderRadius: "10px", color: "#f0f0f0",
+                      padding: "0.625rem 0.75rem", fontSize: "1.25rem",
+                      letterSpacing: "0.25em", textAlign: "center",
+                      marginBottom: "0.5rem", outline: "none",
+                    }}
+                  />
+                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
+                  <button
+                    onClick={handleOtpVerify}
+                    disabled={otpBusy || otpCode.length < 6}
+                    style={{
+                      width: "100%", background: config.brand_color, color: "#fff",
+                      border: "none", borderRadius: "10px", padding: "0.75rem",
+                      fontSize: "0.9375rem", fontWeight: 600,
+                      cursor: otpBusy || otpCode.length < 6 ? "not-allowed" : "pointer",
+                      opacity: otpBusy || otpCode.length < 6 ? 0.5 : 1,
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    {otpBusy ? t.otp_verifying : t.otp_verify_button}
+                  </button>
+                  <button
+                    onClick={() => { setOtpStep("email"); setOtpCode(""); setOtpError(""); }}
+                    style={{
+                      background: "transparent", border: "none", color: "#666",
+                      fontSize: "0.8125rem", cursor: "pointer",
+                      padding: "0.25rem 0", width: "100%", textAlign: "center",
+                    }}
+                  >
+                    {t.otp_back}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

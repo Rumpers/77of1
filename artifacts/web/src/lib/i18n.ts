@@ -29,6 +29,17 @@ type Messages = {
     paywall_escape: string;
     paywall_signup_cta: string;
     send: string;
+    otp_email_placeholder: string;
+    otp_send_button: string;
+    otp_sending: string;
+    otp_code_placeholder: string;
+    otp_verify_button: string;
+    otp_verifying: string;
+    otp_back: string;
+    otp_title: string;
+    otp_subtitle: string;
+    otp_check_email: string;
+    otp_error_invalid: string;
   };
   onboard: {
     step1: {
@@ -112,6 +123,17 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "Open in browser to complete payment",
       paywall_signup_cta: "Create account to save your chat",
       send: "Send",
+      otp_email_placeholder: "your@email.com",
+      otp_send_button: "Send code",
+      otp_sending: "Sending…",
+      otp_code_placeholder: "6-digit code",
+      otp_verify_button: "Continue",
+      otp_verifying: "Verifying…",
+      otp_back: "← Back",
+      otp_title: "Sign in to continue",
+      otp_subtitle: "Enter your email to get a one-time code. No password needed.",
+      otp_check_email: "Check your email for the 6-digit code.",
+      otp_error_invalid: "Invalid or expired code. Try again.",
     },
     onboard: {
       step1: {
@@ -238,6 +260,17 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "ブラウザで開いて支払いを完了する",
       paywall_signup_cta: "アカウントを作成してチャットを保存",
       send: "送信",
+      otp_email_placeholder: "メールアドレス",
+      otp_send_button: "コードを送信",
+      otp_sending: "送信中…",
+      otp_code_placeholder: "6桁のコード",
+      otp_verify_button: "続ける",
+      otp_verifying: "確認中…",
+      otp_back: "← 戻る",
+      otp_title: "サインインして続ける",
+      otp_subtitle: "メールアドレスを入力してワンタイムコードを受け取ってください。",
+      otp_check_email: "6桁のコードをメールでご確認ください。",
+      otp_error_invalid: "無効または期限切れのコードです。もう一度お試しください。",
     },
     onboard: {
       step1: {
@@ -364,6 +397,17 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "在瀏覽器中開啟以完成付款",
       paywall_signup_cta: "建立帳號以儲存對話",
       send: "傳送",
+      otp_email_placeholder: "您的電子郵件",
+      otp_send_button: "發送驗證碼",
+      otp_sending: "發送中…",
+      otp_code_placeholder: "6位數驗證碼",
+      otp_verify_button: "繼續",
+      otp_verifying: "驗證中…",
+      otp_back: "← 返回",
+      otp_title: "登入以繼續",
+      otp_subtitle: "輸入您的電子郵件以取得一次性驗證碼。無需密碼。",
+      otp_check_email: "請查看您的電子郵件中的6位數驗證碼。",
+      otp_error_invalid: "驗證碼無效或已過期。請重試。",
     },
     onboard: {
       step1: {
