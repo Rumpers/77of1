@@ -37,6 +37,7 @@ export type GenerationJob = {
   creatorId: CreatorId;
   fanSessionId: FanSessionId;
   consentGrantId: ConsentGrantId;
+  consentGrantVersion: number;
   modality: ConsentModality;
   status: GenerationJobStatus;
   createdAt: Date;
