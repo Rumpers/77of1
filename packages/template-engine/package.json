@@ -13,7 +13,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import ./node_modules/tsx/dist/esm/index.mjs tests/degrade.test.ts tests/engine.test.ts"
+    "test": "node --test --import ./node_modules/tsx/dist/esm/index.mjs tests/degrade.test.ts tests/engine.test.ts tests/shareable.test.ts"
   },
   "dependencies": {
     "@7of1/types": "workspace:*"
