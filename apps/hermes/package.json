@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@7of1/ai-providers": "workspace:*",
     "@7of1/db": "workspace:*",
+    "@7of1/rag": "workspace:*",
     "@7of1/types": "workspace:*",
     "telegraf": "^4.16.0"
   },

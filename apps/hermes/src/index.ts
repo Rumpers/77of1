@@ -6,6 +6,7 @@ import {
   getCreatorStats,
   setPaused,
 } from "./db.js";
+import { triggerPersonaRagIngest } from "./onboarding.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not set");
@@ -102,6 +103,42 @@ bot.command("status", async (ctx) => {
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
+});
+
+// /persona_complete — onboarding Step 2: persona exercise done → RAG ingest
+// Creator sends this after completing the persona exercise.
+// Triggers embedding of all persona fields into creator_content_embeddings.
+bot.command("persona_complete", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  await ctx.reply(
+    "Indexing your persona for your AI twin... this takes a moment ⏳"
+  );
+
+  try {
+    const { totalChunks, provider } = await triggerPersonaRagIngest(creator.id);
+    console.log(
+      `[hermes] /persona_complete creator_id=${creator.id} chunks=${totalChunks} provider=${provider}`
+    );
+    await ctx.reply(
+      `✅ Your AI twin persona is indexed!\n\n${totalChunks} knowledge chunks stored (${provider}).\n\nYour twin will now respond authentically as you.`
+    );
+  } catch (err) {
+    console.error(
+      `[hermes] /persona_complete RAG ingest failed creator_id=${creator.id}`,
+      err
+    );
+    await ctx.reply(
+      "Something went wrong indexing your persona. Please try /persona_complete again."
+    );
+  }
 });
 
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.

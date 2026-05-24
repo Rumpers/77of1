@@ -1,14 +1,16 @@
 {
-  "name": "@7of1/ai-providers",
+  "name": "@7of1/rag",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
+    "@7of1/ai-providers": "workspace:*",
     "@7of1/types": "workspace:*",
     "@supabase/supabase-js": "^2.43.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/test-rag.ts"
   }
 }
