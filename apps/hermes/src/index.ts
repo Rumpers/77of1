@@ -7,6 +7,19 @@ import {
   setPaused,
 } from "./db.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
+import {
+  startConsentSession,
+  getConsentSession,
+  clearConsentSession,
+  buildIntro,
+  buildCurrentPrompt,
+  buildSummary,
+  processConsentMessage,
+  commitConsent,
+  telegramIpHash,
+  hasPersonaTextGrant,
+  CONSENT_ITEMS,
+} from "./consent.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not set");
@@ -141,6 +154,57 @@ bot.command("persona_complete", async (ctx) => {
   }
 });
 
+// /consent — onboarding Step 3: collect consent grants for each AI modality.
+// Multi-turn conversation: presents each item individually, then CONFIRM.
+bot.command("consent", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  startConsentSession(tgUserId, creator.id);
+  const session = getConsentSession(tgUserId)!;
+
+  console.log(`[hermes] /consent started creator_id=${creator.id}`);
+  await ctx.reply(buildIntro());
+  await ctx.reply(buildCurrentPrompt(session));
+});
+
+// /consent_status — show current consent state (resume after drop-off)
+bot.command("consent_status", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  const session = getConsentSession(tgUserId);
+  if (!session) {
+    await ctx.reply(
+      "No active consent session. Send /consent to start or resume Step 3."
+    );
+    return;
+  }
+
+  if (session.state === 'confirming') {
+    await ctx.reply(buildSummary(session.answers));
+    return;
+  }
+
+  const answered = Object.keys(session.answers).length;
+  await ctx.reply(
+    `Consent in progress: ${answered}/${CONSENT_ITEMS.length} items answered.\n\n` +
+    buildCurrentPrompt(session)
+  );
+});
+
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
 bot.command("revenue", async (ctx) => {
   const tgUserId = ctx.from?.id;
@@ -165,6 +229,44 @@ bot.command("revenue", async (ctx) => {
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
+});
+
+// General text handler — routes YES/NO/CONFIRM/BACK to active consent session.
+// All other messages are ignored (no free-form LLM in Slice 1).
+bot.on("text", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const session = getConsentSession(tgUserId);
+  if (!session) return; // no active session; ignore
+
+  const reply = processConsentMessage(session, tgUserId, ctx.message.text);
+
+  if (reply === null) {
+    await ctx.reply("Please reply YES or NO.");
+    return;
+  }
+
+  // CONFIRM sentinel — run DB write then reply
+  if (reply === '__CONFIRM__') {
+    try {
+      const answers = { ...session.answers };
+      const creatorId = session.creatorId;
+      await commitConsent(creatorId, answers, telegramIpHash(tgUserId));
+      clearConsentSession(tgUserId);
+      const msg = hasPersonaTextGrant(answers)
+        ? "🎉 Consent recorded. Your twin production is starting now.\nI'll message you when it's ready."
+        : "✅ Consent recorded.\n\nNote: Persona / Text was not granted, so your AI twin won't start yet. You can grant it anytime via /consent.";
+      console.log(`[hermes] consent confirmed creator_id=${creatorId}`);
+      await ctx.reply(msg);
+    } catch (err) {
+      console.error(`[hermes] consent commit failed creator_id=${session.creatorId}`, err);
+      await ctx.reply("Something went wrong saving your consent. Please try again or send /consent to restart.");
+    }
+    return;
+  }
+
+  await ctx.reply(reply);
 });
 
 // Launch — webhook in production, long-poll in dev

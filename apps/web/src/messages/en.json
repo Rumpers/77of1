@@ -6,5 +6,70 @@
     "loading": "Loading...",
     "not_found": "Creator not found",
     "powered_by": "Powered by 7of1"
+  },
+  "onboard": {
+    "step3": {
+      "title": "Your consent",
+      "subtitle": "You choose exactly what you're comfortable with. You can change these anytime via Hermes or your dashboard.",
+      "required_badge": "Required",
+      "optional_badge": "Optional",
+      "yes_label": "Yes",
+      "no_label": "No",
+      "legal_expand": "Read full legal terms",
+      "legal_collapse": "Collapse",
+      "continue_button": "Review my choices",
+      "continue_disabled_hint": "Answer all items to continue",
+      "summary": {
+        "title": "Review your choices",
+        "subtitle": "Review carefully before confirming. You can change these anytime.",
+        "granted": "Granted",
+        "denied": "Not granted",
+        "confirm_button": "Confirm consent",
+        "back_button": "Change my answers"
+      },
+      "success": {
+        "title": "Consent recorded",
+        "body_with_persona": "Your twin production is starting now. Hermes will message you when it's ready.",
+        "body_no_persona": "Your consent has been recorded. Your AI twin needs the Persona / Text permission to work — you can grant it anytime via Hermes or your dashboard.",
+        "done_label": "Done"
+      },
+      "items": {
+        "persona_text": {
+          "label": "Persona / Text Twin",
+          "emoji": "🧠",
+          "description": "I'll train an AI on your captions, messages, and the responses you gave me — so your twin talks like you.",
+          "required_note": "Required for your twin to work.",
+          "legal": "7of1 will process your public captions, provided DMs, and persona exercise responses to train a language model representing your communication style. This data is used solely to operate your AI twin. You retain copyright in all original content. 7of1 receives a limited, non-exclusive, revocable licence for the duration of your account. On account termination, all trained model weights derived from your content are deleted within 14 calendar days. See §3 of the Creator Terms of Service for full terms."
+        },
+        "voice": {
+          "label": "Voice Model",
+          "emoji": "🎙",
+          "description": "I'll clone your voice from your talking videos so your twin can send voice notes in your voice.",
+          "required_note": "Optional — your twin works without it.",
+          "legal": "7of1 will create a voice synthesis model from your uploaded talking videos. This model generates voice notes in your voice for fan interactions. Your voice model is stored encrypted at rest. Revocation immediately disables new voice note generation; previously delivered content is not recalled. On account termination, voice model weights are deleted within 14 calendar days. See §3 of the Creator Terms of Service."
+        },
+        "image": {
+          "label": "Image Model",
+          "emoji": "📸",
+          "description": "I'll generate still images from your photos, visible to fans.",
+          "required_note": "Optional.",
+          "legal": "7of1 will use your uploaded photos to generate still images for fan-visible content including shareable posts and fan page visuals. All generated images are moderated before delivery. Revocation halts new image generation. On account termination, LoRA adapters trained on your images are deleted within 14 calendar days. See §3 and §21.3 of the Creator Terms of Service."
+        },
+        "talking_video": {
+          "label": "Talking Video (Avatar)",
+          "emoji": "📹",
+          "description": "I'll create a video avatar that lip-syncs to your twin's messages, using your face and voice together.",
+          "required_note": "Optional.",
+          "legal": "7of1 will generate video of your likeness (face and synthesised voice) lip-syncing to AI-generated messages. This requires both your image data and voice model. All generated video is moderated before delivery. Revocation cancels in-flight generation within 60 seconds and suppresses queued delivery. See §3 and §21.3 of the Creator Terms of Service."
+        },
+        "fullbody_video": {
+          "label": "Full-Body / Motion Video",
+          "emoji": "🕺",
+          "description": "I'll generate video of your body in motion. This is the highest tier — only for creators fully comfortable with full-body video generation.",
+          "required_note": "Optional. Only for creators comfortable with full-body video generation.",
+          "legal": "7of1 will generate full-body motion video of your likeness using your image model and motion reference data. This is the highest-tier AI generation capability. All generated video is strictly moderated. Revocation cancels in-flight jobs within 60 seconds and suppresses queued delivery. This permission may not be available in all markets. See §3, §21.3, and §21.4 of the Creator Terms of Service."
+        }
+      }
+    }
   }
 }
