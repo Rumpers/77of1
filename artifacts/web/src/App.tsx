@@ -5,6 +5,7 @@ import HomePage from "@/pages/home";
 import FanPage from "@/pages/fan-page";
 import PaymentSuccessPage from "@/pages/payment-success";
 import PaymentCancelPage from "@/pages/payment-cancel";
+import OnboardStep3 from "@/pages/onboard-step3";
 import { DEFAULT_LOCALE } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,9 @@ function Router() {
       <Route path="/:locale">
         {(params) => <HomePage />}
       </Route>
+
+      {/* Creator onboarding wizard Step 3 — consent */}
+      <Route path="/:locale/onboard/step3" component={OnboardStep3} />
 
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />
