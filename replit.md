@@ -1,45 +1,65 @@
-# [Project name]
+# 7of1
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+AI twin platform for 17 Live creators — fans chat with a creator's AI persona, powered by a LoRA-tuned twin engine.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/web run dev` — run the fan-page web app (port 22333)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` (Postgres), `SESSION_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- API: Express 5 (`artifacts/api-server/`)
+- Web: React 18 + Vite (`artifacts/web/`)
+- DB: PostgreSQL (Replit-managed) + Drizzle ORM (`lib/db/`)
+- Validation: Zod v4, drizzle-zod
+- API codegen: Orval (from `lib/api-spec/openapi.yaml`)
+- Payments: Stripe (credits model)
+- Auth: Replit Auth (user IDs in `replit_user_id` column)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- API routes: `artifacts/api-server/src/routes/`
+- DB schema: `lib/db/src/schema/`
+- DB migrations: `lib/db/src/migrations/`
+- OpenAPI spec: `lib/api-spec/openapi.yaml`
+- Fan page: `artifacts/web/src/pages/fan-page.tsx`
+- Auth middleware: `artifacts/api-server/src/lib/auth.ts`
+- Payment routes: `artifacts/api-server/src/routes/payments.ts`
+- Replit config: `.replit`, `artifacts/*/replit-artifact/artifact.toml`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Replit-native layout**: original monorepo (`apps/`, `packages/`) archived to `.migration-backup/`; replaced with `artifacts/` + `lib/` structure that maps cleanly to Replit artifact system
+- **Credits model**: fans purchase credit packs via Stripe; each AI interaction deducts credits
+- **Replit Auth**: fan sign-up uses Replit's auth; `replit_user_id` is the primary fan identifier
+- **Async queue**: generation jobs are queued, never blocking the HTTP path
+- **SSH deploy key**: Replit pushes to GitHub via SSH deploy key (see `REPLIT.md` for recovery steps)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+7of1 lets 17 Live creators offer fans an AI-powered chat experience that mirrors the creator's voice and persona. Fans buy credit packs, use credits to chat, and creators monetize their persona at scale.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Always run `git add -A && git commit -m "<msg>" && git push origin main` after completing a task
+- Keep `REPLIT.md` and `replit.md` updated as new Replit-specific changes are made
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **Do not restore `.migration-backup/`** — that layout is incompatible with Replit's artifact system
+- **Port 8080 = API, port 22333 = web** — these are fixed by `artifact.toml`; changing them requires updating both the toml and the `.replit` port mappings
+- **`pnpm --frozen-lockfile`** is required in CI/post-merge; bare `pnpm install` may update the lockfile unexpectedly
+- **`DATABASE_URL`** is injected automatically by Replit Postgres — do not hardcode it
+- **SSH push auth** uses `~/.ssh/id_ed25519`; if lost, see `REPLIT.md` for recovery steps
 
 ## Pointers
 
+- Replit-specific adaptations and commit-sync convention: `REPLIT.md`
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
