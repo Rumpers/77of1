@@ -8,9 +8,17 @@ import PaymentCancelPage from "@/pages/payment-cancel";
 import OnboardStep1 from "@/pages/onboard-step1";
 import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
-import { DEFAULT_LOCALE } from "@/lib/i18n";
+import { DEFAULT_LOCALE, isValidLocale } from "@/lib/i18n";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 const queryClient = new QueryClient();
+
+/** Derive locale from first URL path segment, falling back to DEFAULT_LOCALE. */
+function getPageLocale(): string {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  const seg = window.location.pathname.split("/").find(Boolean) ?? "";
+  return isValidLocale(seg) ? seg : DEFAULT_LOCALE;
+}
 
 function Router() {
   return (
@@ -26,7 +34,7 @@ function Router() {
 
       {/* Locale home page */}
       <Route path="/:locale">
-        {(params) => <HomePage />}
+        {() => <HomePage />}
       </Route>
 
       {/* Creator onboarding wizard — deep link dispatcher */}
@@ -58,6 +66,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
         <Router />
+        {/* Cookie consent banner — rendered outside Switch so it overlays all pages */}
+        <CookieConsentBanner locale={getPageLocale()} />
       </WouterRouter>
     </QueryClientProvider>
   );
