@@ -13,7 +13,15 @@ const stubModule: AdminModuleRegistration = registerAdminModule({
   roles: [], // all authenticated roles
 });
 
-const registeredModules = [stubModule];
+// [HID-013] Data-deletion verification. Nav link visible to all authenticated staff;
+// page gate enforces ops + engineering restriction.
+const deletionsModule: AdminModuleRegistration = registerAdminModule({
+  name: 'deletions',
+  label: 'Deletion Verification',
+  roles: [],
+});
+
+const registeredModules = [stubModule, deletionsModule];
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (

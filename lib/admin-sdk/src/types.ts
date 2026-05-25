@@ -9,7 +9,8 @@ export type AuditAction =
   | 'DSAR_OPEN'
   | 'PAYOUT_APPROVE'
   | 'STAFF_ROLE_CHANGE'
-  | 'SYSTEM_CONFIG_CHANGE';
+  | 'SYSTEM_CONFIG_CHANGE'
+  | 'DELETION_VERIFY';
 
 export interface AdminModuleConfig {
   name: string;
