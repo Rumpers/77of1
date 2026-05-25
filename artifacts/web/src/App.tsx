@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotFound from "@/pages/not-found";
@@ -10,7 +11,10 @@ import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
 import FanRecover from "@/pages/fan-recover";
 import FanDsar from "@/pages/fan-dsar";
+import DashboardSecurity from "@/pages/dashboard-security";
 import { DEFAULT_LOCALE } from "@/lib/i18n";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
+import { bootAnalytics } from "@/lib/analytics";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +57,9 @@ function Router() {
       {/* DSAR self-service — fan data download + creator export (§16) */}
       <Route path="/:locale/dsar" component={FanDsar} />
 
+      {/* Creator dashboard — security / 2FA settings (OF-119) */}
+      <Route path="/:locale/dashboard/security" component={DashboardSecurity} />
+
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />
 
@@ -62,10 +69,15 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    bootAnalytics();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
         <Router />
+        <CookieConsentBanner />
       </WouterRouter>
     </QueryClientProvider>
   );
