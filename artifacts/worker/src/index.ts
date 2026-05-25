@@ -12,7 +12,9 @@
 import "./instrument.js"; // must be first — Sentry instruments modules on load
 import { Worker, QueueEvents } from "bullmq";
 import { createClient } from "@supabase/supabase-js";
+import Redis from "ioredis";
 import { handleDlqEvent } from "./dlq-handler.js";
+import { startSlaAlertCron } from "./crons/sla-alert.js";
 
 const QUEUE_NAME = "generation-jobs";
 
@@ -150,9 +152,15 @@ worker.on("failed", async (job, err) => {
   }
 });
 
+// ── SLA alert cron ─────────────────────────────────────────────────────────
+const alertRedis = new Redis(REDIS_URL, { lazyConnect: false, maxRetriesPerRequest: null });
+const slaAlertTimer = startSlaAlertCron(supabase, alertRedis);
+
 // ── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown() {
   console.log("[worker] shutting down…");
+  clearInterval(slaAlertTimer);
+  await alertRedis.quit();
   await worker.close();
   process.exit(0);
 }
