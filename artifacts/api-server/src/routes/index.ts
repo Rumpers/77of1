@@ -15,6 +15,7 @@ import deletionRouter from "./deletion.js";
 import kycRouter from "./kyc.js";
 import dsarRouter from "./dsar.js";
 import sandboxRouter from "./sandbox.js";
+import policiesRouter from "./policies.js";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(deletionRouter);
 router.use(kycRouter);
 router.use(dsarRouter);
 router.use(sandboxRouter);
+router.use(policiesRouter);
 
 export default router;
