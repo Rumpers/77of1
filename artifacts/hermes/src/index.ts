@@ -1,12 +1,19 @@
 // Hermes — single @7of1_bot creator management agent
 // One bot, multi-tenant by creator_id. Webhook-based for production.
 import { Telegraf } from "telegraf";
+import { createHash } from "crypto";
 import {
   findCreatorByTelegramId,
   getCreatorStats,
   setPaused,
 } from "./db.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
+import {
+  moderateImageBytes,
+  moderateVideoWithThumbnail,
+  writeAssetModerationAudit,
+  insertApprovedAsset,
+} from "./asset-moderator.js";
 import {
   startConsentSession,
   getConsentSession,
@@ -227,6 +234,253 @@ bot.command("revenue", async (ctx) => {
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
+});
+
+// ── Asset upload handlers (HID-059) ──────────────────────────────────────────
+// Handles photos and videos sent by creators during onboarding Step 1.
+// Every file is moderated via GMI vision before being stored.
+// Telegram file size limits: photos ≤20 MB, videos ≤20 MB for bot downloads;
+// larger files (sent as documents) are handled by the "document" handler below.
+
+async function downloadTelegramFile(
+  bot: Telegraf,
+  fileId: string,
+): Promise<Buffer | null> {
+  try {
+    const link = await bot.telegram.getFileLink(fileId);
+    const res = await fetch(link.href);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf;
+  } catch (err) {
+    console.error(`[hermes] file download failed fileId=${fileId}: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+bot.on("photo", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  // Telegram sends an array of PhotoSize; pick the highest resolution.
+  const photos = ctx.message.photo;
+  const largest = photos[photos.length - 1];
+  if (!largest) return;
+
+  await ctx.reply("🔍 Checking your photo…");
+
+  const bytes = await downloadTelegramFile(bot, largest.file_id);
+  if (!bytes) {
+    await ctx.reply("❌ Could not download your photo. Please try again.");
+    return;
+  }
+
+  let result;
+  try {
+    result = await moderateImageBytes(bytes, "image/jpeg");
+  } catch (err) {
+    console.error(`[hermes] photo moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
+    return;
+  }
+
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.jpg`;
+
+  if (!result.passed) {
+    const categories = result.flaggedCategories.length
+      ? result.flaggedCategories.join(", ")
+      : "content policy";
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType: "photo",
+      channel: "telegram",
+      result,
+    });
+    console.warn(
+      `[hermes] photo rejected creator=${creator.id} categories=${categories} confidence=${result.confidence.toFixed(2)}`,
+    );
+    await ctx.reply(
+      `❌ This photo was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different photo. If you think this is an error, contact support.",
+    );
+    return;
+  }
+
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType: "photo",
+    storagePath,
+  });
+
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType: "photo",
+    channel: "telegram",
+    result,
+  });
+
+  console.log(`[hermes] photo approved creator=${creator.id} assetId=${assetId}`);
+  await ctx.reply("✅ Photo received and approved.");
+});
+
+bot.on("video", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  const video = ctx.message.video;
+  if (!video) return;
+
+  await ctx.reply("🔍 Checking your video…");
+
+  // Download video bytes and thumbnail (if available).
+  const [videoBytes, thumbBytes] = await Promise.all([
+    downloadTelegramFile(bot, video.file_id),
+    video.thumbnail?.file_id
+      ? downloadTelegramFile(bot, video.thumbnail.file_id)
+      : Promise.resolve(null),
+  ]);
+
+  if (!videoBytes) {
+    await ctx.reply("❌ Could not download your video. Please try again.");
+    return;
+  }
+
+  let result;
+  try {
+    result = await moderateVideoWithThumbnail(thumbBytes, videoBytes);
+  } catch (err) {
+    console.error(`[hermes] video moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
+    return;
+  }
+
+  const sha256 = createHash("sha256").update(videoBytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.mp4`;
+
+  if (!result.passed) {
+    const categories = result.flaggedCategories.length
+      ? result.flaggedCategories.join(", ")
+      : "content policy";
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType: "video",
+      channel: "telegram",
+      result,
+    });
+    console.warn(
+      `[hermes] video rejected creator=${creator.id} categories=${categories}`,
+    );
+    await ctx.reply(
+      `❌ This video was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different video. If you think this is an error, contact support.",
+    );
+    return;
+  }
+
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType: "video",
+    storagePath,
+  });
+
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType: "video",
+    channel: "telegram",
+    result,
+  });
+
+  console.log(`[hermes] video approved creator=${creator.id} assetId=${assetId}`);
+  await ctx.reply("✅ Video received and approved.");
+});
+
+// Documents (files > 20 MB sent as documents) — moderate as photo or video
+// based on MIME type reported by Telegram.
+bot.on("document", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) return;
+
+  const doc = ctx.message.document;
+  const mimeType = doc.mime_type ?? "";
+  const isPhoto = mimeType.startsWith("image/");
+  const isVideo = mimeType.startsWith("video/");
+  if (!isPhoto && !isVideo) return; // not an asset type we care about
+
+  await ctx.reply(`🔍 Checking your ${isPhoto ? "photo" : "video"}…`);
+
+  const bytes = await downloadTelegramFile(bot, doc.file_id);
+  if (!bytes) {
+    await ctx.reply("❌ Could not download the file. Please try again.");
+    return;
+  }
+
+  let result;
+  try {
+    result = isPhoto
+      ? await moderateImageBytes(bytes, mimeType)
+      : await moderateVideoWithThumbnail(null, bytes);
+  } catch (err) {
+    console.error(`[hermes] document moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
+    return;
+  }
+
+  const assetType = isPhoto ? "photo" : "video";
+  const ext = mimeType.split("/")[1] ?? (isPhoto ? "jpg" : "mp4");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.${ext}`;
+
+  if (!result.passed) {
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType,
+      channel: "telegram",
+      result,
+    });
+    const categories = result.flaggedCategories.join(", ") || "content policy";
+    await ctx.reply(
+      `❌ This file was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different file.",
+    );
+    return;
+  }
+
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType,
+    storagePath,
+  });
+
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType,
+    channel: "telegram",
+    result,
+  });
+
+  await ctx.reply(`✅ File received and approved.`);
 });
 
 // General text handler — routes YES/NO/CONFIRM/BACK to active consent session.
