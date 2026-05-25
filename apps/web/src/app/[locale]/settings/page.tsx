@@ -12,6 +12,10 @@ const I18N: Record<string, Record<string, string>> = {
   en: {
     title: 'Account Settings',
     subtitle: 'Manage your fan account preferences.',
+    account_section: 'Account Access',
+    recover_account: 'Recover Account',
+    recover_desc: "Can't access your login email? Recover via backup contact or identity verification.",
+    recover_button: 'Recover Account',
     danger_zone: 'Danger Zone',
     delete_account: 'Delete Account',
     delete_desc:
@@ -22,6 +26,10 @@ const I18N: Record<string, Record<string, string>> = {
   ja: {
     title: 'アカウント設定',
     subtitle: 'ファンアカウントの設定を管理します。',
+    account_section: 'アカウントアクセス',
+    recover_account: 'アカウント回復',
+    recover_desc: 'ログインメールにアクセスできませんか？バックアップ連絡先または本人確認でアカウントを回復できます。',
+    recover_button: 'アカウントを回復する',
     danger_zone: '危険な操作',
     delete_account: 'アカウント削除',
     delete_desc:
@@ -32,6 +40,10 @@ const I18N: Record<string, Record<string, string>> = {
   'zh-TW': {
     title: '帳號設定',
     subtitle: '管理您的粉絲帳號偏好設定。',
+    account_section: '帳號存取',
+    recover_account: '帳號恢復',
+    recover_desc: '無法存取登入電子郵件？透過備用聯絡方式或身份驗證恢復帳號。',
+    recover_button: '恢復帳號',
     danger_zone: '危險區域',
     delete_account: '刪除帳號',
     delete_desc:
@@ -66,6 +78,27 @@ export default function FanSettingsPage() {
         <p style={subtitleStyle}>{t.subtitle}</p>
 
         <div style={sectionDividerStyle} />
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#374151', margin: '0 0 0.75rem' }}>
+            {t.account_section}
+          </h2>
+          <div style={{ border: '1px solid #E5E7EB', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', margin: 0 }}>{t.recover_account}</p>
+              <p style={{ fontSize: '0.85rem', color: '#6B7280', margin: '0.25rem 0 0', lineHeight: 1.55 }}>{t.recover_desc}</p>
+            </div>
+            <button
+              style={{ background: BRAND, color: '#fff', border: 'none', borderRadius: '8px', padding: '0.65rem 1rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', alignSelf: 'flex-start' }}
+              onClick={() => {
+                const path = `/${locale}/settings/recover-account${creatorId ? `?creatorId=${encodeURIComponent(creatorId)}` : ''}`;
+                router.push(path);
+              }}
+            >
+              {t.recover_button}
+            </button>
+          </div>
+        </div>
 
         <div style={dangerSectionStyle}>
           <h2 style={dangerTitleStyle}>{t.danger_zone}</h2>
