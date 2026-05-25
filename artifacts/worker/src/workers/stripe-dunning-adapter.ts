@@ -2,7 +2,7 @@
 // Calls Stripe to retry subscription invoices and cancel subscriptions.
 
 import Stripe from "stripe";
-import type { IPaymentProvider, ChargeResult, PaymentMethodStatus } from "@workspace/providers";
+import type { IPaymentProvider, ChargeResult, PaymentMethodStatus, RefundResult } from "@workspace/providers";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -69,5 +69,15 @@ export class StripeDunningAdapter implements IPaymentProvider {
       expiryMonth: pm.card.exp_month,
       expiryYear: pm.card.exp_year,
     };
+  }
+
+  async createRefund(paymentIntentId: string, amountCents: number, reason: string): Promise<RefundResult> {
+    const stripe = getStripe();
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: amountCents,
+      reason: reason as Stripe.RefundCreateParams.Reason,
+    });
+    return { refundId: refund.id };
   }
 }

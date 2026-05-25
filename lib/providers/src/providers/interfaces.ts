@@ -106,6 +106,10 @@ export interface PaymentMethodStatus {
   expiryYear?: number;
 }
 
+export interface RefundResult {
+  refundId: string;
+}
+
 export interface IPaymentProvider {
   /** Attempt to charge the subscription immediately (idempotent by subscriptionId). */
   retryCharge(subscriptionId: string): Promise<ChargeResult>;
@@ -113,6 +117,8 @@ export interface IPaymentProvider {
   cancelSubscription(subscriptionId: string): Promise<void>;
   /** Retrieve payment method health for the customer. */
   getPaymentMethodStatus(customerId: string): Promise<PaymentMethodStatus>;
+  /** Issue a refund against a payment intent. */
+  createRefund(paymentIntentId: string, amountCents: number, reason: string): Promise<RefundResult>;
 }
 
 // Non-retryable — 4xx from provider (bad request, invalid model, auth failure).
