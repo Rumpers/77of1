@@ -11,6 +11,38 @@ type ConsentItem = {
 };
 
 type Messages = {
+  version_history: {
+    panel_title: string;
+    version_label: string;
+    by_label: string;
+    hash_label: string;
+    approved_badge: string;
+    pending_badge: string;
+    rejected_badge: string;
+    expand_snapshot: string;
+    collapse_snapshot: string;
+    no_versions: string;
+    loading: string;
+    error_load: string;
+    badge_tooltip_match: string;
+    badge_tooltip_mismatch: string;
+    modal_title: string;
+    modal_version_warning: string;
+    modal_hash_label: string;
+    modal_confirm: string;
+    modal_cancel: string;
+    modal_submitting: string;
+    modal_error: string;
+    audit_title: string;
+    audit_back: string;
+    audit_draft: string;
+    audit_approved: string;
+    audit_posted: string;
+    audit_mismatch_banner: string;
+    audit_no_data: string;
+    audit_loading: string;
+    audit_error: string;
+  };
   fan: {
     free_trial: string;
     send_message: string;
@@ -126,6 +158,40 @@ type Messages = {
 
 const messages: Record<Locale, Messages> = {
   en: {
+    version_history: {
+      panel_title: "Version history",
+      version_label: "v{n}",
+      by_label: "by {author}",
+      hash_label: "#{hash}",
+      approved_badge: "Approved",
+      pending_badge: "Pending",
+      rejected_badge: "Rejected",
+      expand_snapshot: "View snapshot",
+      collapse_snapshot: "Hide snapshot",
+      no_versions: "No versions yet.",
+      loading: "Loading versions…",
+      error_load: "Failed to load versions.",
+      badge_tooltip_match: "Approved version matches posted version",
+      badge_tooltip_mismatch: "Warning: posted version differs from approved version",
+      modal_title: "Request approval",
+      modal_version_warning:
+        "You are requesting approval for version {n}. Once approved, this version cannot be changed.",
+      modal_hash_label: "Version hash: {hash}",
+      modal_confirm: "Request approval",
+      modal_cancel: "Cancel",
+      modal_submitting: "Submitting…",
+      modal_error: "Failed to submit approval request.",
+      audit_title: "Lineage audit",
+      audit_back: "← Back",
+      audit_draft: "Draft v{n}",
+      audit_approved: "Approved (v{n})",
+      audit_posted: "Posted (v{n})",
+      audit_mismatch_banner:
+        "Warning: the posted version (v{posted}) does not match the approved version (v{approved}).",
+      audit_no_data: "No lineage data found for this asset.",
+      audit_loading: "Loading lineage…",
+      audit_error: "Failed to load lineage.",
+    },
     fan: {
       free_trial: "Start free trial",
       send_message: "Send a message",
@@ -284,6 +350,40 @@ const messages: Record<Locale, Messages> = {
   },
 
   ja: {
+    version_history: {
+      panel_title: "バージョン履歴",
+      version_label: "v{n}",
+      by_label: "{author} による",
+      hash_label: "#{hash}",
+      approved_badge: "承認済み",
+      pending_badge: "保留中",
+      rejected_badge: "却下",
+      expand_snapshot: "スナップショットを表示",
+      collapse_snapshot: "スナップショットを閉じる",
+      no_versions: "バージョンがまだありません。",
+      loading: "バージョンを読み込み中…",
+      error_load: "バージョンの読み込みに失敗しました。",
+      badge_tooltip_match: "承認バージョンと投稿バージョンが一致しています",
+      badge_tooltip_mismatch: "警告：投稿バージョンが承認バージョンと異なります",
+      modal_title: "承認リクエスト",
+      modal_version_warning:
+        "バージョン {n} の承認をリクエストしています。承認後はこのバージョンを変更できません。",
+      modal_hash_label: "バージョンハッシュ：{hash}",
+      modal_confirm: "承認をリクエストする",
+      modal_cancel: "キャンセル",
+      modal_submitting: "送信中…",
+      modal_error: "承認リクエストの送信に失敗しました。",
+      audit_title: "系譜監査",
+      audit_back: "← 戻る",
+      audit_draft: "下書き v{n}",
+      audit_approved: "承認済み（v{n}）",
+      audit_posted: "投稿済み（v{n}）",
+      audit_mismatch_banner:
+        "警告：投稿バージョン（v{posted}）が承認バージョン（v{approved}）と一致しません。",
+      audit_no_data: "このアセットの系譜データが見つかりません。",
+      audit_loading: "系譜を読み込み中…",
+      audit_error: "系譜の読み込みに失敗しました。",
+    },
     fan: {
       free_trial: "無料トライアルを開始",
       send_message: "メッセージを送る",
@@ -442,6 +542,40 @@ const messages: Record<Locale, Messages> = {
   },
 
   "zh-TW": {
+    version_history: {
+      panel_title: "版本歷史",
+      version_label: "v{n}",
+      by_label: "由 {author}",
+      hash_label: "#{hash}",
+      approved_badge: "已核准",
+      pending_badge: "待審核",
+      rejected_badge: "已拒絕",
+      expand_snapshot: "檢視快照",
+      collapse_snapshot: "收起快照",
+      no_versions: "尚無版本。",
+      loading: "載入版本中…",
+      error_load: "載入版本失敗。",
+      badge_tooltip_match: "核准版本與發布版本一致",
+      badge_tooltip_mismatch: "警告：發布版本與核准版本不一致",
+      modal_title: "請求核准",
+      modal_version_warning:
+        "您正在請求核准版本 {n}。一旦核准，此版本將無法更改。",
+      modal_hash_label: "版本雜湊：{hash}",
+      modal_confirm: "請求核准",
+      modal_cancel: "取消",
+      modal_submitting: "提交中…",
+      modal_error: "提交核准請求失敗。",
+      audit_title: "版本歷程稽核",
+      audit_back: "← 返回",
+      audit_draft: "草稿 v{n}",
+      audit_approved: "已核准（v{n}）",
+      audit_posted: "已發布（v{n}）",
+      audit_mismatch_banner:
+        "警告：發布版本（v{posted}）與核准版本（v{approved}）不一致。",
+      audit_no_data: "找不到此素材的版本歷程資料。",
+      audit_loading: "載入版本歷程中…",
+      audit_error: "載入版本歷程失敗。",
+    },
     fan: {
       free_trial: "開始免費試用",
       send_message: "傳送訊息",

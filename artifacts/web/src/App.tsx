@@ -9,6 +9,7 @@ import OnboardStep1 from "@/pages/onboard-step1";
 import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
 import DsarPortal from "@/pages/dsar-portal";
+import CreatorDashboard from "@/pages/creator-dashboard";
 import { DEFAULT_LOCALE, isValidLocale } from "@/lib/i18n";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 
@@ -56,6 +57,9 @@ function Router() {
 
       {/* DSAR self-service portal — §16 */}
       <Route path="/:locale/account/data-request" component={DsarPortal} />
+
+      {/* Creator dashboard — version history, approvals, lineage */}
+      <Route path="/:locale/dashboard" component={CreatorDashboard} />
 
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />
