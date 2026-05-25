@@ -150,6 +150,14 @@ router.post("/webhooks/stripe", async (req: Request, res: Response) => {
     await handleInvoicePaymentFailed(req, event);
   }
 
+  if (event.type === "invoice.payment_succeeded") {
+    await handleInvoicePaymentSucceeded(req, event);
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    await handleSubscriptionDeleted(req, event);
+  }
+
   res.json({ received: true });
 });
 
@@ -228,5 +236,219 @@ async function handleInvoicePaymentFailed(
     req.log.error({ err: message }, "[webhook/dunning] enqueue failed");
   }
 }
+
+// invoice.payment_succeeded — Stripe Smart Retries recovered the payment.
+// Reset dunning state to recovered + write audit entry.
+async function handleInvoicePaymentSucceeded(
+  req: Request,
+  event: Stripe.Event,
+): Promise<void> {
+  const invoice = event.data.object as Stripe.Invoice;
+  const stripeSubId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+
+  if (!stripeSubId) return;
+
+  const supabase = getSupabase();
+
+  const { data: sub } = await supabase
+    .from("fan_subscriptions")
+    .select("id, fan_id, creator_id, dunning_state, dunning_attempt")
+    .eq("stripe_subscription_id", stripeSubId)
+    .maybeSingle();
+
+  if (!sub) return;
+
+  // Only act when we were in a dunning cycle (not a normal first payment)
+  if (
+    sub.dunning_state === "active" ||
+    sub.dunning_state === "recovered" ||
+    sub.dunning_state === "cancelled"
+  ) {
+    return;
+  }
+
+  const fromState = sub.dunning_state;
+
+  const { error } = await supabase
+    .from("fan_subscriptions")
+    .update({
+      dunning_state: "recovered",
+      dunning_retry_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+
+  if (error) {
+    req.log.error({ err: error.message, subId: sub.id }, "[webhook/dunning] recovery update failed");
+    return;
+  }
+
+  await supabase.from("dunning_audit_log").insert({
+    subscription_id: sub.id,
+    fan_id: sub.fan_id,
+    creator_id: sub.creator_id,
+    from_state: fromState,
+    to_state: "recovered",
+    event_type: "dunning_recovered",
+    attempt: sub.dunning_attempt,
+    payload: { stripe_event_id: event.id, source: "stripe_webhook" },
+  });
+
+  await supabase.from("audit_log").insert({
+    creator_id: sub.creator_id,
+    fan_id: sub.fan_id,
+    event_type: "subscription.dunning_recovered",
+    payload: {
+      subscription_id: sub.id,
+      from_state: fromState,
+      to_state: "recovered",
+      stripe_event_id: event.id,
+    },
+  });
+
+  req.log.info({ subId: sub.id, fromState }, "[webhook/dunning] recovered via Stripe Smart Retries");
+}
+
+// customer.subscription.deleted — fan cancelled or Stripe auto-cancelled.
+// Cancellation is honoured < 1 request cycle (acceptance criterion).
+async function handleSubscriptionDeleted(
+  req: Request,
+  event: Stripe.Event,
+): Promise<void> {
+  const subscription = event.data.object as Stripe.Subscription;
+  const stripeSubId = subscription.id;
+
+  const supabase = getSupabase();
+
+  const { data: sub } = await supabase
+    .from("fan_subscriptions")
+    .select("id, fan_id, creator_id, dunning_state, dunning_attempt")
+    .eq("stripe_subscription_id", stripeSubId)
+    .maybeSingle();
+
+  if (!sub) {
+    req.log.warn({ stripeSubId }, "[webhook/dunning] subscription.deleted: no record found");
+    return;
+  }
+
+  if (sub.dunning_state === "cancelled") {
+    req.log.info({ subId: sub.id }, "[webhook/dunning] already cancelled — skipping");
+    return;
+  }
+
+  const fromState = sub.dunning_state;
+
+  // Hard-cancel the subscription row + mark any active subscription status cancelled
+  const { error } = await supabase
+    .from("fan_subscriptions")
+    .update({
+      dunning_state: "cancelled",
+      status: "cancelled",
+      dunning_retry_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+
+  if (error) {
+    req.log.error({ err: error.message, subId: sub.id }, "[webhook/dunning] cancel update failed");
+    return;
+  }
+
+  await supabase.from("dunning_audit_log").insert({
+    subscription_id: sub.id,
+    fan_id: sub.fan_id,
+    creator_id: sub.creator_id,
+    from_state: fromState,
+    to_state: "cancelled",
+    event_type: "dunning_cancelled",
+    attempt: sub.dunning_attempt,
+    payload: { stripe_event_id: event.id, source: "stripe_webhook" },
+  });
+
+  await supabase.from("audit_log").insert({
+    creator_id: sub.creator_id,
+    fan_id: sub.fan_id,
+    event_type: "subscription.cancelled",
+    payload: {
+      subscription_id: sub.id,
+      from_state: fromState,
+      stripe_event_id: event.id,
+    },
+  });
+
+  req.log.info({ subId: sub.id, fromState }, "[webhook/dunning] subscription cancelled immediately");
+}
+
+// GET /api/admin/dunning-metrics — recovery rate by creator + time window.
+// Query params: creator_id (optional), window (30d | 7d | 90d, default 30d).
+router.get("/admin/dunning-metrics", async (req: Request, res: Response) => {
+  let supabase: ReturnType<typeof getSupabase>;
+  try {
+    supabase = getSupabase();
+  } catch {
+    res.status(503).json({ error: "Database not configured" });
+    return;
+  }
+
+  const creatorId = req.query["creator_id"] as string | undefined;
+  const windowStr = (req.query["window"] as string | undefined) ?? "30d";
+  const windowDays = windowStr === "7d" ? 7 : windowStr === "90d" ? 90 : 30;
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+
+  // Pull entries from dunning_audit_log for the window
+  let query = supabase
+    .from("dunning_audit_log")
+    .select("subscription_id, creator_id, to_state, created_at")
+    .gte("created_at", since);
+
+  if (creatorId) {
+    query = query.eq("creator_id", creatorId);
+  }
+
+  const { data: entries, error } = await query;
+
+  if (error) {
+    req.log.error({ err: error.message }, "[admin/dunning-metrics] query failed");
+    res.status(500).json({ error: "Failed to fetch metrics" });
+    return;
+  }
+
+  // Aggregate: unique subscriptions by their terminal state (last-wins per sub)
+  const latest = new Map<string, string>();
+  for (const row of entries ?? []) {
+    latest.set(row.subscription_id, row.to_state);
+  }
+
+  let churned = 0;
+  let recovered = 0;
+  let cancelled = 0;
+  let inDunning = 0;
+
+  for (const state of latest.values()) {
+    if (state === "grace" || state === "paused") {
+      inDunning++;
+      churned++;
+    } else if (state === "recovered") {
+      recovered++;
+      churned++;
+    } else if (state === "cancelled") {
+      cancelled++;
+      churned++;
+    }
+  }
+
+  const recoveryPct = churned > 0 ? Math.round((recovered / churned) * 100) : 0;
+
+  res.json({
+    window: windowStr,
+    creatorId: creatorId ?? null,
+    churned,
+    recovered,
+    cancelled,
+    inDunning,
+    recoveryPct,
+    since,
+  });
+});
 
 export default router;
