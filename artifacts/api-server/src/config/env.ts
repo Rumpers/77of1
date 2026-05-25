@@ -30,6 +30,9 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   HELICONE_API_KEY: z.string().optional(),
 
+  // Safety crisis alerts — Slack incoming webhook URL
+  SAFETY_ALERT_WEBHOOK_URL: z.string().url().optional(),
+
   // Health check auth — protects /api/health/db and deeper
   HEALTH_SECRET: z.string().optional(),
 });
