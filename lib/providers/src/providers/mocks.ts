@@ -3,6 +3,9 @@
 
 import type {
   CostEstimate,
+  EmailInput,
+  EmailResult,
+  IEmailProvider,
   ITextProvider,
   IVideoProvider,
   IVoiceProvider,
@@ -83,5 +86,60 @@ export class MockVideoProvider implements IVideoProvider {
   getJobStatus(providerJobId: string): Promise<VideoJobStatus> {
     const status = this.jobs.get(providerJobId) ?? { status: "failed" as const };
     return Promise.resolve(status);
+  }
+}
+
+// ── MockEmailProvider — HID-001 ───────────────────────────────────────────────
+// Captures sent emails in memory for test assertions. No external calls.
+
+export interface CapturedEmail {
+  to: string;
+  template: string;
+  locale: string | undefined;
+  data: Record<string, string | number | boolean>;
+  tags?: Record<string, string>;
+  sentAt: Date;
+}
+
+export class MockEmailProvider implements IEmailProvider {
+  readonly sent: CapturedEmail[] = [];
+  private readonly suppressed = new Set<string>();
+  private msgCounter = 0;
+
+  sendEmail(input: EmailInput): Promise<EmailResult> {
+    if (this.suppressed.has(input.to)) {
+      return Promise.resolve({ messageId: "", success: true, suppressed: true });
+    }
+    this.sent.push({
+      to: input.to,
+      template: input.template,
+      locale: input.locale,
+      data: input.data,
+      tags: input.tags,
+      sentAt: new Date(),
+    });
+    return Promise.resolve({
+      messageId: `mock-email-${++this.msgCounter}`,
+      success: true,
+    });
+  }
+
+  suppressAddress(
+    email: string,
+    _reason: "bounce" | "complaint" | "unsubscribe"
+  ): Promise<void> {
+    this.suppressed.add(email);
+    return Promise.resolve();
+  }
+
+  isSuppressed(email: string): Promise<boolean> {
+    return Promise.resolve(this.suppressed.has(email));
+  }
+
+  /** Clear captured emails and suppression list between tests. */
+  reset(): void {
+    this.sent.length = 0;
+    this.suppressed.clear();
+    this.msgCounter = 0;
   }
 }

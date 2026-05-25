@@ -34,4 +34,11 @@ export const JOB_OPTIONS: Record<string, JobsOptions> = {
     removeOnComplete,
     removeOnFail: false,
   },
+  dunningRetry: {
+    // Each dunning step is a single attempt — the state machine schedules
+    // follow-up jobs manually with explicit delays (72h, 48h, 48h, 72h).
+    attempts: 1,
+    removeOnComplete,
+    removeOnFail: false,
+  },
 };

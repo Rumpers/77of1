@@ -1,7 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import Stripe from "stripe";
+import { Queue } from "bullmq";
 import { getSupabase } from "../lib/supabase.js";
 import { CreateCheckoutBody } from "@workspace/api-zod";
+import { QUEUE_NAMES } from "@workspace/queue";
+import type { DunningRetryPayload } from "@workspace/queue";
 
 const router: IRouter = Router();
 
@@ -143,7 +146,87 @@ router.post("/webhooks/stripe", async (req: Request, res: Response) => {
     }
   }
 
+  if (event.type === "invoice.payment_failed") {
+    await handleInvoicePaymentFailed(req, event);
+  }
+
   res.json({ received: true });
 });
+
+// Handles invoice.payment_failed Stripe events.
+// Idempotent: looks up fan_subscriptions by stripe_subscription_id; if already
+// in dunning, no-ops (the ladder worker manages further transitions).
+async function handleInvoicePaymentFailed(
+  req: Request,
+  event: Stripe.Event,
+): Promise<void> {
+  const invoice = event.data.object as Stripe.Invoice;
+  const stripeSubId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+
+  if (!stripeSubId) {
+    req.log.warn({ eventId: event.id }, "[webhook/dunning] invoice has no subscription id");
+    return;
+  }
+
+  const supabase = getSupabase();
+
+  // Find the subscription record
+  const { data: sub } = await supabase
+    .from("fan_subscriptions")
+    .select("id, fan_id, creator_id, stripe_subscription_id, stripe_customer_id, dunning_state")
+    .eq("stripe_subscription_id", stripeSubId)
+    .maybeSingle();
+
+  if (!sub) {
+    req.log.warn({ stripeSubId }, "[webhook/dunning] no subscription record found");
+    return;
+  }
+
+  // Already in dunning — the ladder worker manages transitions
+  if (sub.dunning_state !== "active" && sub.dunning_state !== "recovered") {
+    req.log.info({ subId: sub.id, dunningState: sub.dunning_state }, "[webhook/dunning] already in dunning — skipping");
+    return;
+  }
+
+  // Check dunning_enabled flag
+  const { data: flag } = await supabase
+    .from("feature_flags")
+    .select("enabled")
+    .eq("key", "dunning_enabled")
+    .maybeSingle();
+
+  if (!flag?.enabled) {
+    req.log.info({ subId: sub.id }, "[webhook/dunning] flag disabled — skipping ladder");
+    return;
+  }
+
+  // Kick off the dunning ladder with attempt=0
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    req.log.error("[webhook/dunning] REDIS_URL not set — cannot enqueue dunning job");
+    return;
+  }
+
+  const jobId = `dunning:${sub.id}:attempt:0:event:${event.id}`;
+  const payload: DunningRetryPayload = {
+    type: "dunning-retry",
+    subscriptionId: sub.id,
+    fanId: sub.fan_id,
+    creatorId: sub.creator_id,
+    stripeSubscriptionId: sub.stripe_subscription_id,
+    stripeCustomerId: sub.stripe_customer_id,
+    attempt: 0,
+  };
+
+  try {
+    const queue = new Queue(QUEUE_NAMES.dunningRetry, { connection: { url: redisUrl } });
+    await queue.add("dunning-retry", payload, { jobId, delay: 0 });
+    await queue.close();
+    req.log.info({ subId: sub.id, jobId }, "[webhook/dunning] dunning ladder enqueued");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    req.log.error({ err: message }, "[webhook/dunning] enqueue failed");
+  }
+}
 
 export default router;

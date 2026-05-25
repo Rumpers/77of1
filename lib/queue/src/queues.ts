@@ -8,6 +8,7 @@ export interface AllQueues {
   videoGeneration: Queue;
   moderation: Queue;
   consentRevocation: Queue;
+  dunningRetry: Queue;
 }
 
 export function createAllQueues(redisUrl: string): AllQueues {
@@ -32,6 +33,10 @@ export function createAllQueues(redisUrl: string): AllQueues {
     consentRevocation: new Queue(QUEUE_NAMES.consentRevocation, {
       connection: conn,
       defaultJobOptions: JOB_OPTIONS.consentRevocation,
+    }),
+    dunningRetry: new Queue(QUEUE_NAMES.dunningRetry, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.dunningRetry,
     }),
   };
 }

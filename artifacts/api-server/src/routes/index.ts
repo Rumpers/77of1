@@ -9,6 +9,10 @@ import twinRouter from "./twin.js";
 import personaRouter from "./persona.js";
 import assetsRouter from "./assets.js";
 import consentRouter from "./consent.js";
+import subscriptionsRouter from "./subscriptions.js";
+import accountRouter from "./account.js";
+import emailWebhooksRouter from "./email-webhooks.js";
+import dsarRouter from "./dsar.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +26,10 @@ router.use(twinRouter);
 router.use(personaRouter);
 router.use(assetsRouter);
 router.use(consentRouter);
+router.use(subscriptionsRouter);
+router.use(accountRouter);
+router.use(dsarRouter);
+// Email webhook must be before express.json() middleware — see email-webhooks.ts
+router.use(emailWebhooksRouter);
 
 export default router;

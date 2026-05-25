@@ -4,6 +4,7 @@ export const QUEUE_NAMES = {
   videoGeneration: "video-generation",
   moderation: "moderation",
   consentRevocation: "consent-revocation",
+  dunningRetry: "dunning-retry",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

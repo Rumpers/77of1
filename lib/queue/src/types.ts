@@ -41,6 +41,19 @@ export interface ConsentRevocationPayload {
   killSwitch: boolean;
 }
 
+// Dunning retry ladder — one job per retry step.
+// attempt=0: first charge failure → grace; attempt=1–3: subsequent retries.
+// attempt=4: enqueued by attempt=3 on failure → transition to cancelled.
+export interface DunningRetryPayload {
+  type: "dunning-retry";
+  subscriptionId: string;
+  fanId: string;
+  creatorId: string;
+  stripeSubscriptionId: string;
+  stripeCustomerId: string;
+  attempt: number;
+}
+
 export type TextGenerationContext = {
   creatorId: string;
   systemPrompt: string;
