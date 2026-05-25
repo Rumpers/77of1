@@ -10,7 +10,66 @@ type ConsentItem = {
   legal: string;
 };
 
+type RecoverMessages = {
+  contact_title: string;
+  contact_subtitle: string;
+  creator_handle_label: string;
+  backup_email_label: string;
+  or_label: string;
+  backup_phone_label: string;
+  contact_notice: string;
+  contact_submit: string;
+  attest_title: string;
+  attest_subtitle: string;
+  id_type_label: string;
+  id_type_passport: string;
+  id_type_national_id: string;
+  id_type_drivers_license: string;
+  id_image_label: string;
+  id_image_choose: string;
+  id_image_hint: string;
+  attest_notice: string;
+  attest_submit: string;
+  done_title: string;
+  done_body_simple: string;
+  done_body_attested: string;
+  done_support_hint: string;
+  submitting: string;
+  error_generic: string;
+  powered_by: string;
+};
+
+type DsarMessages = {
+  fan_tab: string;
+  creator_tab: string;
+  fan_title: string;
+  fan_subtitle: string;
+  email_label: string;
+  email_placeholder: string;
+  request_type_label: string;
+  request_type_all: string;
+  request_type_messages: string;
+  request_type_account: string;
+  fan_notice: string;
+  fan_submit: string;
+  creator_title: string;
+  creator_subtitle: string;
+  creator_email_label: string;
+  creator_notice: string;
+  creator_submit: string;
+  submitting: string;
+  error_generic: string;
+  email_invalid: string;
+  done_title: string;
+  done_body_fan: string;
+  done_body_creator: string;
+  done_support_hint: string;
+  powered_by: string;
+};
+
 type Messages = {
+  recover: RecoverMessages;
+  dsar: DsarMessages;
   fan: {
     free_trial: string;
     send_message: string;
@@ -94,6 +153,61 @@ type Messages = {
 
 const messages: Record<Locale, Messages> = {
   en: {
+    dsar: {
+      fan_tab: "My Data",
+      creator_tab: "Creator Export",
+      fan_title: "Download your data",
+      fan_subtitle: "Request a copy of all data 7of1 holds about you. We'll email you a secure download link.",
+      email_label: "Your email address",
+      email_placeholder: "you@email.com",
+      request_type_label: "What data do you want?",
+      request_type_all: "Everything (messages, credits, account)",
+      request_type_messages: "Chat messages only",
+      request_type_account: "Account & billing only",
+      fan_notice: "We'll prepare your download and email you a secure link within 30 days, as required by our privacy policy (§16).",
+      fan_submit: "Request my data",
+      creator_title: "Export your creator data",
+      creator_subtitle: "Request a full export of your creator data. Delivered to your account email within 72 hours.",
+      creator_email_label: "Creator account email",
+      creator_notice: "You'll receive a secure download link at your account email within 72 hours per §16 of our Terms of Service.",
+      creator_submit: "Request export",
+      submitting: "Submitting…",
+      error_generic: "Something went wrong. Please try again.",
+      email_invalid: "Please enter a valid email address.",
+      done_title: "Request received",
+      done_body_fan: "We've received your data request. You'll receive a secure download link at {email} within 30 days.",
+      done_body_creator: "We've received your export request. You'll receive a download link at {email} within 72 hours.",
+      done_support_hint: "Questions? Email privacy@7of1.com",
+      powered_by: "Powered by 7of1",
+    },
+    recover: {
+      contact_title: "Recover your account",
+      contact_subtitle: "Tell us which creator's chat you had and how to reach you.",
+      creator_handle_label: "Creator handle",
+      backup_email_label: "Your backup email",
+      or_label: "— or —",
+      backup_phone_label: "Your phone number",
+      contact_notice: "We'll only use this contact to verify your identity and never share it.",
+      contact_submit: "Continue",
+      attest_title: "Verify your identity",
+      attest_subtitle: "Your credit balance requires government-issued ID to recover.",
+      id_type_label: "Document type",
+      id_type_passport: "Passport",
+      id_type_national_id: "National ID card",
+      id_type_drivers_license: "Driver's license",
+      id_image_label: "Upload document photo",
+      id_image_choose: "Choose image…",
+      id_image_hint: "JPG, PNG or WEBP · Max 10 MB · Clearly shows name and photo",
+      attest_notice: "Your document is encrypted in transit and at rest. It is used only to verify this recovery request and deleted within 30 days.",
+      attest_submit: "Submit for review",
+      done_title: "Request received",
+      done_body_simple: "We've received your recovery request. Our team will send instructions to your backup contact within 1 business day.",
+      done_body_attested: "We've received your request and identity document. Your credit balance requires manual review. Expect a response within 2–3 business days.",
+      done_support_hint: "Need urgent help? Email support@7of1.com",
+      submitting: "Submitting…",
+      error_generic: "Something went wrong. Please try again.",
+      powered_by: "Powered by 7of1",
+    },
     fan: {
       free_trial: "Start free trial",
       send_message: "Send a message",
@@ -220,6 +334,61 @@ const messages: Record<Locale, Messages> = {
   },
 
   ja: {
+    dsar: {
+      fan_tab: "マイデータ",
+      creator_tab: "クリエイターエクスポート",
+      fan_title: "データをダウンロード",
+      fan_subtitle: "7of1があなたについて保持するデータのコピーをリクエストします。安全なダウンロードリンクをメールでお送りします。",
+      email_label: "メールアドレス",
+      email_placeholder: "you@email.com",
+      request_type_label: "どのデータが必要ですか？",
+      request_type_all: "すべて（メッセージ、クレジット、アカウント）",
+      request_type_messages: "チャットメッセージのみ",
+      request_type_account: "アカウントと請求情報のみ",
+      fan_notice: "プライバシーポリシー（§16）に従い、30日以内に安全なダウンロードリンクをメールでお送りします。",
+      fan_submit: "データをリクエスト",
+      creator_title: "クリエイターデータのエクスポート",
+      creator_subtitle: "クリエイターデータのフルエクスポートをリクエストします。72時間以内にアカウントのメールアドレスにお届けします。",
+      creator_email_label: "クリエイターアカウントのメールアドレス",
+      creator_notice: "利用規約 §16 に従い、72時間以内にアカウントのメールアドレスに安全なダウンロードリンクをお送りします。",
+      creator_submit: "エクスポートをリクエスト",
+      submitting: "送信中…",
+      error_generic: "エラーが発生しました。もう一度お試しください。",
+      email_invalid: "有効なメールアドレスを入力してください。",
+      done_title: "受け付けました",
+      done_body_fan: "データリクエストを受け付けました。30日以内に安全なダウンロードリンクを {email} にお送りします。",
+      done_body_creator: "エクスポートリクエストを受け付けました。72時間以内にダウンロードリンクを {email} にお送りします。",
+      done_support_hint: "ご質問は privacy@7of1.com まで",
+      powered_by: "7of1 提供",
+    },
+    recover: {
+      contact_title: "アカウントを復元する",
+      contact_subtitle: "チャットしていたクリエイターのハンドルと連絡先をお教えください。",
+      creator_handle_label: "クリエイターのハンドル",
+      backup_email_label: "予備のメールアドレス",
+      or_label: "— または —",
+      backup_phone_label: "電話番号",
+      contact_notice: "この連絡先は本人確認のみに使用し、第三者に提供することはありません。",
+      contact_submit: "次へ",
+      attest_title: "本人確認",
+      attest_subtitle: "クレジット残高を復元するには、公的身分証明書が必要です。",
+      id_type_label: "書類の種類",
+      id_type_passport: "パスポート",
+      id_type_national_id: "マイナンバーカード / 健康保険証",
+      id_type_drivers_license: "運転免許証",
+      id_image_label: "書類の写真をアップロード",
+      id_image_choose: "画像を選択…",
+      id_image_hint: "JPG、PNG、WEBP · 最大10MB · 氏名と顔写真が鮮明に写ったもの",
+      attest_notice: "書類は暗号化して送受信・保存されます。本人確認のみに使用し、30日以内に削除します。",
+      attest_submit: "審査のために送信",
+      done_title: "受け付けました",
+      done_body_simple: "復元リクエストを受け付けました。1営業日以内に予備の連絡先へ手順をお送りします。",
+      done_body_attested: "リクエストと身分証明書を受け付けました。クレジット残高の確認に2〜3営業日かかります。",
+      done_support_hint: "お急ぎの方はサポートへ: support@7of1.com",
+      submitting: "送信中…",
+      error_generic: "エラーが発生しました。もう一度お試しください。",
+      powered_by: "7of1 提供",
+    },
     fan: {
       free_trial: "無料トライアルを開始",
       send_message: "メッセージを送る",
@@ -346,6 +515,61 @@ const messages: Record<Locale, Messages> = {
   },
 
   "zh-TW": {
+    dsar: {
+      fan_tab: "我的資料",
+      creator_tab: "創作者匯出",
+      fan_title: "下載您的資料",
+      fan_subtitle: "申請取得 7of1 持有的您的所有資料副本。我們將以電子郵件傳送安全的下載連結。",
+      email_label: "您的電子郵件地址",
+      email_placeholder: "you@email.com",
+      request_type_label: "您想要哪些資料？",
+      request_type_all: "所有資料（訊息、點數、帳號）",
+      request_type_messages: "僅限聊天訊息",
+      request_type_account: "僅限帳號與帳單資料",
+      fan_notice: "依據我們的隱私權政策（§16），我們將在 30 天內以電子郵件傳送安全的下載連結給您。",
+      fan_submit: "申請我的資料",
+      creator_title: "匯出您的創作者資料",
+      creator_subtitle: "申請完整的創作者資料匯出，將在 72 小時內傳送至您的帳號電子郵件。",
+      creator_email_label: "創作者帳號電子郵件",
+      creator_notice: "依據服務條款 §16，您將在 72 小時內收到傳送至您帳號電子郵件的安全下載連結。",
+      creator_submit: "申請匯出",
+      submitting: "提交中…",
+      error_generic: "發生錯誤，請重試。",
+      email_invalid: "請輸入有效的電子郵件地址。",
+      done_title: "申請已收到",
+      done_body_fan: "我們已收到您的資料申請，將在 30 天內傳送安全的下載連結至 {email}。",
+      done_body_creator: "我們已收到您的匯出申請，將在 72 小時內傳送下載連結至 {email}。",
+      done_support_hint: "有任何問題？請電郵 privacy@7of1.com",
+      powered_by: "由 7of1 提供",
+    },
+    recover: {
+      contact_title: "找回您的帳號",
+      contact_subtitle: "請告訴我們您聊天的創作者帳號及您的聯絡方式。",
+      creator_handle_label: "創作者帳號",
+      backup_email_label: "備用電子郵件",
+      or_label: "— 或 —",
+      backup_phone_label: "電話號碼",
+      contact_notice: "此聯絡方式僅用於驗證您的身份，不會與第三方分享。",
+      contact_submit: "繼續",
+      attest_title: "驗證身份",
+      attest_subtitle: "您的點數餘額需要政府核發的身份證件才能找回。",
+      id_type_label: "證件類型",
+      id_type_passport: "護照",
+      id_type_national_id: "國民身分證",
+      id_type_drivers_license: "駕照",
+      id_image_label: "上傳證件照片",
+      id_image_choose: "選擇圖片…",
+      id_image_hint: "JPG、PNG 或 WEBP · 最大 10 MB · 清楚顯示姓名與照片",
+      attest_notice: "您的證件在傳輸和儲存時均已加密，僅用於驗證此找回申請，並將於 30 天內刪除。",
+      attest_submit: "提交審核",
+      done_title: "申請已收到",
+      done_body_simple: "我們已收到您的找回申請。我們的團隊將在 1 個工作日內傳送指示至您的備用聯絡方式。",
+      done_body_attested: "我們已收到您的申請及身份證件。您的點數餘額需要人工審核，請在 2–3 個工作日內等待回覆。",
+      done_support_hint: "需要緊急協助？請電郵 support@7of1.com",
+      submitting: "提交中…",
+      error_generic: "發生錯誤，請重試。",
+      powered_by: "由 7of1 提供",
+    },
     fan: {
       free_trial: "開始免費試用",
       send_message: "傳送訊息",

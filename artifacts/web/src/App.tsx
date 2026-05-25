@@ -8,6 +8,8 @@ import PaymentCancelPage from "@/pages/payment-cancel";
 import OnboardStep1 from "@/pages/onboard-step1";
 import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
+import FanRecover from "@/pages/fan-recover";
+import FanDsar from "@/pages/fan-dsar";
 import { DEFAULT_LOCALE } from "@/lib/i18n";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,12 @@ function Router() {
       <Route path="/:locale/onboard/step1" component={OnboardStep1} />
       <Route path="/:locale/onboard/step2" component={OnboardStep2} />
       <Route path="/:locale/onboard/step3" component={OnboardStep3} />
+
+      {/* Fan account recovery */}
+      <Route path="/:locale/recover" component={FanRecover} />
+
+      {/* DSAR self-service — fan data download + creator export (§16) */}
+      <Route path="/:locale/dsar" component={FanDsar} />
 
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />
