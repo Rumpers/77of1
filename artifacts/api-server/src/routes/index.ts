@@ -9,6 +9,8 @@ import twinRouter from "./twin.js";
 import personaRouter from "./persona.js";
 import assetsRouter from "./assets.js";
 import consentRouter from "./consent.js";
+import reportsRouter from "./reports.js";
+import linksRouter from "./links.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,8 @@ router.use(twinRouter);
 router.use(personaRouter);
 router.use(assetsRouter);
 router.use(consentRouter);
+router.use(reportsRouter);
+// Link tracker last — /:handle catches all unmatched GET paths
+router.use(linksRouter);
 
 export default router;

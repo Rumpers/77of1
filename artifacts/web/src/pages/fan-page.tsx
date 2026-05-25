@@ -48,11 +48,15 @@ function disclosureFooter(locale: string, handle: string): string {
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
+type ReportCategory = "off_topic" | "abusive" | "inappropriate" | "fraud";
+const REPORT_CATEGORIES: ReportCategory[] = ["off_topic", "abusive", "inappropriate", "fraud"];
+
 type ChatMessage = {
   id: string;
   role: "fan" | "ai";
   text: string;
   pending?: boolean;
+  reported?: boolean;
 };
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -98,11 +102,55 @@ export default function FanPage() {
   const [otpError, setOtpError] = useState("");
   const [fanAuthenticated, setFanAuthenticated] = useState(false);
 
+  // Report modal state
+  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
+  const [reportCategory, setReportCategory] = useState<ReportCategory | null>(null);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  function openReport(msg: ChatMessage) {
+    setReportTarget(msg);
+    setReportCategory(null);
+    setReportDone(false);
+  }
+
+  function closeReport() {
+    setReportTarget(null);
+    setReportCategory(null);
+    setReportDone(false);
+    setReportSubmitting(false);
+  }
+
+  async function submitReport() {
+    if (!reportTarget || !reportCategory || reportSubmitting) return;
+    setReportSubmitting(true);
+    // Fire and forget — API responds <2s, no UX block
+    fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message_id: reportTarget.id,
+        category: reportCategory,
+        message_text: reportTarget.text,
+        handle,
+        locale,
+      }),
+    }).catch(() => {/* silently ignore */});
+
+    // Mark message as reported in local state
+    setMessages((prev) =>
+      prev.map((m) => (m.id === reportTarget.id ? { ...m, reported: true } : m))
+    );
+    setReportDone(true);
+    setReportSubmitting(false);
+    setTimeout(closeReport, 1500);
+  }
 
   async function sendMessage() {
     const text = inputValue.trim();
@@ -321,16 +369,39 @@ export default function FanPage() {
               {msg.text}
             </div>
             {msg.role === "ai" && !msg.pending && (
-              <span
+              <div
                 style={{
-                  fontSize: "0.6875rem",
-                  color: "#555",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
                   marginTop: "0.25rem",
                   paddingLeft: "0.25rem",
                 }}
               >
-                {disclosureFooter(locale, handle)}
-              </span>
+                <span style={{ fontSize: "0.6875rem", color: "#555" }}>
+                  {disclosureFooter(locale, handle)}
+                </span>
+                {!msg.reported ? (
+                  <button
+                    onClick={() => openReport(msg)}
+                    aria-label={t.report_button}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: "0 0.1rem",
+                      cursor: "pointer",
+                      fontSize: "0.6875rem",
+                      color: "#444",
+                      lineHeight: 1,
+                      opacity: 0.6,
+                    }}
+                  >
+                    ⚑
+                  </button>
+                ) : (
+                  <span style={{ fontSize: "0.6875rem", color: "#555", opacity: 0.5 }}>✓</span>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -419,6 +490,104 @@ export default function FanPage() {
           {t.send}
         </button>
       </div>
+
+      {/* Report modal */}
+      {reportTarget && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 60,
+            padding: "1rem",
+          }}
+          onClick={closeReport}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              borderRadius: "16px",
+              padding: "1.5rem",
+              width: "100%",
+              maxWidth: "360px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.875rem",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {reportDone ? (
+              <p style={{ margin: 0, textAlign: "center", color: "#4ade80", fontWeight: 600 }}>
+                {t.report_success}
+              </p>
+            ) : (
+              <>
+                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f0f0f0" }}>
+                  {t.report_title}
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {REPORT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setReportCategory(cat)}
+                      style={{
+                        padding: "0.625rem 0.875rem",
+                        borderRadius: "10px",
+                        border: `2px solid ${reportCategory === cat ? "#7C3AED" : "#333"}`,
+                        background: reportCategory === cat ? "#2d1e4e" : "#111",
+                        color: reportCategory === cat ? "#c4b5fd" : "#aaa",
+                        fontSize: "0.9rem",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontWeight: reportCategory === cat ? 600 : 400,
+                      }}
+                    >
+                      {t.report_categories[cat]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={closeReport}
+                    style={{
+                      flex: 1,
+                      padding: "0.625rem",
+                      borderRadius: "10px",
+                      border: "1px solid #333",
+                      background: "transparent",
+                      color: "#888",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.report_cancel}
+                  </button>
+                  <button
+                    onClick={submitReport}
+                    disabled={!reportCategory || reportSubmitting}
+                    style={{
+                      flex: 1,
+                      padding: "0.625rem",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: reportCategory ? "#7C3AED" : "#333",
+                      color: reportCategory ? "#fff" : "#666",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      cursor: reportCategory ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {t.report_submit}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Paywall modal */}
       {showPaywall && (

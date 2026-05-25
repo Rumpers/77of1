@@ -40,6 +40,17 @@ type Messages = {
     otp_subtitle: string;
     otp_check_email: string;
     otp_error_invalid: string;
+    report_button: string;
+    report_title: string;
+    report_categories: {
+      off_topic: string;
+      abusive: string;
+      inappropriate: string;
+      fraud: string;
+    };
+    report_submit: string;
+    report_cancel: string;
+    report_success: string;
   };
   onboard: {
     step1: {
@@ -134,6 +145,17 @@ const messages: Record<Locale, Messages> = {
       otp_subtitle: "Enter your email to get a one-time code. No password needed.",
       otp_check_email: "Check your email for the 6-digit code.",
       otp_error_invalid: "Invalid or expired code. Try again.",
+      report_button: "Report",
+      report_title: "Report this response",
+      report_categories: {
+        off_topic: "Off-topic",
+        abusive: "Abusive",
+        inappropriate: "Inappropriate",
+        fraud: "Fraud / scam",
+      },
+      report_submit: "Submit report",
+      report_cancel: "Cancel",
+      report_success: "Report submitted. Thank you.",
     },
     onboard: {
       step1: {
@@ -271,6 +293,17 @@ const messages: Record<Locale, Messages> = {
       otp_subtitle: "メールアドレスを入力してワンタイムコードを受け取ってください。",
       otp_check_email: "6桁のコードをメールでご確認ください。",
       otp_error_invalid: "無効または期限切れのコードです。もう一度お試しください。",
+      report_button: "報告",
+      report_title: "この返答を報告する",
+      report_categories: {
+        off_topic: "関係のない内容",
+        abusive: "侮辱的",
+        inappropriate: "不適切",
+        fraud: "詐欺・スパム",
+      },
+      report_submit: "報告を送信",
+      report_cancel: "キャンセル",
+      report_success: "報告を送信しました。ありがとうございます。",
     },
     onboard: {
       step1: {
@@ -408,6 +441,17 @@ const messages: Record<Locale, Messages> = {
       otp_subtitle: "輸入您的電子郵件以取得一次性驗證碼。無需密碼。",
       otp_check_email: "請查看您的電子郵件中的6位數驗證碼。",
       otp_error_invalid: "驗證碼無效或已過期。請重試。",
+      report_button: "檢舉",
+      report_title: "檢舉此回覆",
+      report_categories: {
+        off_topic: "離題內容",
+        abusive: "侮辱性內容",
+        inappropriate: "不當內容",
+        fraud: "詐騙／垃圾訊息",
+      },
+      report_submit: "送出檢舉",
+      report_cancel: "取消",
+      report_success: "檢舉已送出，謝謝您。",
     },
     onboard: {
       step1: {
