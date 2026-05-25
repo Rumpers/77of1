@@ -16,6 +16,9 @@ import kycRouter from "./kyc.js";
 import dsarRouter from "./dsar.js";
 import sandboxRouter from "./sandbox.js";
 import policiesRouter from "./policies.js";
+import fanMemoryRouter from "./fan-memory.js";
+import reportsRouter from "./reports.js";
+import fanRecoveryRouter from "./fan-recovery.js";
 
 const router: IRouter = Router();
 
@@ -36,5 +39,8 @@ router.use(kycRouter);
 router.use(dsarRouter);
 router.use(sandboxRouter);
 router.use(policiesRouter);
+router.use(fanMemoryRouter);
+router.use(reportsRouter);
+router.use(fanRecoveryRouter);
 
 export default router;
