@@ -8,6 +8,7 @@ import PaymentCancelPage from "@/pages/payment-cancel";
 import OnboardStep1 from "@/pages/onboard-step1";
 import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
+import DsarPortal from "@/pages/dsar-portal";
 import { DEFAULT_LOCALE, isValidLocale } from "@/lib/i18n";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 
@@ -52,6 +53,9 @@ function Router() {
       <Route path="/:locale/onboard/step1" component={OnboardStep1} />
       <Route path="/:locale/onboard/step2" component={OnboardStep2} />
       <Route path="/:locale/onboard/step3" component={OnboardStep3} />
+
+      {/* DSAR self-service portal — §16 */}
+      <Route path="/:locale/account/data-request" component={DsarPortal} />
 
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />

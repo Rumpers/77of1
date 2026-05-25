@@ -618,6 +618,27 @@ export default function FanPage() {
           </div>
         </div>
       )}
+
+      {/* Privacy footer — §16 DSAR link */}
+      <div
+        style={{
+          textAlign: "center",
+          padding: "0.75rem 0 0.5rem",
+          borderTop: "1px solid #1e1e1e",
+          marginTop: "0.5rem",
+        }}
+      >
+        <a
+          href={`/${locale}/account/data-request`}
+          style={{
+            fontSize: "0.6875rem",
+            color: "#444",
+            textDecoration: "none",
+          }}
+        >
+          {locale === "ja" ? "データに関する権利" : locale === "zh-TW" ? "您的資料權利" : "Your data rights"}
+        </a>
+      </div>
     </main>
   );
 }

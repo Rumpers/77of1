@@ -41,6 +41,27 @@ type Messages = {
     otp_check_email: string;
     otp_error_invalid: string;
   };
+  dsar: {
+    page_title: string;
+    page_subtitle: string;
+    request_button: string;
+    status_processing: string;
+    status_ready: string;
+    status_downloaded: string;
+    status_expired: string;
+    download_button: string;
+    expires_label: string;
+    cooldown_notice: string;
+    cooldown_next: string;
+    error_generic: string;
+    error_auth: string;
+    success_title: string;
+    success_body: string;
+    no_request_yet: string;
+    data_rights_link: string;
+    loading: string;
+    creator_note: string;
+  };
   onboard: {
     step1: {
       title: string;
@@ -134,6 +155,27 @@ const messages: Record<Locale, Messages> = {
       otp_subtitle: "Enter your email to get a one-time code. No password needed.",
       otp_check_email: "Check your email for the 6-digit code.",
       otp_error_invalid: "Invalid or expired code. Try again.",
+    },
+    dsar: {
+      page_title: "Your Data Rights",
+      page_subtitle: "You can download a copy of all personal data 7of1 holds for your account. Requests are processed immediately.",
+      request_button: "Request my data",
+      status_processing: "Processing your request…",
+      status_ready: "Your data is ready to download.",
+      status_downloaded: "You've already downloaded your data.",
+      status_expired: "Your download link has expired.",
+      download_button: "Download my data (.json)",
+      expires_label: "Link expires",
+      cooldown_notice: "You already made a request recently.",
+      cooldown_next: "You can request again after",
+      error_generic: "Something went wrong. Please try again.",
+      error_auth: "Please sign in to access your data.",
+      success_title: "Request submitted",
+      success_body: "Your data package is ready. Download it below. The link is valid for 30 days.",
+      no_request_yet: "You haven't made a data request yet.",
+      data_rights_link: "Your data rights",
+      loading: "Loading…",
+      creator_note: "As a creator, your download link is valid for 72 hours.",
     },
     onboard: {
       step1: {
@@ -272,6 +314,27 @@ const messages: Record<Locale, Messages> = {
       otp_check_email: "6桁のコードをメールでご確認ください。",
       otp_error_invalid: "無効または期限切れのコードです。もう一度お試しください。",
     },
+    dsar: {
+      page_title: "データに関する権利",
+      page_subtitle: "7of1があなたのアカウントに保管しているすべての個人データのコピーをダウンロードできます。リクエストは即時処理されます。",
+      request_button: "データをリクエストする",
+      status_processing: "リクエストを処理中…",
+      status_ready: "データのダウンロードの準備ができました。",
+      status_downloaded: "すでにデータをダウンロードしています。",
+      status_expired: "ダウンロードリンクの有効期限が切れました。",
+      download_button: "データをダウンロード（.json）",
+      expires_label: "リンクの有効期限",
+      cooldown_notice: "最近リクエストを行いました。",
+      cooldown_next: "次のリクエスト可能日時",
+      error_generic: "エラーが発生しました。もう一度お試しください。",
+      error_auth: "データにアクセスするにはサインインしてください。",
+      success_title: "リクエスト完了",
+      success_body: "データパッケージの準備ができました。以下からダウンロードしてください。リンクは30日間有効です。",
+      no_request_yet: "まだデータリクエストを行っていません。",
+      data_rights_link: "データに関する権利",
+      loading: "読み込み中…",
+      creator_note: "クリエイターの場合、ダウンロードリンクは72時間有効です。",
+    },
     onboard: {
       step1: {
         title: "コンテンツをアップロード",
@@ -408,6 +471,27 @@ const messages: Record<Locale, Messages> = {
       otp_subtitle: "輸入您的電子郵件以取得一次性驗證碼。無需密碼。",
       otp_check_email: "請查看您的電子郵件中的6位數驗證碼。",
       otp_error_invalid: "驗證碼無效或已過期。請重試。",
+    },
+    dsar: {
+      page_title: "您的資料權利",
+      page_subtitle: "您可以下載 7of1 為您帳號保存的所有個人資料副本。請求將立即處理。",
+      request_button: "請求我的資料",
+      status_processing: "正在處理您的請求…",
+      status_ready: "您的資料已準備好可以下載。",
+      status_downloaded: "您已下載過您的資料。",
+      status_expired: "您的下載連結已過期。",
+      download_button: "下載我的資料（.json）",
+      expires_label: "連結到期時間",
+      cooldown_notice: "您最近已提出請求。",
+      cooldown_next: "您可以在以下時間後再次請求",
+      error_generic: "發生錯誤。請重試。",
+      error_auth: "請登入以存取您的資料。",
+      success_title: "請求已提交",
+      success_body: "您的資料套件已準備好。請在下方下載。連結有效期為30天。",
+      no_request_yet: "您尚未提出資料請求。",
+      data_rights_link: "您的資料權利",
+      loading: "載入中…",
+      creator_note: "作為創作者，您的下載連結有效期為72小時。",
     },
     onboard: {
       step1: {
