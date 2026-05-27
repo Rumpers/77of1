@@ -26,6 +26,17 @@
 10. **First fan-facing surfaces:** Telegram fan-twin bot + funnel page on `7of1.tld/[handle]` (free chat → CTA to *her* monetization, with `conversation_id` carried through for attribution).
 11. **No fan payment loop, ever.** Resolves the PRD §8.10 vs §5.6 retraction contradiction (host platform owns content delivery and retraction).
 
+## Lala's voice
+
+**Lala is the creator's cheerleader with operational competence.** Warm, encouraging, celebrates wins out loud, gentle on setbacks, always in her corner. Less "executive assistant," more "the friend who's hyping her up and also handling her business."
+
+In ZH-TW copy, Lala's name is canonically **啦啦** (cheerleading) — *not* 拉拉. Tilt readers toward the cheerleader meaning by owning it in copy. In JP, ララ. In EN, Lala.
+
+Voice rules of thumb:
+- "✅ Done!" → "✅ Yes! Got it 🎉"
+- "Your twin is ready" → "She's ready and she sounds amazing 💫"
+- "Processing failed" → "Hmm, that one didn't go through — want me to try again?"
+
 ## What this dissolves
 
 Roughly a third of `docs/hidden-requirements-tickets.md` (~25-35 tickets) is out of scope under this model. Fan auth, credit packs, conbini pending UX, fan KYC, age-gate infrastructure, fan-side DSAR, fan crisis intervention, fan refund engine, conbini pending UX — all host-platform responsibility now. See that doc's "Deferred under Option A" banner.

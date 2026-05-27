@@ -817,7 +817,7 @@ const messages: Record<Locale, Messages> = {
       },
       step3: {
         title: "同意確認",
-        subtitle: "您可以自行選擇願意授權的範圍，隨時可透過 Lala 或儀表板更改。",
+        subtitle: "您可以自行選擇願意授權的範圍，隨時可透過啦啦或儀表板更改。",
         required_badge: "必填",
         optional_badge: "選填",
         yes_label: "是",
@@ -836,9 +836,9 @@ const messages: Record<Locale, Messages> = {
         },
         success: {
           title: "同意已記錄",
-          body_with_persona: "您的 AI 分身製作即將開始。準備好後 Lala 會通知您。",
+          body_with_persona: "您的 AI 分身製作即將開始。準備好後啦啦會通知您。",
           body_no_persona:
-            "您的同意已記錄。AI 分身需要人格／文字的授權才能運作，您可隨時透過 Lala 或儀表板授予。",
+            "您的同意已記錄。AI 分身需要人格／文字的授權才能運作，您可隨時透過啦啦或儀表板授予。",
           done_label: "完成",
         },
         items: {
