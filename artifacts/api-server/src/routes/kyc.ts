@@ -1,11 +1,12 @@
 /**
- * KYC / onboarding gate routes  (OF-124)
+ * KYC / onboarding gate routes  (OF-124, HID-062)
  *
  * Creator-facing:
  *   GET  /api/kyc/status
  *   POST /api/kyc/identity          — upload identity doc reference
  *   POST /api/kyc/initiate-signing  — create SignWell personality-rights doc
  *   POST /api/kyc/signwell-webhook  — SignWell completion webhook (unauthenticated, HMAC-guarded)
+ *   POST /api/kyc/tax-form          — submit W-9 / W-8BEN / W-8BEN-E reference (HID-062)
  *
  * Ops-facing (requires OPS_USER_IDS env allowlist):
  *   GET  /api/ops/kyc-queue         — pending KYC submissions
@@ -283,6 +284,138 @@ router.post(
     res.json({ ok: true });
   }
 );
+
+// ---------------------------------------------------------------------------
+// POST /api/kyc/upload-url  (HID-062)
+// Body: { fileType: 'id_doc' | 'tax_form', mimeType: string }
+// Returns a short-lived (60s) signed upload URL for the private "kyc-docs" bucket.
+// Creator PUTs the file directly to that URL, then calls /kyc/identity or /kyc/tax-form
+// with the resulting storagePath.
+// ---------------------------------------------------------------------------
+const VALID_FILE_TYPES = ["id_doc", "tax_form"] as const;
+const VALID_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/heic",
+  "image/webp",
+];
+
+router.post("/kyc/upload-url", async (req: Request, res: Response) => {
+  const creatorId = await resolveCreatorId(req, res);
+  if (!creatorId) return;
+
+  const { fileType, mimeType } = req.body as {
+    fileType?: string;
+    mimeType?: string;
+  };
+
+  if (!fileType || !VALID_FILE_TYPES.includes(fileType as (typeof VALID_FILE_TYPES)[number])) {
+    res.status(400).json({ error: `fileType must be one of: ${VALID_FILE_TYPES.join(", ")}` });
+    return;
+  }
+
+  if (!mimeType || !VALID_MIME_TYPES.includes(mimeType)) {
+    res.status(400).json({ error: `mimeType must be one of: ${VALID_MIME_TYPES.join(", ")}` });
+    return;
+  }
+
+  const ext = mimeType === "application/pdf" ? "pdf"
+    : mimeType.startsWith("image/") ? mimeType.split("/")[1]
+    : "bin";
+  const storagePath = `${creatorId}/${fileType}/${Date.now()}.${ext}`;
+
+  const sb = getSupabase();
+  const { data, error } = await sb.storage
+    .from("kyc-docs")
+    .createSignedUploadUrl(storagePath, { upsert: true });
+
+  if (error) {
+    req.log.error({ err: error.message }, "[kyc/upload-url] signed URL error");
+    res.status(502).json({ error: "Failed to create upload URL" });
+    return;
+  }
+
+  res.json({ uploadUrl: data.signedUrl, storagePath, token: data.token });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/kyc/tax-form  (HID-062)
+// Body: { taxFormType: 'W9' | 'W8BEN' | 'W8BENE', storagePath: string }
+// Creator uploads the PDF to Supabase Storage bucket "kyc-docs" then posts the
+// storage path here.  Allowed from any in-progress KYC status except complete/rejected.
+// ---------------------------------------------------------------------------
+const VALID_TAX_FORM_TYPES = ["W9", "W8BEN", "W8BENE"] as const;
+type TaxFormType = (typeof VALID_TAX_FORM_TYPES)[number];
+
+router.post("/kyc/tax-form", async (req: Request, res: Response) => {
+  const creatorId = await resolveCreatorId(req, res);
+  if (!creatorId) return;
+
+  const { taxFormType, storagePath } = req.body as {
+    taxFormType?: string;
+    storagePath?: string;
+  };
+
+  if (!taxFormType || !storagePath) {
+    res.status(400).json({ error: "taxFormType and storagePath required" });
+    return;
+  }
+
+  if (!VALID_TAX_FORM_TYPES.includes(taxFormType as TaxFormType)) {
+    res.status(400).json({
+      error: `taxFormType must be one of: ${VALID_TAX_FORM_TYPES.join(", ")}`,
+    });
+    return;
+  }
+
+  await ensureKycRow(creatorId);
+
+  const row = await getKycRow(creatorId);
+  if (!row) {
+    res.status(500).json({ error: "KYC row missing after ensure" });
+    return;
+  }
+
+  const terminalStatuses = ["complete", "rejected"];
+  if (terminalStatuses.includes(row.status)) {
+    res.status(409).json({
+      error: `Cannot submit tax form from status: ${row.status}`,
+    });
+    return;
+  }
+
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("creator_kyc")
+    .update({
+      tax_form_type: taxFormType,
+      tax_form_storage_path: storagePath,
+      tax_form_submitted_at: new Date().toISOString(),
+      status: "tax_submitted",
+    })
+    .eq("creator_id", creatorId)
+    .not("status", "in", '("complete","rejected")');
+
+  if (error) {
+    req.log.error({ err: error.message }, "[kyc/tax-form] update error");
+    res.status(500).json({ error: "Failed to record tax form" });
+    return;
+  }
+
+  await sb.from("audit_log").insert({
+    creator_id: creatorId,
+    event_type: "kyc_tax_form_submitted",
+    payload: { taxFormType },
+  });
+
+  req.log.info(
+    { creatorId, taxFormType },
+    "[kyc/tax-form] tax form submitted"
+  );
+
+  res.json({ ok: true, status: "tax_submitted" });
+});
 
 // ---------------------------------------------------------------------------
 // Ops routes — require OPS_USER_IDS allowlist
