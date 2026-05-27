@@ -10,66 +10,39 @@ type ConsentItem = {
   legal: string;
 };
 
-type RecoverMessages = {
-  contact_title: string;
-  contact_subtitle: string;
-  creator_handle_label: string;
-  backup_email_label: string;
-  or_label: string;
-  backup_phone_label: string;
-  contact_notice: string;
-  contact_submit: string;
-  attest_title: string;
-  attest_subtitle: string;
-  id_type_label: string;
-  id_type_passport: string;
-  id_type_national_id: string;
-  id_type_drivers_license: string;
-  id_image_label: string;
-  id_image_choose: string;
-  id_image_hint: string;
-  attest_notice: string;
-  attest_submit: string;
-  done_title: string;
-  done_body_simple: string;
-  done_body_attested: string;
-  done_support_hint: string;
-  submitting: string;
-  error_generic: string;
-  powered_by: string;
-};
-
-type DsarMessages = {
-  fan_tab: string;
-  creator_tab: string;
-  fan_title: string;
-  fan_subtitle: string;
-  email_label: string;
-  email_placeholder: string;
-  request_type_label: string;
-  request_type_all: string;
-  request_type_messages: string;
-  request_type_account: string;
-  fan_notice: string;
-  fan_submit: string;
-  creator_title: string;
-  creator_subtitle: string;
-  creator_email_label: string;
-  creator_notice: string;
-  creator_submit: string;
-  submitting: string;
-  error_generic: string;
-  email_invalid: string;
-  done_title: string;
-  done_body_fan: string;
-  done_body_creator: string;
-  done_support_hint: string;
-  powered_by: string;
-};
-
 type Messages = {
-  recover: RecoverMessages;
-  dsar: DsarMessages;
+  version_history: {
+    panel_title: string;
+    version_label: string;
+    by_label: string;
+    hash_label: string;
+    approved_badge: string;
+    pending_badge: string;
+    rejected_badge: string;
+    expand_snapshot: string;
+    collapse_snapshot: string;
+    no_versions: string;
+    loading: string;
+    error_load: string;
+    badge_tooltip_match: string;
+    badge_tooltip_mismatch: string;
+    modal_title: string;
+    modal_version_warning: string;
+    modal_hash_label: string;
+    modal_confirm: string;
+    modal_cancel: string;
+    modal_submitting: string;
+    modal_error: string;
+    audit_title: string;
+    audit_back: string;
+    audit_draft: string;
+    audit_approved: string;
+    audit_posted: string;
+    audit_mismatch_banner: string;
+    audit_no_data: string;
+    audit_loading: string;
+    audit_error: string;
+  };
   fan: {
     free_trial: string;
     send_message: string;
@@ -88,6 +61,49 @@ type Messages = {
     paywall_escape: string;
     paywall_signup_cta: string;
     send: string;
+    otp_email_placeholder: string;
+    otp_send_button: string;
+    otp_sending: string;
+    otp_code_placeholder: string;
+    otp_verify_button: string;
+    otp_verifying: string;
+    otp_back: string;
+    otp_title: string;
+    otp_subtitle: string;
+    otp_check_email: string;
+    otp_error_invalid: string;
+    report_button: string;
+    report_title: string;
+    report_categories: {
+      off_topic: string;
+      abusive: string;
+      inappropriate: string;
+      fraud: string;
+    };
+    report_submit: string;
+    report_cancel: string;
+    report_success: string;
+  };
+  dsar: {
+    page_title: string;
+    page_subtitle: string;
+    request_button: string;
+    status_processing: string;
+    status_ready: string;
+    status_downloaded: string;
+    status_expired: string;
+    download_button: string;
+    expires_label: string;
+    cooldown_notice: string;
+    cooldown_next: string;
+    error_generic: string;
+    error_auth: string;
+    success_title: string;
+    success_body: string;
+    no_request_yet: string;
+    data_rights_link: string;
+    loading: string;
+    creator_note: string;
   };
   onboard: {
     step1: {
@@ -153,60 +169,39 @@ type Messages = {
 
 const messages: Record<Locale, Messages> = {
   en: {
-    dsar: {
-      fan_tab: "My Data",
-      creator_tab: "Creator Export",
-      fan_title: "Download your data",
-      fan_subtitle: "Request a copy of all data 7of1 holds about you. We'll email you a secure download link.",
-      email_label: "Your email address",
-      email_placeholder: "you@email.com",
-      request_type_label: "What data do you want?",
-      request_type_all: "Everything (messages, credits, account)",
-      request_type_messages: "Chat messages only",
-      request_type_account: "Account & billing only",
-      fan_notice: "We'll prepare your download and email you a secure link within 30 days, as required by our privacy policy (§16).",
-      fan_submit: "Request my data",
-      creator_title: "Export your creator data",
-      creator_subtitle: "Request a full export of your creator data. Delivered to your account email within 72 hours.",
-      creator_email_label: "Creator account email",
-      creator_notice: "You'll receive a secure download link at your account email within 72 hours per §16 of our Terms of Service.",
-      creator_submit: "Request export",
-      submitting: "Submitting…",
-      error_generic: "Something went wrong. Please try again.",
-      email_invalid: "Please enter a valid email address.",
-      done_title: "Request received",
-      done_body_fan: "We've received your data request. You'll receive a secure download link at {email} within 30 days.",
-      done_body_creator: "We've received your export request. You'll receive a download link at {email} within 72 hours.",
-      done_support_hint: "Questions? Email privacy@7of1.com",
-      powered_by: "Powered by 7of1",
-    },
-    recover: {
-      contact_title: "Recover your account",
-      contact_subtitle: "Tell us which creator's chat you had and how to reach you.",
-      creator_handle_label: "Creator handle",
-      backup_email_label: "Your backup email",
-      or_label: "— or —",
-      backup_phone_label: "Your phone number",
-      contact_notice: "We'll only use this contact to verify your identity and never share it.",
-      contact_submit: "Continue",
-      attest_title: "Verify your identity",
-      attest_subtitle: "Your credit balance requires government-issued ID to recover.",
-      id_type_label: "Document type",
-      id_type_passport: "Passport",
-      id_type_national_id: "National ID card",
-      id_type_drivers_license: "Driver's license",
-      id_image_label: "Upload document photo",
-      id_image_choose: "Choose image…",
-      id_image_hint: "JPG, PNG or WEBP · Max 10 MB · Clearly shows name and photo",
-      attest_notice: "Your document is encrypted in transit and at rest. It is used only to verify this recovery request and deleted within 30 days.",
-      attest_submit: "Submit for review",
-      done_title: "Request received",
-      done_body_simple: "We've received your recovery request. Our team will send instructions to your backup contact within 1 business day.",
-      done_body_attested: "We've received your request and identity document. Your credit balance requires manual review. Expect a response within 2–3 business days.",
-      done_support_hint: "Need urgent help? Email support@7of1.com",
-      submitting: "Submitting…",
-      error_generic: "Something went wrong. Please try again.",
-      powered_by: "Powered by 7of1",
+    version_history: {
+      panel_title: "Version history",
+      version_label: "v{n}",
+      by_label: "by {author}",
+      hash_label: "#{hash}",
+      approved_badge: "Approved",
+      pending_badge: "Pending",
+      rejected_badge: "Rejected",
+      expand_snapshot: "View snapshot",
+      collapse_snapshot: "Hide snapshot",
+      no_versions: "No versions yet.",
+      loading: "Loading versions…",
+      error_load: "Failed to load versions.",
+      badge_tooltip_match: "Approved version matches posted version",
+      badge_tooltip_mismatch: "Warning: posted version differs from approved version",
+      modal_title: "Request approval",
+      modal_version_warning:
+        "You are requesting approval for version {n}. Once approved, this version cannot be changed.",
+      modal_hash_label: "Version hash: {hash}",
+      modal_confirm: "Request approval",
+      modal_cancel: "Cancel",
+      modal_submitting: "Submitting…",
+      modal_error: "Failed to submit approval request.",
+      audit_title: "Lineage audit",
+      audit_back: "← Back",
+      audit_draft: "Draft v{n}",
+      audit_approved: "Approved (v{n})",
+      audit_posted: "Posted (v{n})",
+      audit_mismatch_banner:
+        "Warning: the posted version (v{posted}) does not match the approved version (v{approved}).",
+      audit_no_data: "No lineage data found for this asset.",
+      audit_loading: "Loading lineage…",
+      audit_error: "Failed to load lineage.",
     },
     fan: {
       free_trial: "Start free trial",
@@ -226,6 +221,49 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "Open in browser to complete payment",
       paywall_signup_cta: "Create account to save your chat",
       send: "Send",
+      otp_email_placeholder: "your@email.com",
+      otp_send_button: "Send code",
+      otp_sending: "Sending…",
+      otp_code_placeholder: "6-digit code",
+      otp_verify_button: "Continue",
+      otp_verifying: "Verifying…",
+      otp_back: "← Back",
+      otp_title: "Sign in to continue",
+      otp_subtitle: "Enter your email to get a one-time code. No password needed.",
+      otp_check_email: "Check your email for the 6-digit code.",
+      otp_error_invalid: "Invalid or expired code. Try again.",
+      report_button: "Report",
+      report_title: "Report this response",
+      report_categories: {
+        off_topic: "Off-topic",
+        abusive: "Abusive",
+        inappropriate: "Inappropriate",
+        fraud: "Fraud / scam",
+      },
+      report_submit: "Submit report",
+      report_cancel: "Cancel",
+      report_success: "Report submitted. Thank you.",
+    },
+    dsar: {
+      page_title: "Your Data Rights",
+      page_subtitle: "You can download a copy of all personal data 7of1 holds for your account. Requests are processed immediately.",
+      request_button: "Request my data",
+      status_processing: "Processing your request…",
+      status_ready: "Your data is ready to download.",
+      status_downloaded: "You've already downloaded your data.",
+      status_expired: "Your download link has expired.",
+      download_button: "Download my data (.json)",
+      expires_label: "Link expires",
+      cooldown_notice: "You already made a request recently.",
+      cooldown_next: "You can request again after",
+      error_generic: "Something went wrong. Please try again.",
+      error_auth: "Please sign in to access your data.",
+      success_title: "Request submitted",
+      success_body: "Your data package is ready. Download it below. The link is valid for 30 days.",
+      no_request_yet: "You haven't made a data request yet.",
+      data_rights_link: "Your data rights",
+      loading: "Loading…",
+      creator_note: "As a creator, your download link is valid for 72 hours.",
     },
     onboard: {
       step1: {
@@ -334,60 +372,39 @@ const messages: Record<Locale, Messages> = {
   },
 
   ja: {
-    dsar: {
-      fan_tab: "マイデータ",
-      creator_tab: "クリエイターエクスポート",
-      fan_title: "データをダウンロード",
-      fan_subtitle: "7of1があなたについて保持するデータのコピーをリクエストします。安全なダウンロードリンクをメールでお送りします。",
-      email_label: "メールアドレス",
-      email_placeholder: "you@email.com",
-      request_type_label: "どのデータが必要ですか？",
-      request_type_all: "すべて（メッセージ、クレジット、アカウント）",
-      request_type_messages: "チャットメッセージのみ",
-      request_type_account: "アカウントと請求情報のみ",
-      fan_notice: "プライバシーポリシー（§16）に従い、30日以内に安全なダウンロードリンクをメールでお送りします。",
-      fan_submit: "データをリクエスト",
-      creator_title: "クリエイターデータのエクスポート",
-      creator_subtitle: "クリエイターデータのフルエクスポートをリクエストします。72時間以内にアカウントのメールアドレスにお届けします。",
-      creator_email_label: "クリエイターアカウントのメールアドレス",
-      creator_notice: "利用規約 §16 に従い、72時間以内にアカウントのメールアドレスに安全なダウンロードリンクをお送りします。",
-      creator_submit: "エクスポートをリクエスト",
-      submitting: "送信中…",
-      error_generic: "エラーが発生しました。もう一度お試しください。",
-      email_invalid: "有効なメールアドレスを入力してください。",
-      done_title: "受け付けました",
-      done_body_fan: "データリクエストを受け付けました。30日以内に安全なダウンロードリンクを {email} にお送りします。",
-      done_body_creator: "エクスポートリクエストを受け付けました。72時間以内にダウンロードリンクを {email} にお送りします。",
-      done_support_hint: "ご質問は privacy@7of1.com まで",
-      powered_by: "7of1 提供",
-    },
-    recover: {
-      contact_title: "アカウントを復元する",
-      contact_subtitle: "チャットしていたクリエイターのハンドルと連絡先をお教えください。",
-      creator_handle_label: "クリエイターのハンドル",
-      backup_email_label: "予備のメールアドレス",
-      or_label: "— または —",
-      backup_phone_label: "電話番号",
-      contact_notice: "この連絡先は本人確認のみに使用し、第三者に提供することはありません。",
-      contact_submit: "次へ",
-      attest_title: "本人確認",
-      attest_subtitle: "クレジット残高を復元するには、公的身分証明書が必要です。",
-      id_type_label: "書類の種類",
-      id_type_passport: "パスポート",
-      id_type_national_id: "マイナンバーカード / 健康保険証",
-      id_type_drivers_license: "運転免許証",
-      id_image_label: "書類の写真をアップロード",
-      id_image_choose: "画像を選択…",
-      id_image_hint: "JPG、PNG、WEBP · 最大10MB · 氏名と顔写真が鮮明に写ったもの",
-      attest_notice: "書類は暗号化して送受信・保存されます。本人確認のみに使用し、30日以内に削除します。",
-      attest_submit: "審査のために送信",
-      done_title: "受け付けました",
-      done_body_simple: "復元リクエストを受け付けました。1営業日以内に予備の連絡先へ手順をお送りします。",
-      done_body_attested: "リクエストと身分証明書を受け付けました。クレジット残高の確認に2〜3営業日かかります。",
-      done_support_hint: "お急ぎの方はサポートへ: support@7of1.com",
-      submitting: "送信中…",
-      error_generic: "エラーが発生しました。もう一度お試しください。",
-      powered_by: "7of1 提供",
+    version_history: {
+      panel_title: "バージョン履歴",
+      version_label: "v{n}",
+      by_label: "{author} による",
+      hash_label: "#{hash}",
+      approved_badge: "承認済み",
+      pending_badge: "保留中",
+      rejected_badge: "却下",
+      expand_snapshot: "スナップショットを表示",
+      collapse_snapshot: "スナップショットを閉じる",
+      no_versions: "バージョンがまだありません。",
+      loading: "バージョンを読み込み中…",
+      error_load: "バージョンの読み込みに失敗しました。",
+      badge_tooltip_match: "承認バージョンと投稿バージョンが一致しています",
+      badge_tooltip_mismatch: "警告：投稿バージョンが承認バージョンと異なります",
+      modal_title: "承認リクエスト",
+      modal_version_warning:
+        "バージョン {n} の承認をリクエストしています。承認後はこのバージョンを変更できません。",
+      modal_hash_label: "バージョンハッシュ：{hash}",
+      modal_confirm: "承認をリクエストする",
+      modal_cancel: "キャンセル",
+      modal_submitting: "送信中…",
+      modal_error: "承認リクエストの送信に失敗しました。",
+      audit_title: "系譜監査",
+      audit_back: "← 戻る",
+      audit_draft: "下書き v{n}",
+      audit_approved: "承認済み（v{n}）",
+      audit_posted: "投稿済み（v{n}）",
+      audit_mismatch_banner:
+        "警告：投稿バージョン（v{posted}）が承認バージョン（v{approved}）と一致しません。",
+      audit_no_data: "このアセットの系譜データが見つかりません。",
+      audit_loading: "系譜を読み込み中…",
+      audit_error: "系譜の読み込みに失敗しました。",
     },
     fan: {
       free_trial: "無料トライアルを開始",
@@ -407,6 +424,49 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "ブラウザで開いて支払いを完了する",
       paywall_signup_cta: "アカウントを作成してチャットを保存",
       send: "送信",
+      otp_email_placeholder: "メールアドレス",
+      otp_send_button: "コードを送信",
+      otp_sending: "送信中…",
+      otp_code_placeholder: "6桁のコード",
+      otp_verify_button: "続ける",
+      otp_verifying: "確認中…",
+      otp_back: "← 戻る",
+      otp_title: "サインインして続ける",
+      otp_subtitle: "メールアドレスを入力してワンタイムコードを受け取ってください。",
+      otp_check_email: "6桁のコードをメールでご確認ください。",
+      otp_error_invalid: "無効または期限切れのコードです。もう一度お試しください。",
+      report_button: "報告",
+      report_title: "この返答を報告する",
+      report_categories: {
+        off_topic: "関係のない内容",
+        abusive: "侮辱的",
+        inappropriate: "不適切",
+        fraud: "詐欺・スパム",
+      },
+      report_submit: "報告を送信",
+      report_cancel: "キャンセル",
+      report_success: "報告を送信しました。ありがとうございます。",
+    },
+    dsar: {
+      page_title: "データに関する権利",
+      page_subtitle: "7of1があなたのアカウントに保管しているすべての個人データのコピーをダウンロードできます。リクエストは即時処理されます。",
+      request_button: "データをリクエストする",
+      status_processing: "リクエストを処理中…",
+      status_ready: "データのダウンロードの準備ができました。",
+      status_downloaded: "すでにデータをダウンロードしています。",
+      status_expired: "ダウンロードリンクの有効期限が切れました。",
+      download_button: "データをダウンロード（.json）",
+      expires_label: "リンクの有効期限",
+      cooldown_notice: "最近リクエストを行いました。",
+      cooldown_next: "次のリクエスト可能日時",
+      error_generic: "エラーが発生しました。もう一度お試しください。",
+      error_auth: "データにアクセスするにはサインインしてください。",
+      success_title: "リクエスト完了",
+      success_body: "データパッケージの準備ができました。以下からダウンロードしてください。リンクは30日間有効です。",
+      no_request_yet: "まだデータリクエストを行っていません。",
+      data_rights_link: "データに関する権利",
+      loading: "読み込み中…",
+      creator_note: "クリエイターの場合、ダウンロードリンクは72時間有効です。",
     },
     onboard: {
       step1: {
@@ -515,60 +575,39 @@ const messages: Record<Locale, Messages> = {
   },
 
   "zh-TW": {
-    dsar: {
-      fan_tab: "我的資料",
-      creator_tab: "創作者匯出",
-      fan_title: "下載您的資料",
-      fan_subtitle: "申請取得 7of1 持有的您的所有資料副本。我們將以電子郵件傳送安全的下載連結。",
-      email_label: "您的電子郵件地址",
-      email_placeholder: "you@email.com",
-      request_type_label: "您想要哪些資料？",
-      request_type_all: "所有資料（訊息、點數、帳號）",
-      request_type_messages: "僅限聊天訊息",
-      request_type_account: "僅限帳號與帳單資料",
-      fan_notice: "依據我們的隱私權政策（§16），我們將在 30 天內以電子郵件傳送安全的下載連結給您。",
-      fan_submit: "申請我的資料",
-      creator_title: "匯出您的創作者資料",
-      creator_subtitle: "申請完整的創作者資料匯出，將在 72 小時內傳送至您的帳號電子郵件。",
-      creator_email_label: "創作者帳號電子郵件",
-      creator_notice: "依據服務條款 §16，您將在 72 小時內收到傳送至您帳號電子郵件的安全下載連結。",
-      creator_submit: "申請匯出",
-      submitting: "提交中…",
-      error_generic: "發生錯誤，請重試。",
-      email_invalid: "請輸入有效的電子郵件地址。",
-      done_title: "申請已收到",
-      done_body_fan: "我們已收到您的資料申請，將在 30 天內傳送安全的下載連結至 {email}。",
-      done_body_creator: "我們已收到您的匯出申請，將在 72 小時內傳送下載連結至 {email}。",
-      done_support_hint: "有任何問題？請電郵 privacy@7of1.com",
-      powered_by: "由 7of1 提供",
-    },
-    recover: {
-      contact_title: "找回您的帳號",
-      contact_subtitle: "請告訴我們您聊天的創作者帳號及您的聯絡方式。",
-      creator_handle_label: "創作者帳號",
-      backup_email_label: "備用電子郵件",
-      or_label: "— 或 —",
-      backup_phone_label: "電話號碼",
-      contact_notice: "此聯絡方式僅用於驗證您的身份，不會與第三方分享。",
-      contact_submit: "繼續",
-      attest_title: "驗證身份",
-      attest_subtitle: "您的點數餘額需要政府核發的身份證件才能找回。",
-      id_type_label: "證件類型",
-      id_type_passport: "護照",
-      id_type_national_id: "國民身分證",
-      id_type_drivers_license: "駕照",
-      id_image_label: "上傳證件照片",
-      id_image_choose: "選擇圖片…",
-      id_image_hint: "JPG、PNG 或 WEBP · 最大 10 MB · 清楚顯示姓名與照片",
-      attest_notice: "您的證件在傳輸和儲存時均已加密，僅用於驗證此找回申請，並將於 30 天內刪除。",
-      attest_submit: "提交審核",
-      done_title: "申請已收到",
-      done_body_simple: "我們已收到您的找回申請。我們的團隊將在 1 個工作日內傳送指示至您的備用聯絡方式。",
-      done_body_attested: "我們已收到您的申請及身份證件。您的點數餘額需要人工審核，請在 2–3 個工作日內等待回覆。",
-      done_support_hint: "需要緊急協助？請電郵 support@7of1.com",
-      submitting: "提交中…",
-      error_generic: "發生錯誤，請重試。",
-      powered_by: "由 7of1 提供",
+    version_history: {
+      panel_title: "版本歷史",
+      version_label: "v{n}",
+      by_label: "由 {author}",
+      hash_label: "#{hash}",
+      approved_badge: "已核准",
+      pending_badge: "待審核",
+      rejected_badge: "已拒絕",
+      expand_snapshot: "檢視快照",
+      collapse_snapshot: "收起快照",
+      no_versions: "尚無版本。",
+      loading: "載入版本中…",
+      error_load: "載入版本失敗。",
+      badge_tooltip_match: "核准版本與發布版本一致",
+      badge_tooltip_mismatch: "警告：發布版本與核准版本不一致",
+      modal_title: "請求核准",
+      modal_version_warning:
+        "您正在請求核准版本 {n}。一旦核准，此版本將無法更改。",
+      modal_hash_label: "版本雜湊：{hash}",
+      modal_confirm: "請求核准",
+      modal_cancel: "取消",
+      modal_submitting: "提交中…",
+      modal_error: "提交核准請求失敗。",
+      audit_title: "版本歷程稽核",
+      audit_back: "← 返回",
+      audit_draft: "草稿 v{n}",
+      audit_approved: "已核准（v{n}）",
+      audit_posted: "已發布（v{n}）",
+      audit_mismatch_banner:
+        "警告：發布版本（v{posted}）與核准版本（v{approved}）不一致。",
+      audit_no_data: "找不到此素材的版本歷程資料。",
+      audit_loading: "載入版本歷程中…",
+      audit_error: "載入版本歷程失敗。",
     },
     fan: {
       free_trial: "開始免費試用",
@@ -588,6 +627,49 @@ const messages: Record<Locale, Messages> = {
       paywall_escape: "在瀏覽器中開啟以完成付款",
       paywall_signup_cta: "建立帳號以儲存對話",
       send: "傳送",
+      otp_email_placeholder: "您的電子郵件",
+      otp_send_button: "發送驗證碼",
+      otp_sending: "發送中…",
+      otp_code_placeholder: "6位數驗證碼",
+      otp_verify_button: "繼續",
+      otp_verifying: "驗證中…",
+      otp_back: "← 返回",
+      otp_title: "登入以繼續",
+      otp_subtitle: "輸入您的電子郵件以取得一次性驗證碼。無需密碼。",
+      otp_check_email: "請查看您的電子郵件中的6位數驗證碼。",
+      otp_error_invalid: "驗證碼無效或已過期。請重試。",
+      report_button: "檢舉",
+      report_title: "檢舉此回覆",
+      report_categories: {
+        off_topic: "離題內容",
+        abusive: "侮辱性內容",
+        inappropriate: "不當內容",
+        fraud: "詐騙／垃圾訊息",
+      },
+      report_submit: "送出檢舉",
+      report_cancel: "取消",
+      report_success: "檢舉已送出，謝謝您。",
+    },
+    dsar: {
+      page_title: "您的資料權利",
+      page_subtitle: "您可以下載 7of1 為您帳號保存的所有個人資料副本。請求將立即處理。",
+      request_button: "請求我的資料",
+      status_processing: "正在處理您的請求…",
+      status_ready: "您的資料已準備好可以下載。",
+      status_downloaded: "您已下載過您的資料。",
+      status_expired: "您的下載連結已過期。",
+      download_button: "下載我的資料（.json）",
+      expires_label: "連結到期時間",
+      cooldown_notice: "您最近已提出請求。",
+      cooldown_next: "您可以在以下時間後再次請求",
+      error_generic: "發生錯誤。請重試。",
+      error_auth: "請登入以存取您的資料。",
+      success_title: "請求已提交",
+      success_body: "您的資料套件已準備好。請在下方下載。連結有效期為30天。",
+      no_request_yet: "您尚未提出資料請求。",
+      data_rights_link: "您的資料權利",
+      loading: "載入中…",
+      creator_note: "作為創作者，您的下載連結有效期為72小時。",
     },
     onboard: {
       step1: {

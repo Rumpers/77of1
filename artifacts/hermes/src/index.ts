@@ -1,22 +1,19 @@
 // Hermes — single @7of1_bot creator management agent
 // One bot, multi-tenant by creator_id. Webhook-based for production.
-import { Telegraf, Markup } from "telegraf";
+import { Telegraf } from "telegraf";
+import { createHash } from "crypto";
 import {
   findCreatorByTelegramId,
   getCreatorStats,
   setPaused,
-  getTotpRecord,
-  saveTotpEnabled,
-  disableTotpRecord,
-  updateRecoveryCodes,
-  listFansForCreator,
-  blockFan,
-  getCreatorPreferences,
-  setTimezone,
-  setHermesLanguage,
 } from "./db.js";
-import { t, type Lang } from "./i18n.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
+import {
+  moderateImageBytes,
+  moderateVideoWithThumbnail,
+  writeAssetModerationAudit,
+  insertApprovedAsset,
+} from "./asset-moderator.js";
 import {
   startConsentSession,
   getConsentSession,
@@ -30,69 +27,6 @@ import {
   hasPersonaTextGrant,
   CONSENT_ITEMS,
 } from "./consent.js";
-import {
-  generateTotpSecret,
-  buildOtpAuthUri,
-  buildQrCodeBuffer,
-  verifyTotpCode,
-  generateRecoveryCodes,
-  hashRecoveryCode,
-  verifyAndConsumeCode,
-} from "./totp.js";
-import {
-  startTotpSession,
-  getTotpSession,
-  clearTotpSession,
-} from "./totp-session.js";
-
-// ─── Timezone utilities ───────────────────────────────────────────────────────
-
-// Common shortcut aliases creators are likely to type
-const TZ_SHORTCUTS: Record<string, string> = {
-  JP: "Asia/Tokyo",
-  TW: "Asia/Taipei",
-  HK: "Asia/Hong_Kong",
-  TH: "Asia/Bangkok",
-  SG: "Asia/Singapore",
-  ID: "Asia/Jakarta",
-  PH: "Asia/Manila",
-  KR: "Asia/Seoul",
-  "US/EAST": "America/New_York",
-  "US/WEST": "America/Los_Angeles",
-  UTC: "UTC",
-  GMT: "UTC",
-};
-
-function resolveTimezone(input: string): string | null {
-  const upper = input.trim().toUpperCase();
-  if (upper in TZ_SHORTCUTS) return TZ_SHORTCUTS[upper];
-  // Validate as IANA name using Intl.DateTimeFormat
-  try {
-    Intl.DateTimeFormat("en", { timeZone: input.trim() });
-    return input.trim();
-  } catch {
-    return null;
-  }
-}
-
-const VALID_LANGS = new Set<Lang>(["en", "ja", "zh-tw"]);
-
-function formatInTimezone(date: Date, tz: string): string {
-  try {
-    return date.toLocaleString("en-US", {
-      timeZone: tz,
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return date.toUTCString();
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not set");
@@ -136,16 +70,16 @@ bot.command("pause", async (ctx) => {
     return;
   }
 
-  const [{ elapsed }, prefs] = await Promise.all([
-    setPaused(creator.id, true),
-    getCreatorPreferences(creator.id),
-  ]);
+  const { elapsed } = await setPaused(creator.id, true);
   const total = Date.now() - t0;
   console.log(
     `[hermes] /pause tg_user_id=${tgUserId} creator_id=${creator.id} total_ms=${total}`
   );
 
-  await ctx.reply(t(prefs.hermesLanguage).pauseOk(elapsed), { parse_mode: "Markdown" });
+  await ctx.reply(
+    `⏸ Twin paused. Your AI presence is offline.\n\nUse /resume to reactivate.\n\n_(DB write: ${elapsed}ms)_`,
+    { parse_mode: "Markdown" }
+  );
 });
 
 // /resume — reactivate twin.
@@ -159,15 +93,12 @@ bot.command("resume", async (ctx) => {
     return;
   }
 
-  const [{ elapsed }, prefs] = await Promise.all([
-    setPaused(creator.id, false),
-    getCreatorPreferences(creator.id),
-  ]);
+  const { elapsed } = await setPaused(creator.id, false);
   console.log(
     `[hermes] /resume tg_user_id=${tgUserId} creator_id=${creator.id} db_write_ms=${elapsed}`
   );
 
-  await ctx.reply(t(prefs.hermesLanguage).resumeOk);
+  await ctx.reply("▶️ Twin reactivated. Your AI presence is live again.");
 });
 
 // /status — twin state, fan count, credit balance.
@@ -181,21 +112,14 @@ bot.command("status", async (ctx) => {
     return;
   }
 
-  const [stats, prefs] = await Promise.all([
-    getCreatorStats(creator.id),
-    getCreatorPreferences(creator.id),
-  ]);
-  const s = t(prefs.hermesLanguage);
-  const twinState = stats.paused ? s.twinPaused : s.twinActive;
-  const now = formatInTimezone(new Date(), prefs.timezone);
+  const stats = await getCreatorStats(creator.id);
+  const twinState = stats.paused ? "⏸ Paused" : "▶️ Active";
   const msg = [
-    s.statusTitle(creator.display_name),
+    `*${creator.display_name} — Status*`,
     ``,
-    s.statusTwin(twinState),
-    s.statusFans(stats.activeFanCount),
-    s.statusCredits,
-    ``,
-    `_${now} (${prefs.timezone})_`,
+    `Twin: ${twinState}`,
+    `Active fans: ${stats.activeFanCount}`,
+    `Credit balance: coming in Slice 2`,
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
@@ -286,107 +210,6 @@ bot.command("consent_status", async (ctx) => {
   );
 });
 
-// /setup_2fa — start TOTP setup flow (multi-turn: send QR → user confirms with 6-digit code)
-bot.command("setup_2fa", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
-    return;
-  }
-
-  const existing = await getTotpRecord(creator.id);
-  if (existing?.totp_enabled) {
-    await ctx.reply(
-      "✅ 2FA is already enabled on your account.\n\nUse /disable_2fa to turn it off, or /2fa_status to check your status."
-    );
-    return;
-  }
-
-  const secret = generateTotpSecret();
-  const otpauthUri = buildOtpAuthUri(secret, creator.display_name);
-
-  startTotpSession(tgUserId, "setup", creator.id, secret);
-
-  try {
-    const qrBuffer = await buildQrCodeBuffer(otpauthUri);
-    await ctx.replyWithPhoto(
-      { source: qrBuffer },
-      {
-        caption:
-          "📱 *Set up 2FA — Step 1 of 2*\n\n" +
-          "Scan this QR code with *Authy* or *Google Authenticator*.\n\n" +
-          "Or enter this key manually:\n`" +
-          secret +
-          "`\n\n" +
-          "Once you've added the account, send me the *6-digit code* it shows.",
-        parse_mode: "Markdown",
-      }
-    );
-  } catch {
-    await ctx.reply(
-      "📱 *Set up 2FA — Step 1 of 2*\n\n" +
-        "Add this key manually to *Authy* or *Google Authenticator*:\n`" +
-        secret +
-        "`\n\nOnce added, send me the *6-digit code* it shows.",
-      { parse_mode: "Markdown" }
-    );
-  }
-});
-
-// /disable_2fa — disable TOTP (requires current 6-digit code to confirm)
-bot.command("disable_2fa", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
-    return;
-  }
-
-  const record = await getTotpRecord(creator.id);
-  if (!record?.totp_enabled) {
-    await ctx.reply("2FA is not enabled on your account.");
-    return;
-  }
-
-  startTotpSession(tgUserId, "disable", creator.id);
-  await ctx.reply(
-    "⚠️ To disable 2FA, send your current *6-digit TOTP code* from your authenticator app.",
-    { parse_mode: "Markdown" }
-  );
-});
-
-// /2fa_status — show current 2FA state
-bot.command("2fa_status", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
-    return;
-  }
-
-  const record = await getTotpRecord(creator.id);
-  if (!record?.totp_enabled) {
-    await ctx.reply(
-      "🔓 *2FA is not enabled.*\n\nEnable it now with /setup_2fa\n\n_Required before payout can be enabled._",
-      { parse_mode: "Markdown" }
-    );
-    return;
-  }
-
-  const codesLeft = record.recovery_codes.length;
-  await ctx.reply(
-    `🔐 *2FA is enabled.*\n\nRecovery codes remaining: ${codesLeft}/8\n\nUse /disable_2fa to turn off.`,
-    { parse_mode: "Markdown" }
-  );
-});
-
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
 bot.command("revenue", async (ctx) => {
   const tgUserId = ctx.from?.id;
@@ -398,30 +221,44 @@ bot.command("revenue", async (ctx) => {
     return;
   }
 
-  const [stats, prefs] = await Promise.all([
-    getCreatorStats(creator.id),
-    getCreatorPreferences(creator.id),
-  ]);
-  const s = t(prefs.hermesLanguage);
-  const now = formatInTimezone(new Date(), prefs.timezone);
+  const stats = await getCreatorStats(creator.id);
   const msg = [
-    s.revenueTitle(creator.display_name),
+    `*${creator.display_name} — Revenue*`,
     ``,
-    s.revenueGmvToday,
-    s.revenueGmvWeek,
-    s.revenuePacks,
+    `Today GMV: — _(ledger live in Slice 2)_`,
+    `This week GMV: — _(ledger live in Slice 2)_`,
+    `Credit pack sales: — _(ledger live in Slice 2)_`,
     ``,
-    s.revenueFans(stats.activeFanCount),
-    s.revenueShare,
-    ``,
-    `_${now} (${prefs.timezone})_`,
+    `Active fans: ${stats.activeFanCount}`,
+    `Your share: 80% of GMV`,
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
 });
 
-// /fans — list recent fans with inline block buttons (OF-131)
-bot.command("fans", async (ctx) => {
+// ── Asset upload handlers (HID-059) ──────────────────────────────────────────
+// Handles photos and videos sent by creators during onboarding Step 1.
+// Every file is moderated via GMI vision before being stored.
+// Telegram file size limits: photos ≤20 MB, videos ≤20 MB for bot downloads;
+// larger files (sent as documents) are handled by the "document" handler below.
+
+async function downloadTelegramFile(
+  bot: Telegraf,
+  fileId: string,
+): Promise<Buffer | null> {
+  try {
+    const link = await bot.telegram.getFileLink(fileId);
+    const res = await fetch(link.href);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf;
+  } catch (err) {
+    console.error(`[hermes] file download failed fileId=${fileId}: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+bot.on("photo", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
 
@@ -431,272 +268,226 @@ bot.command("fans", async (ctx) => {
     return;
   }
 
-  const fans = await listFansForCreator(creator.id);
-  if (fans.length === 0) {
-    await ctx.reply("No fans found for your account yet.");
+  // Telegram sends an array of PhotoSize; pick the highest resolution.
+  const photos = ctx.message.photo;
+  const largest = photos[photos.length - 1];
+  if (!largest) return;
+
+  await ctx.reply("🔍 Checking your photo…");
+
+  const bytes = await downloadTelegramFile(bot, largest.file_id);
+  if (!bytes) {
+    await ctx.reply("❌ Could not download your photo. Please try again.");
     return;
   }
 
-  await ctx.reply(`*${creator.display_name} — Fans* (${fans.length} shown)\n\nTap 🚫 to block a fan and refund their credits.`, {
-    parse_mode: "Markdown",
+  let result;
+  try {
+    result = await moderateImageBytes(bytes, "image/jpeg");
+  } catch (err) {
+    console.error(`[hermes] photo moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
+    return;
+  }
+
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.jpg`;
+
+  if (!result.passed) {
+    const categories = result.flaggedCategories.length
+      ? result.flaggedCategories.join(", ")
+      : "content policy";
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType: "photo",
+      channel: "telegram",
+      result,
+    });
+    console.warn(
+      `[hermes] photo rejected creator=${creator.id} categories=${categories} confidence=${result.confidence.toFixed(2)}`,
+    );
+    await ctx.reply(
+      `❌ This photo was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different photo. If you think this is an error, contact support.",
+    );
+    return;
+  }
+
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType: "photo",
+    storagePath,
   });
 
-  for (const fan of fans) {
-    const label = fan.replit_user_id ? `@${fan.replit_user_id}` : `Fan ${fan.id.slice(0, 8)}`;
-    const since = new Date(fan.created_at).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    await ctx.reply(
-      `${label} · ${fan.tier} · joined ${since}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback("🚫 Block this fan", `block_fan:${fan.id}`)],
-      ])
-    );
-  }
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType: "photo",
+    channel: "telegram",
+    result,
+  });
+
+  console.log(`[hermes] photo approved creator=${creator.id} assetId=${assetId}`);
+  await ctx.reply("✅ Photo received and approved.");
 });
 
-// Inline button callback: execute fan block (OF-131)
-// Triggered by "🚫 Block this fan" buttons in /fans listing.
-// SLA: block write ≤5s. Refunds remaining credits automatically.
-bot.action(/^block_fan:(.+)$/, async (ctx) => {
+bot.on("video", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
 
-  const fanId = ctx.match[1];
-
   const creator = await findCreatorByTelegramId(tgUserId);
   if (!creator) {
-    await ctx.answerCbQuery("Account not linked. Use /start.", { show_alert: true });
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
     return;
   }
 
+  const video = ctx.message.video;
+  if (!video) return;
+
+  await ctx.reply("🔍 Checking your video…");
+
+  // Download video bytes and thumbnail (if available).
+  const [videoBytes, thumbBytes] = await Promise.all([
+    downloadTelegramFile(bot, video.file_id),
+    video.thumbnail?.file_id
+      ? downloadTelegramFile(bot, video.thumbnail.file_id)
+      : Promise.resolve(null),
+  ]);
+
+  if (!videoBytes) {
+    await ctx.reply("❌ Could not download your video. Please try again.");
+    return;
+  }
+
+  let result;
   try {
-    const t0 = Date.now();
-    const { elapsed, creditsRefunded } = await blockFan(creator.id, fanId);
-    const total = Date.now() - t0;
-    console.log(
-      `[hermes] block_fan callback tg_user_id=${tgUserId} creator_id=${creator.id} fan_id=${fanId} total_ms=${total}`
-    );
-
-    const refundText = creditsRefunded > 0
-      ? `\n\n💰 ${creditsRefunded} credit${creditsRefunded === 1 ? "" : "s"} refunded.`
-      : "";
-
-    await ctx.editMessageText(
-      `✅ Fan blocked. They can no longer reach your twin.${refundText}\n\n_(Block write: ${elapsed}ms)_`,
-      { parse_mode: "Markdown" }
-    );
-    await ctx.answerCbQuery();
+    result = await moderateVideoWithThumbnail(thumbBytes, videoBytes);
   } catch (err) {
-    console.error(
-      `[hermes] block_fan failed creator_id=${creator.id} fan_id=${fanId}`,
-      err
+    console.error(`[hermes] video moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
+    return;
+  }
+
+  const sha256 = createHash("sha256").update(videoBytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.mp4`;
+
+  if (!result.passed) {
+    const categories = result.flaggedCategories.length
+      ? result.flaggedCategories.join(", ")
+      : "content policy";
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType: "video",
+      channel: "telegram",
+      result,
+    });
+    console.warn(
+      `[hermes] video rejected creator=${creator.id} categories=${categories}`,
     );
-    await ctx.answerCbQuery("Block failed. Please try again.", { show_alert: true });
+    await ctx.reply(
+      `❌ This video was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different video. If you think this is an error, contact support.",
+    );
+    return;
   }
+
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType: "video",
+    storagePath,
+  });
+
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType: "video",
+    channel: "telegram",
+    result,
+  });
+
+  console.log(`[hermes] video approved creator=${creator.id} assetId=${assetId}`);
+  await ctx.reply("✅ Video received and approved.");
 });
 
-// /timezone — set creator timezone (HID-056)
-// Usage: /timezone Asia/Tokyo  or shortcut /timezone JP
-// With no arg: shows current setting.
-bot.command("timezone", async (ctx) => {
+// Documents (files > 20 MB sent as documents) — moderate as photo or video
+// based on MIME type reported by Telegram.
+bot.on("document", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
 
   const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+  if (!creator) return;
+
+  const doc = ctx.message.document;
+  const mimeType = doc.mime_type ?? "";
+  const isPhoto = mimeType.startsWith("image/");
+  const isVideo = mimeType.startsWith("video/");
+  if (!isPhoto && !isVideo) return; // not an asset type we care about
+
+  await ctx.reply(`🔍 Checking your ${isPhoto ? "photo" : "video"}…`);
+
+  const bytes = await downloadTelegramFile(bot, doc.file_id);
+  if (!bytes) {
+    await ctx.reply("❌ Could not download the file. Please try again.");
     return;
   }
 
-  const prefs = await getCreatorPreferences(creator.id);
-  const s = t(prefs.hermesLanguage);
-
-  const arg = ctx.message.text.split(/\s+/).slice(1).join(" ").trim();
-  if (!arg) {
-    await ctx.reply(s.tzCurrent(prefs.timezone), { parse_mode: "Markdown" });
+  let result;
+  try {
+    result = isPhoto
+      ? await moderateImageBytes(bytes, mimeType)
+      : await moderateVideoWithThumbnail(null, bytes);
+  } catch (err) {
+    console.error(`[hermes] document moderation error creator=${creator.id}: ${(err as Error).message}`);
+    await ctx.reply("⚠️ Content check temporarily unavailable. Please try again in a moment.");
     return;
   }
 
-  const resolved = resolveTimezone(arg);
-  if (!resolved) {
-    await ctx.reply(s.tzInvalid(arg), { parse_mode: "Markdown" });
+  const assetType = isPhoto ? "photo" : "video";
+  const ext = mimeType.split("/")[1] ?? (isPhoto ? "jpg" : "mp4");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const storagePath = `creators/${creator.id}/assets/${sha256}.${ext}`;
+
+  if (!result.passed) {
+    await writeAssetModerationAudit({
+      creatorId: creator.id as string,
+      assetId: null,
+      assetType,
+      channel: "telegram",
+      result,
+    });
+    const categories = result.flaggedCategories.join(", ") || "content policy";
+    await ctx.reply(
+      `❌ This file was rejected by our content safety system (${categories}).\n\n` +
+        "Please upload a different file.",
+    );
     return;
   }
 
-  await setTimezone(creator.id, resolved);
-  console.log(
-    `[hermes] /timezone creator_id=${creator.id} tz=${resolved}`
-  );
+  const assetId = await insertApprovedAsset({
+    creatorId: creator.id as string,
+    assetType,
+    storagePath,
+  });
 
-  await ctx.reply(s.tzSetOk(resolved), { parse_mode: "Markdown" });
+  await writeAssetModerationAudit({
+    creatorId: creator.id as string,
+    assetId,
+    assetType,
+    channel: "telegram",
+    result,
+  });
+
+  await ctx.reply(`✅ File received and approved.`);
 });
 
-// /language — set Hermes UI language (HID-056)
-// Usage: /language ja | /language zh-tw | /language en
-// With no arg: shows current setting.
-bot.command("language", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
-    return;
-  }
-
-  const prefs = await getCreatorPreferences(creator.id);
-  const s = t(prefs.hermesLanguage);
-
-  const arg = ctx.message.text.split(/\s+/).slice(1).join(" ").trim().toLowerCase();
-  if (!arg) {
-    await ctx.reply(s.langCurrent(prefs.hermesLanguage), { parse_mode: "Markdown" });
-    return;
-  }
-
-  if (!VALID_LANGS.has(arg as Lang)) {
-    await ctx.reply(s.langInvalid(arg), { parse_mode: "Markdown" });
-    return;
-  }
-
-  await setHermesLanguage(creator.id, arg);
-  console.log(
-    `[hermes] /language creator_id=${creator.id} lang=${arg}`
-  );
-
-  // Respond using the NEW language so the change is immediately visible
-  await ctx.reply(t(arg).langSetOk(arg), { parse_mode: "Markdown" });
-});
-
-// /delete_account — initiate creator account deletion (HID-006 / §8.4, §16)
-// Requires the creator to confirm their intent by replying CONFIRM within 60s.
-// Actual deletion is processed via the API server; grace window is 7 days.
-bot.command("delete_account", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const creator = await findCreatorByTelegramId(tgUserId);
-  if (!creator) {
-    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
-    return;
-  }
-
-  const WEB_DELETE_URL = `${WEB_BASE_URL}/en/dashboard/settings/delete-account`;
-  await ctx.reply(
-    [
-      "⚠️ *Account Deletion — Permanent Action*",
-      "",
-      "Deleting your creator account will permanently remove:",
-      "• AI Twin persona (text, voice, video models)",
-      "• RAG knowledge base and LoRA fine-tune",
-      "• Voice clone and all derived assets",
-      "• All fan conversation history",
-      "",
-      "Consent records and audit trail are retained per legal requirements (§8.3).",
-      "",
-      "You will have a *7-day grace window* to cancel after submitting.",
-      "Deletion is completed within *72 hours* after the grace window.",
-      "",
-      "To proceed, use the web dashboard:",
-      WEB_DELETE_URL,
-      "",
-      "_Telegram-initiated deletion requires web confirmation for account security._",
-    ].join("\n"),
-    { parse_mode: "Markdown" }
-  );
-});
-
-// General text handler — TOTP codes during 2FA setup/disable, then consent session YES/NO/CONFIRM.
-// All other messages ignored (no free-form LLM in Slice 1).
+// General text handler — routes YES/NO/CONFIRM/BACK to active consent session.
+// All other messages are ignored (no free-form LLM in Slice 1).
 bot.on("text", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
-
-  // Route 6-digit codes to active TOTP session (setup or disable)
-  const totpSession = getTotpSession(tgUserId);
-  if (totpSession) {
-    const text = ctx.message.text.replace(/\s/g, "");
-    const is6Digits = /^\d{6}$/.test(text);
-
-    if (!is6Digits) {
-      await ctx.reply("Please send the 6-digit code from your authenticator app.");
-      return;
-    }
-
-    if (totpSession.mode === "setup") {
-      const valid = verifyTotpCode(totpSession.secret!, text);
-      if (!valid) {
-        await ctx.reply(
-          "❌ Invalid code. Check your authenticator app and try again, or send /setup_2fa to restart."
-        );
-        return;
-      }
-
-      clearTotpSession(tgUserId);
-      const rawCodes = generateRecoveryCodes();
-      const hashedCodes = rawCodes.map(hashRecoveryCode);
-
-      try {
-        await saveTotpEnabled(totpSession.creatorId, totpSession.secret!, hashedCodes);
-      } catch (err) {
-        console.error(`[hermes] 2FA save failed creator_id=${totpSession.creatorId}`, err);
-        await ctx.reply("Something went wrong saving your 2FA setup. Please try /setup_2fa again.");
-        return;
-      }
-
-      const codesText = rawCodes.map((c, i) => `${i + 1}. \`${c}\``).join("\n");
-      await ctx.reply(
-        "🔐 *2FA enabled!*\n\n" +
-          "Save these recovery codes somewhere safe — each can be used once if you lose your authenticator:\n\n" +
-          codesText +
-          "\n\n⚠️ These codes will not be shown again.",
-        { parse_mode: "Markdown" }
-      );
-      console.log(`[hermes] 2FA enabled creator_id=${totpSession.creatorId}`);
-      return;
-    }
-
-    if (totpSession.mode === "disable") {
-      const creator = await findCreatorByTelegramId(tgUserId);
-      if (!creator) {
-        clearTotpSession(tgUserId);
-        return;
-      }
-
-      const record = await getTotpRecord(creator.id);
-      if (!record?.totp_enabled) {
-        clearTotpSession(tgUserId);
-        await ctx.reply("2FA is not enabled.");
-        return;
-      }
-
-      let valid = verifyTotpCode(record.totp_secret, text);
-
-      if (!valid) {
-        const { valid: recoveryValid, remaining } = verifyAndConsumeCode(text, record.recovery_codes);
-        if (recoveryValid) {
-          await updateRecoveryCodes(creator.id, remaining);
-          valid = true;
-        }
-      }
-
-      if (!valid) {
-        await ctx.reply("❌ Invalid code. Send /disable_2fa to try again.");
-        clearTotpSession(tgUserId);
-        return;
-      }
-
-      clearTotpSession(tgUserId);
-      await disableTotpRecord(creator.id);
-      console.log(`[hermes] 2FA disabled creator_id=${creator.id}`);
-      await ctx.reply("🔓 2FA has been disabled. Use /setup_2fa to re-enable it.");
-      return;
-    }
-
-    return;
-  }
 
   const session = getConsentSession(tgUserId);
   if (!session) return;

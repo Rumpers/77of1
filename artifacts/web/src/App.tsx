@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotFound from "@/pages/not-found";
@@ -9,14 +8,19 @@ import PaymentCancelPage from "@/pages/payment-cancel";
 import OnboardStep1 from "@/pages/onboard-step1";
 import OnboardStep2 from "@/pages/onboard-step2";
 import OnboardStep3 from "@/pages/onboard-step3";
-import FanRecover from "@/pages/fan-recover";
-import FanDsar from "@/pages/fan-dsar";
-import DashboardSecurity from "@/pages/dashboard-security";
-import { DEFAULT_LOCALE } from "@/lib/i18n";
+import DsarPortal from "@/pages/dsar-portal";
+import CreatorDashboard from "@/pages/creator-dashboard";
+import { DEFAULT_LOCALE, isValidLocale } from "@/lib/i18n";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
-import { bootAnalytics } from "@/lib/analytics";
 
 const queryClient = new QueryClient();
+
+/** Derive locale from first URL path segment, falling back to DEFAULT_LOCALE. */
+function getPageLocale(): string {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  const seg = window.location.pathname.split("/").find(Boolean) ?? "";
+  return isValidLocale(seg) ? seg : DEFAULT_LOCALE;
+}
 
 function Router() {
   return (
@@ -32,7 +36,7 @@ function Router() {
 
       {/* Locale home page */}
       <Route path="/:locale">
-        {(params) => <HomePage />}
+        {() => <HomePage />}
       </Route>
 
       {/* Creator onboarding wizard — deep link dispatcher */}
@@ -51,14 +55,11 @@ function Router() {
       <Route path="/:locale/onboard/step2" component={OnboardStep2} />
       <Route path="/:locale/onboard/step3" component={OnboardStep3} />
 
-      {/* Fan account recovery */}
-      <Route path="/:locale/recover" component={FanRecover} />
+      {/* DSAR self-service portal — §16 */}
+      <Route path="/:locale/account/data-request" component={DsarPortal} />
 
-      {/* DSAR self-service — fan data download + creator export (§16) */}
-      <Route path="/:locale/dsar" component={FanDsar} />
-
-      {/* Creator dashboard — security / 2FA settings (OF-119) */}
-      <Route path="/:locale/dashboard/security" component={DashboardSecurity} />
+      {/* Creator dashboard — version history, approvals, lineage */}
+      <Route path="/:locale/dashboard" component={CreatorDashboard} />
 
       {/* Fan / creator handle page */}
       <Route path="/:locale/:handle" component={FanPage} />
@@ -69,15 +70,12 @@ function Router() {
 }
 
 function App() {
-  useEffect(() => {
-    bootAnalytics();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
         <Router />
-        <CookieConsentBanner />
+        {/* Cookie consent banner — rendered outside Switch so it overlays all pages */}
+        <CookieConsentBanner locale={getPageLocale()} />
       </WouterRouter>
     </QueryClientProvider>
   );

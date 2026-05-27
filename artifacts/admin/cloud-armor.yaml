@@ -1,0 +1,39 @@
+# Cloud Armor security policy for the admin console.
+# Allows only Tailscale egress IPs and office IP ranges.
+# Apply with:
+#   gcloud compute security-policies import admin-console-policy \
+#     --source=artifacts/admin/cloud-armor.yaml --project=<PROJECT_ID>
+
+description: Allowlist policy — admin console (Tailscale + office only)
+fingerprint: ''
+name: admin-console-policy
+rules:
+  # Tailscale CGNAT range (100.64.0.0/10 covers all Tailscale nodes)
+  - action: allow
+    description: Tailscale network
+    match:
+      config:
+        srcIpRanges:
+          - 100.64.0.0/10
+      versionedExpr: SRC_IPS_V1
+    priority: 100
+
+  # Office IP — replace with your static office egress IP(s)
+  - action: allow
+    description: Office IP(s)
+    match:
+      config:
+        srcIpRanges:
+          - 203.0.113.0/24   # placeholder — replace with real office IP
+      versionedExpr: SRC_IPS_V1
+    priority: 200
+
+  # Deny everything else
+  - action: deny(403)
+    description: Default deny
+    match:
+      config:
+        srcIpRanges:
+          - 0.0.0.0/0
+      versionedExpr: SRC_IPS_V1
+    priority: 2147483647

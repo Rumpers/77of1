@@ -1,0 +1,30 @@
+{
+  "name": "@workspace/admin",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@7of1/admin-sdk": "workspace:*",
+    "@supabase/supabase-js": "^2.106.1",
+    "next": "^14.2.30",
+    "next-auth": "^5.0.0-beta.29",
+    "pg": "^8.20.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-admin": "^5.8.0",
+    "ra-data-simple-rest": "^5.8.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "^8.20.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "~5.9.3"
+  }
+}

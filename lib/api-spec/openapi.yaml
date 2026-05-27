@@ -20,6 +20,8 @@ tags:
     description: Creator onboarding operations
   - name: kyc
     description: Creator KYC and tax-form intake (OF-124, HID-062)
+  - name: creator
+    description: Creator management and consent operations
 paths:
   /healthz:
     get:
@@ -236,6 +238,97 @@ paths:
                 $ref: "#/components/schemas/WebhookResponse"
         "400":
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /creator/consent/{modalityId}:
+    patch:
+      operationId: revokeConsent
+      tags: [creator]
+      summary: Revoke a consent grant
+      description: >
+        Revokes the active consent grant for a specific modality and cancels all
+        pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA).
+        Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable.
+        Requires creator Replit Auth session.
+      parameters:
+        - name: modalityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [text, voice, video, image]
+          description: The AI modality to revoke consent for
+      responses:
+        "200":
+          description: Consent revoked and job cancellation initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentRevokeResult"
+        "400":
+          description: Invalid modalityId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a linked creator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No active consent grant found for this modality
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /creator/kill-switch:
+    post:
+      operationId: triggerKillSwitch
+      tags: [creator]
+      summary: Kill switch — cancel all in-flight jobs
+      description: >
+        Cancels ALL pending and processing generation jobs for the creator regardless
+        of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation
+        but scoped to the whole creator. Requires creator Replit Auth session.
+      responses:
+        "200":
+          description: Kill switch triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KillSwitchResult"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a linked creator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
           content:
             application/json:
               schema:
@@ -460,6 +553,39 @@ paths:
 
 components:
   schemas:
+    ConsentRevokeResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        modalityId:
+          type: string
+        consentGrantId:
+          type: string
+        queued:
+          type: boolean
+          description: true if job was enqueued to BullMQ; false if DB fallback was used
+      required:
+        - ok
+        - modalityId
+        - consentGrantId
+        - queued
+
+    KillSwitchResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        killSwitch:
+          type: boolean
+        queued:
+          type: boolean
+          description: true if job was enqueued to BullMQ; false if DB fallback was used
+      required:
+        - ok
+        - killSwitch
+        - queued
+
     HealthStatus:
       type: object
       properties:

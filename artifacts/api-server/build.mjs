@@ -100,6 +100,10 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      // bull-board serves static UI assets from disk — cannot be bundled
+      "@bull-board/api",
+      "@bull-board/express",
+      "@bull-board/ui",
     ],
     sourcemap: "linked",
     plugins: [

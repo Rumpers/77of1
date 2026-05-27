@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { useParams } from "wouter";
 import { getCreatorConfig } from "@/lib/creator-fixtures";
 import { getMessages, isValidLocale, DEFAULT_LOCALE } from "@/lib/i18n";
+import { sendFanOtp, verifyFanOtp } from "@/lib/auth";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,11 +48,15 @@ function disclosureFooter(locale: string, handle: string): string {
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
+type ReportCategory = "off_topic" | "abusive" | "inappropriate" | "fraud";
+const REPORT_CATEGORIES: ReportCategory[] = ["off_topic", "abusive", "inappropriate", "fraud"];
+
 type ChatMessage = {
   id: string;
   role: "fan" | "ai";
   text: string;
   pending?: boolean;
+  reported?: boolean;
 };
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -88,11 +93,64 @@ export default function FanPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const MAX_TRIAL = 3;
 
+  // OTP auth state (shown inside paywall after trial exhausted)
+  type OtpStep = "email" | "code" | "done";
+  const [otpStep, setOtpStep] = useState<OtpStep>("email");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [fanAuthenticated, setFanAuthenticated] = useState(false);
+
+  // Report modal state
+  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
+  const [reportCategory, setReportCategory] = useState<ReportCategory | null>(null);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  function openReport(msg: ChatMessage) {
+    setReportTarget(msg);
+    setReportCategory(null);
+    setReportDone(false);
+  }
+
+  function closeReport() {
+    setReportTarget(null);
+    setReportCategory(null);
+    setReportDone(false);
+    setReportSubmitting(false);
+  }
+
+  async function submitReport() {
+    if (!reportTarget || !reportCategory || reportSubmitting) return;
+    setReportSubmitting(true);
+    // Fire and forget — API responds <2s, no UX block
+    fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message_id: reportTarget.id,
+        category: reportCategory,
+        message_text: reportTarget.text,
+        handle,
+        locale,
+      }),
+    }).catch(() => {/* silently ignore */});
+
+    // Mark message as reported in local state
+    setMessages((prev) =>
+      prev.map((m) => (m.id === reportTarget.id ? { ...m, reported: true } : m))
+    );
+    setReportDone(true);
+    setReportSubmitting(false);
+    setTimeout(closeReport, 1500);
+  }
 
   async function sendMessage() {
     const text = inputValue.trim();
@@ -173,10 +231,34 @@ export default function FanPage() {
     }
   }
 
-  const remaining = MAX_TRIAL - trialCount;
-  const trialExhausted = trialCount >= MAX_TRIAL;
+  async function handleOtpSend() {
+    if (!otpEmail.includes("@") || otpBusy) return;
+    setOtpBusy(true);
+    setOtpError("");
+    const { error } = await sendFanOtp(otpEmail);
+    setOtpBusy(false);
+    if (error) { setOtpError(error); return; }
+    setOtpStep("code");
+  }
 
-  const authCallback = `/${locale}/${handle}`;
+  async function handleOtpVerify() {
+    if (otpCode.length < 6 || otpBusy) return;
+    setOtpBusy(true);
+    setOtpError("");
+    const { fanId, error } = await verifyFanOtp(otpEmail, otpCode, handle);
+    setOtpBusy(false);
+    if (error) { setOtpError(t.otp_error_invalid); return; }
+    if (fanId) {
+      setOtpStep("done");
+      setFanAuthenticated(true);
+      setTimeout(() => setShowPaywall(false), 800);
+    }
+  }
+
+  const remaining = MAX_TRIAL - trialCount;
+  // Authenticated fans bypass the trial gate.
+  const trialExhausted = !fanAuthenticated && trialCount >= MAX_TRIAL;
+
   const CJK_FONT = `"Hiragino Kaku Gothic Pro", "Noto Sans CJK JP", "Microsoft JhengHei", system-ui, sans-serif`;
   const fontFamily = locale === "en" ? "system-ui, -apple-system, sans-serif" : CJK_FONT;
 
@@ -287,16 +369,39 @@ export default function FanPage() {
               {msg.text}
             </div>
             {msg.role === "ai" && !msg.pending && (
-              <span
+              <div
                 style={{
-                  fontSize: "0.6875rem",
-                  color: "#555",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
                   marginTop: "0.25rem",
                   paddingLeft: "0.25rem",
                 }}
               >
-                {disclosureFooter(locale, handle)}
-              </span>
+                <span style={{ fontSize: "0.6875rem", color: "#555" }}>
+                  {disclosureFooter(locale, handle)}
+                </span>
+                {!msg.reported ? (
+                  <button
+                    onClick={() => openReport(msg)}
+                    aria-label={t.report_button}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: "0 0.1rem",
+                      cursor: "pointer",
+                      fontSize: "0.6875rem",
+                      color: "#444",
+                      lineHeight: 1,
+                      opacity: 0.6,
+                    }}
+                  >
+                    ⚑
+                  </button>
+                ) : (
+                  <span style={{ fontSize: "0.6875rem", color: "#555", opacity: 0.5 }}>✓</span>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -385,6 +490,104 @@ export default function FanPage() {
           {t.send}
         </button>
       </div>
+
+      {/* Report modal */}
+      {reportTarget && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 60,
+            padding: "1rem",
+          }}
+          onClick={closeReport}
+        >
+          <div
+            style={{
+              background: "#1a1a1a",
+              borderRadius: "16px",
+              padding: "1.5rem",
+              width: "100%",
+              maxWidth: "360px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.875rem",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {reportDone ? (
+              <p style={{ margin: 0, textAlign: "center", color: "#4ade80", fontWeight: 600 }}>
+                {t.report_success}
+              </p>
+            ) : (
+              <>
+                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f0f0f0" }}>
+                  {t.report_title}
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {REPORT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setReportCategory(cat)}
+                      style={{
+                        padding: "0.625rem 0.875rem",
+                        borderRadius: "10px",
+                        border: `2px solid ${reportCategory === cat ? "#7C3AED" : "#333"}`,
+                        background: reportCategory === cat ? "#2d1e4e" : "#111",
+                        color: reportCategory === cat ? "#c4b5fd" : "#aaa",
+                        fontSize: "0.9rem",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontWeight: reportCategory === cat ? 600 : 400,
+                      }}
+                    >
+                      {t.report_categories[cat]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    onClick={closeReport}
+                    style={{
+                      flex: 1,
+                      padding: "0.625rem",
+                      borderRadius: "10px",
+                      border: "1px solid #333",
+                      background: "transparent",
+                      color: "#888",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.report_cancel}
+                  </button>
+                  <button
+                    onClick={submitReport}
+                    disabled={!reportCategory || reportSubmitting}
+                    style={{
+                      flex: 1,
+                      padding: "0.625rem",
+                      borderRadius: "10px",
+                      border: "none",
+                      background: reportCategory ? "#7C3AED" : "#333",
+                      color: reportCategory ? "#fff" : "#666",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      cursor: reportCategory ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {t.report_submit}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Paywall modal */}
       {showPaywall && (
@@ -485,23 +688,126 @@ export default function FanPage() {
               {isWebview() ? t.paywall_escape : t.paywall_escape}
             </a>
 
-            {/* Replit auth CTA */}
-            <a
-              href={`/_replit/auth?callback=${encodeURIComponent(authCallback)}`}
-              style={{
-                display: "block",
-                textAlign: "center",
-                fontSize: "0.8125rem",
-                color: "#999",
-                textDecoration: "underline",
-                padding: "0.25rem 0",
-              }}
-            >
-              {t.paywall_signup_cta}
-            </a>
+            {/* Supabase email OTP — webview-safe, no OAuth popup */}
+            <div style={{ borderTop: "1px solid #2a2a2a", paddingTop: "0.875rem", marginTop: "0.25rem" }}>
+              {otpStep === "done" ? (
+                <p style={{ textAlign: "center", color: "#4ade80", fontSize: "0.9rem", margin: 0 }}>
+                  ✓ {t.paywall_signup_cta}
+                </p>
+              ) : otpStep === "email" ? (
+                <>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
+                    {t.otp_title}
+                  </p>
+                  <p style={{ margin: "0 0 0.75rem", fontSize: "0.75rem", color: "#666", textAlign: "center" }}>
+                    {t.otp_subtitle}
+                  </p>
+                  <input
+                    type="email"
+                    value={otpEmail}
+                    onChange={(e) => setOtpEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleOtpSend()}
+                    placeholder={t.otp_email_placeholder}
+                    autoComplete="email"
+                    inputMode="email"
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "#1a1a1a", border: "1px solid #333",
+                      borderRadius: "10px", color: "#f0f0f0",
+                      padding: "0.625rem 0.75rem", fontSize: "0.9375rem",
+                      marginBottom: "0.5rem", outline: "none",
+                    }}
+                  />
+                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
+                  <button
+                    onClick={handleOtpSend}
+                    disabled={otpBusy || !otpEmail.includes("@")}
+                    style={{
+                      width: "100%", background: config.brand_color, color: "#fff",
+                      border: "none", borderRadius: "10px", padding: "0.75rem",
+                      fontSize: "0.9375rem", fontWeight: 600,
+                      cursor: otpBusy || !otpEmail.includes("@") ? "not-allowed" : "pointer",
+                      opacity: otpBusy || !otpEmail.includes("@") ? 0.5 : 1,
+                    }}
+                  >
+                    {otpBusy ? t.otp_sending : t.otp_send_button}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: "0 0 0.625rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
+                    {t.otp_check_email}
+                  </p>
+                  <input
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onKeyDown={(e) => e.key === "Enter" && handleOtpVerify()}
+                    placeholder={t.otp_code_placeholder}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "#1a1a1a", border: "1px solid #333",
+                      borderRadius: "10px", color: "#f0f0f0",
+                      padding: "0.625rem 0.75rem", fontSize: "1.25rem",
+                      letterSpacing: "0.25em", textAlign: "center",
+                      marginBottom: "0.5rem", outline: "none",
+                    }}
+                  />
+                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
+                  <button
+                    onClick={handleOtpVerify}
+                    disabled={otpBusy || otpCode.length < 6}
+                    style={{
+                      width: "100%", background: config.brand_color, color: "#fff",
+                      border: "none", borderRadius: "10px", padding: "0.75rem",
+                      fontSize: "0.9375rem", fontWeight: 600,
+                      cursor: otpBusy || otpCode.length < 6 ? "not-allowed" : "pointer",
+                      opacity: otpBusy || otpCode.length < 6 ? 0.5 : 1,
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    {otpBusy ? t.otp_verifying : t.otp_verify_button}
+                  </button>
+                  <button
+                    onClick={() => { setOtpStep("email"); setOtpCode(""); setOtpError(""); }}
+                    style={{
+                      background: "transparent", border: "none", color: "#666",
+                      fontSize: "0.8125rem", cursor: "pointer",
+                      padding: "0.25rem 0", width: "100%", textAlign: "center",
+                    }}
+                  >
+                    {t.otp_back}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Privacy footer — §16 DSAR link */}
+      <div
+        style={{
+          textAlign: "center",
+          padding: "0.75rem 0 0.5rem",
+          borderTop: "1px solid #1e1e1e",
+          marginTop: "0.5rem",
+        }}
+      >
+        <a
+          href={`/${locale}/account/data-request`}
+          style={{
+            fontSize: "0.6875rem",
+            color: "#444",
+            textDecoration: "none",
+          }}
+        >
+          {locale === "ja" ? "データに関する権利" : locale === "zh-TW" ? "您的資料權利" : "Your data rights"}
+        </a>
+      </div>
     </main>
   );
 }
