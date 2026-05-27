@@ -11,7 +11,11 @@ import {
   updateRecoveryCodes,
   listFansForCreator,
   blockFan,
+  getCreatorPreferences,
+  setTimezone,
+  setHermesLanguage,
 } from "./db.js";
+import { t, type Lang } from "./i18n.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
 import {
   startConsentSession,
@@ -40,6 +44,55 @@ import {
   getTotpSession,
   clearTotpSession,
 } from "./totp-session.js";
+
+// ─── Timezone utilities ───────────────────────────────────────────────────────
+
+// Common shortcut aliases creators are likely to type
+const TZ_SHORTCUTS: Record<string, string> = {
+  JP: "Asia/Tokyo",
+  TW: "Asia/Taipei",
+  HK: "Asia/Hong_Kong",
+  TH: "Asia/Bangkok",
+  SG: "Asia/Singapore",
+  ID: "Asia/Jakarta",
+  PH: "Asia/Manila",
+  KR: "Asia/Seoul",
+  "US/EAST": "America/New_York",
+  "US/WEST": "America/Los_Angeles",
+  UTC: "UTC",
+  GMT: "UTC",
+};
+
+function resolveTimezone(input: string): string | null {
+  const upper = input.trim().toUpperCase();
+  if (upper in TZ_SHORTCUTS) return TZ_SHORTCUTS[upper];
+  // Validate as IANA name using Intl.DateTimeFormat
+  try {
+    Intl.DateTimeFormat("en", { timeZone: input.trim() });
+    return input.trim();
+  } catch {
+    return null;
+  }
+}
+
+const VALID_LANGS = new Set<Lang>(["en", "ja", "zh-tw"]);
+
+function formatInTimezone(date: Date, tz: string): string {
+  try {
+    return date.toLocaleString("en-US", {
+      timeZone: tz,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return date.toUTCString();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not set");
@@ -83,16 +136,16 @@ bot.command("pause", async (ctx) => {
     return;
   }
 
-  const { elapsed } = await setPaused(creator.id, true);
+  const [{ elapsed }, prefs] = await Promise.all([
+    setPaused(creator.id, true),
+    getCreatorPreferences(creator.id),
+  ]);
   const total = Date.now() - t0;
   console.log(
     `[hermes] /pause tg_user_id=${tgUserId} creator_id=${creator.id} total_ms=${total}`
   );
 
-  await ctx.reply(
-    `⏸ Twin paused. Your AI presence is offline.\n\nUse /resume to reactivate.\n\n_(DB write: ${elapsed}ms)_`,
-    { parse_mode: "Markdown" }
-  );
+  await ctx.reply(t(prefs.hermesLanguage).pauseOk(elapsed), { parse_mode: "Markdown" });
 });
 
 // /resume — reactivate twin.
@@ -106,12 +159,15 @@ bot.command("resume", async (ctx) => {
     return;
   }
 
-  const { elapsed } = await setPaused(creator.id, false);
+  const [{ elapsed }, prefs] = await Promise.all([
+    setPaused(creator.id, false),
+    getCreatorPreferences(creator.id),
+  ]);
   console.log(
     `[hermes] /resume tg_user_id=${tgUserId} creator_id=${creator.id} db_write_ms=${elapsed}`
   );
 
-  await ctx.reply("▶️ Twin reactivated. Your AI presence is live again.");
+  await ctx.reply(t(prefs.hermesLanguage).resumeOk);
 });
 
 // /status — twin state, fan count, credit balance.
@@ -125,14 +181,21 @@ bot.command("status", async (ctx) => {
     return;
   }
 
-  const stats = await getCreatorStats(creator.id);
-  const twinState = stats.paused ? "⏸ Paused" : "▶️ Active";
+  const [stats, prefs] = await Promise.all([
+    getCreatorStats(creator.id),
+    getCreatorPreferences(creator.id),
+  ]);
+  const s = t(prefs.hermesLanguage);
+  const twinState = stats.paused ? s.twinPaused : s.twinActive;
+  const now = formatInTimezone(new Date(), prefs.timezone);
   const msg = [
-    `*${creator.display_name} — Status*`,
+    s.statusTitle(creator.display_name),
     ``,
-    `Twin: ${twinState}`,
-    `Active fans: ${stats.activeFanCount}`,
-    `Credit balance: coming in Slice 2`,
+    s.statusTwin(twinState),
+    s.statusFans(stats.activeFanCount),
+    s.statusCredits,
+    ``,
+    `_${now} (${prefs.timezone})_`,
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
@@ -335,16 +398,23 @@ bot.command("revenue", async (ctx) => {
     return;
   }
 
-  const stats = await getCreatorStats(creator.id);
+  const [stats, prefs] = await Promise.all([
+    getCreatorStats(creator.id),
+    getCreatorPreferences(creator.id),
+  ]);
+  const s = t(prefs.hermesLanguage);
+  const now = formatInTimezone(new Date(), prefs.timezone);
   const msg = [
-    `*${creator.display_name} — Revenue*`,
+    s.revenueTitle(creator.display_name),
     ``,
-    `Today GMV: — _(ledger live in Slice 2)_`,
-    `This week GMV: — _(ledger live in Slice 2)_`,
-    `Credit pack sales: — _(ledger live in Slice 2)_`,
+    s.revenueGmvToday,
+    s.revenueGmvWeek,
+    s.revenuePacks,
     ``,
-    `Active fans: ${stats.activeFanCount}`,
-    `Your share: 80% of GMV`,
+    s.revenueFans(stats.activeFanCount),
+    s.revenueShare,
+    ``,
+    `_${now} (${prefs.timezone})_`,
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
@@ -426,6 +496,78 @@ bot.action(/^block_fan:(.+)$/, async (ctx) => {
     );
     await ctx.answerCbQuery("Block failed. Please try again.", { show_alert: true });
   }
+});
+
+// /timezone — set creator timezone (HID-056)
+// Usage: /timezone Asia/Tokyo  or shortcut /timezone JP
+// With no arg: shows current setting.
+bot.command("timezone", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  const prefs = await getCreatorPreferences(creator.id);
+  const s = t(prefs.hermesLanguage);
+
+  const arg = ctx.message.text.split(/\s+/).slice(1).join(" ").trim();
+  if (!arg) {
+    await ctx.reply(s.tzCurrent(prefs.timezone), { parse_mode: "Markdown" });
+    return;
+  }
+
+  const resolved = resolveTimezone(arg);
+  if (!resolved) {
+    await ctx.reply(s.tzInvalid(arg), { parse_mode: "Markdown" });
+    return;
+  }
+
+  await setTimezone(creator.id, resolved);
+  console.log(
+    `[hermes] /timezone creator_id=${creator.id} tz=${resolved}`
+  );
+
+  await ctx.reply(s.tzSetOk(resolved), { parse_mode: "Markdown" });
+});
+
+// /language — set Hermes UI language (HID-056)
+// Usage: /language ja | /language zh-tw | /language en
+// With no arg: shows current setting.
+bot.command("language", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  const prefs = await getCreatorPreferences(creator.id);
+  const s = t(prefs.hermesLanguage);
+
+  const arg = ctx.message.text.split(/\s+/).slice(1).join(" ").trim().toLowerCase();
+  if (!arg) {
+    await ctx.reply(s.langCurrent(prefs.hermesLanguage), { parse_mode: "Markdown" });
+    return;
+  }
+
+  if (!VALID_LANGS.has(arg as Lang)) {
+    await ctx.reply(s.langInvalid(arg), { parse_mode: "Markdown" });
+    return;
+  }
+
+  await setHermesLanguage(creator.id, arg);
+  console.log(
+    `[hermes] /language creator_id=${creator.id} lang=${arg}`
+  );
+
+  // Respond using the NEW language so the change is immediately visible
+  await ctx.reply(t(arg).langSetOk(arg), { parse_mode: "Markdown" });
 });
 
 // /delete_account — initiate creator account deletion (HID-006 / §8.4, §16)

@@ -131,6 +131,51 @@ export async function updateRecoveryCodes(
   if (error) throw error;
 }
 
+// ─── Creator preferences (HID-056) ───────────────────────────────────────────
+
+export interface CreatorPreferences {
+  timezone: string;
+  hermesLanguage: string;
+}
+
+export async function getCreatorPreferences(
+  creatorId: string
+): Promise<CreatorPreferences> {
+  const { data } = await getDb()
+    .from("creator_config")
+    .select("timezone, hermes_language")
+    .eq("creator_id", creatorId)
+    .maybeSingle();
+  return {
+    timezone: data?.timezone ?? "UTC",
+    hermesLanguage: data?.hermes_language ?? "en",
+  };
+}
+
+export async function setTimezone(
+  creatorId: string,
+  timezone: string
+): Promise<void> {
+  const { error } = await getDb()
+    .from("creator_config")
+    .update({ timezone, updated_at: new Date().toISOString() })
+    .eq("creator_id", creatorId);
+  if (error) throw error;
+}
+
+export async function setHermesLanguage(
+  creatorId: string,
+  language: string
+): Promise<void> {
+  const { error } = await getDb()
+    .from("creator_config")
+    .update({ hermes_language: language, updated_at: new Date().toISOString() })
+    .eq("creator_id", creatorId);
+  if (error) throw error;
+}
+
+// ─── Fan rows ─────────────────────────────────────────────────────────────────
+
 export type FanRow = {
   id: string;
   created_at: string;
