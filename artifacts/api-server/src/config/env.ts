@@ -35,6 +35,14 @@ const envSchema = z.object({
 
   // Health check auth — protects /api/health/db and deeper
   HEALTH_SECRET: z.string().optional(),
+
+  // HID-069: OAuth token encryption + provider credentials
+  // 64 hex chars = 32 bytes for AES-256-GCM
+  OAUTH_TOKEN_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/).optional(),
+  STRIPE_CONNECT_CLIENT_ID: z.string().optional(),
+  LINE_PAY_CHANNEL_ID: z.string().optional(),
+  LINE_PAY_CHANNEL_SECRET: z.string().optional(),
+  LINE_PAY_ENV: z.enum(["sandbox", "production"]).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

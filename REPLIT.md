@@ -57,6 +57,11 @@ These must be set as Replit Secrets (not committed to the repo):
 | `SESSION_SECRET` | Express session signing key |
 | `STRIPE_SECRET_KEY` | Stripe API secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_CONNECT_CLIENT_ID` | Stripe Connect OAuth client ID (HID-069) |
+| `OAUTH_TOKEN_ENCRYPTION_KEY` | 64 hex chars (32 bytes AES-256-GCM) for token encryption at rest (HID-069) |
+| `LINE_PAY_CHANNEL_ID` | LINE Pay merchant channel ID (HID-069) |
+| `LINE_PAY_CHANNEL_SECRET` | LINE Pay channel secret (HID-069) |
+| `LINE_PAY_ENV` | `sandbox` or `production` for LINE Pay API (HID-069) |
 | `SUPABASE_URL` | Supabase project URL (for auth/storage) |
 | `SUPABASE_ANON_KEY` | Supabase anonymous key |
 

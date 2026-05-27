@@ -14,7 +14,9 @@ import accountRouter from "./account.js";
 import emailWebhooksRouter from "./email-webhooks.js";
 import dsarRouter from "./dsar.js";
 import reportsRouter from "./reports.js";
-import linksRouter from "./links.js";
+import fanRecoveryRouter from "./fan-recovery.js";
+import oauthRouter from "./oauth.js";
+import socialSendsRouter from "./social-sends.js";
 
 const router: IRouter = Router();
 
@@ -34,7 +36,8 @@ router.use(dsarRouter);
 // Email webhook must be before express.json() middleware — see email-webhooks.ts
 router.use(emailWebhooksRouter);
 router.use(reportsRouter);
-// Link tracker last — /:handle catches all unmatched GET paths
-router.use(linksRouter);
+router.use(fanRecoveryRouter);
+router.use(oauthRouter);
+router.use(socialSendsRouter);
 
 export default router;

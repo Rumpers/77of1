@@ -551,6 +551,117 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /oauth/connections:
+    get:
+      operationId: listOAuthConnections
+      tags: [oauth]
+      summary: List connected OAuth providers
+      responses:
+        "200":
+          description: Connection list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConnectionList"
+        "401":
+          description: Not authenticated
+
+  /oauth/{provider}/status:
+    get:
+      operationId: getOAuthStatus
+      tags: [oauth]
+      summary: Check OAuth connection status for a provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthProvider"
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthStatusResponse"
+        "401":
+          description: Not authenticated
+
+  /oauth/stripe_connect/connect:
+    get:
+      operationId: stripeConnectOAuth
+      tags: [oauth]
+      summary: Start Stripe Connect OAuth flow (redirects to Stripe)
+      responses:
+        "302":
+          description: Redirect to Stripe authorization page
+        "401":
+          description: Not authenticated
+        "503":
+          description: Stripe Connect not configured
+
+  /oauth/stripe_connect/callback:
+    get:
+      operationId: stripeConnectCallback
+      tags: [oauth]
+      summary: Stripe Connect OAuth callback — stores token and redirects
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to creator settings with success or error query param
+
+  /oauth/line_pay/connect:
+    get:
+      operationId: linePayConnect
+      tags: [oauth]
+      summary: Provision LINE Pay channel token (client credentials flow)
+      responses:
+        "200":
+          description: Token stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConnectResult"
+        "401":
+          description: Not authenticated
+        "503":
+          description: LINE Pay not configured
+
+  /oauth/{provider}:
+    delete:
+      operationId: revokeOAuth
+      tags: [oauth]
+      summary: Revoke OAuth connection
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthProvider"
+      responses:
+        "200":
+          description: Connection revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConnectResult"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Unknown provider
+
 components:
   schemas:
     ConsentRevokeResult:
@@ -946,3 +1057,65 @@ components:
       required:
         - taxFormType
         - storagePath
+
+    OAuthProvider:
+      type: string
+      enum: [stripe_connect, line_pay, "17live"]
+      description: Supported OAuth providers for creator connections
+
+    OAuthConnection:
+      type: object
+      properties:
+        provider:
+          $ref: "#/components/schemas/OAuthProvider"
+        connectedAt:
+          type: string
+          format: date-time
+        scope:
+          type: ["string", "null"]
+        providerUserId:
+          type: ["string", "null"]
+      required:
+        - provider
+        - connectedAt
+        - scope
+        - providerUserId
+
+    OAuthConnectionList:
+      type: object
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: "#/components/schemas/OAuthConnection"
+      required:
+        - connections
+
+    OAuthStatusResponse:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        providerUserId:
+          type: ["string", "null"]
+        scope:
+          type: ["string", "null"]
+        connectedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - connected
+
+    OAuthConnectResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        provider:
+          $ref: "#/components/schemas/OAuthProvider"
+      required:
+        - ok
+        - provider
