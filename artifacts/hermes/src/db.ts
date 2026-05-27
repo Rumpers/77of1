@@ -10,15 +10,81 @@ function getDb() {
 
 export type CreatorRow = { id: string; display_name: string };
 
+// ─── Multi-channel account linking (HID-053) ─────────────────────────────────
+
 export async function findCreatorByTelegramId(
   telegramUserId: number
 ): Promise<CreatorRow | null> {
   const { data } = await getDb()
-    .from("creators")
-    .select("id, display_name")
-    .eq("telegram_user_id", String(telegramUserId))
+    .from("hermes_channels")
+    .select("creator_id, creators!inner(id, display_name)")
+    .eq("channel_type", "telegram")
+    .eq("channel_id", String(telegramUserId))
+    .eq("is_active", true)
     .maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+  const c = (data as { creators: { id: string; display_name: string } }).creators;
+  return { id: c.id, display_name: c.display_name };
+}
+
+export interface ChannelRow {
+  id: string;
+  channelType: "telegram" | "line";
+  channelId: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  linkedAt: string;
+}
+
+export async function getActiveChannels(creatorId: string): Promise<ChannelRow[]> {
+  const { data } = await getDb()
+    .from("hermes_channels")
+    .select("id, channel_type, channel_id, is_primary, is_active, linked_at")
+    .eq("creator_id", creatorId)
+    .eq("is_active", true);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    channelType: r.channel_type as "telegram" | "line",
+    channelId: r.channel_id,
+    isPrimary: r.is_primary,
+    isActive: r.is_active,
+    linkedAt: r.linked_at,
+  }));
+}
+
+export async function linkChannel(
+  creatorId: string,
+  channelType: "telegram" | "line",
+  channelId: string,
+  isPrimary = true
+): Promise<void> {
+  const { error } = await getDb()
+    .from("hermes_channels")
+    .upsert(
+      {
+        creator_id: creatorId,
+        channel_type: channelType,
+        channel_id: channelId,
+        is_primary: isPrimary,
+        is_active: true,
+        linked_at: new Date().toISOString(),
+        unlinked_at: null,
+      },
+      { onConflict: "creator_id,channel_type" }
+    );
+  if (error) throw error;
+}
+
+export async function unlinkChannel(
+  creatorId: string,
+  channelType: "telegram" | "line"
+): Promise<void> {
+  const { error } = await getDb()
+    .from("hermes_channels")
+    .update({ is_active: false, unlinked_at: new Date().toISOString() })
+    .eq("creator_id", creatorId)
+    .eq("channel_type", channelType);
+  if (error) throw error;
 }
 
 export interface PauseResult {
