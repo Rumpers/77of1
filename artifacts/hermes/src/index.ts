@@ -55,7 +55,7 @@ bot.start(async (ctx) => {
 
   const connectUrl = `${WEB_BASE_URL}/creator/connect?tg_uid=${tgUserId}`;
   await ctx.reply(
-    `Welcome to Hermes — your 7of1 creator dashboard.\n\nYour Telegram account isn't linked to a creator profile yet.\n\nConnect here:\n${connectUrl}\n\nOnce linked, come back and use /status to check your twin.`
+    `Hi, I'm Lala — your 7of1 creator manager.\n\nYour Telegram account isn't linked to a creator profile yet.\n\nConnect here:\n${connectUrl}\n\nOnce linked, come back and use /status to check your twin.`
   );
 });
 

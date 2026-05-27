@@ -1,11 +1,11 @@
 kind = "api"
-title = "Hermes Bot"
+title = "Lala Bot"
 version = "1.0.0"
 id = "artifacts/hermes"
 
 [[services]]
 localPort = 3001
-name = "Hermes"
+name = "Lala"
 paths = ["/hermes"]
 
 [services.development]
