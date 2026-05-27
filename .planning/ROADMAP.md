@@ -30,7 +30,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The KYC agreement text presented to a creator explicitly names voice synthesis scope, duration, and revocability as a signed line item
   4. The Drizzle schema migration runs clean and defines all seven core tables: `creators`, `twins`, `creator_kyc`, `consent_grants`, `conversation_messages`, `generation_jobs`, `safety_audit_log`
   5. No raw fan message content or PII appears in any log line or audit record; only hashed identifiers are persisted
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 01-01-PLAN.md — Drizzle schema for 8 core tables + creator_totp; drizzle-kit push to Replit PG; failing E2E test for KYC gate
+- [ ] 01-02-PLAN.md — api-server KYC vertical slice: isKycSigned + twin route 423 gate + Drizzle health probe + SignWell voice-synthesis clause checkpoint
+- [ ] 01-03-PLAN.md — Hermes Telegram bot fully migrated to @workspace/db; kill-switch SLA preserved; fan-payment functions deleted
+- [ ] 01-04-PLAN.md — Worker on Drizzle; safety-audit.ts rewritten with retention_category; supabase.ts + apps/web/ deleted; SUPABASE_* env vars scrubbed; cold-start verification
 
 ### Phase 2: Twin Runtime Core
 **Goal**: A fan can open `lala.la/[handle]` or a Telegram fan-twin bot, send a message to the creator's AI twin, receive a response that passed six moderation layers, and see a California SB 243 AI disclosure — all within 30 seconds of first message
