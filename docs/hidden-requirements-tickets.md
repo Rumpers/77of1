@@ -38,6 +38,8 @@ We **never run the fan-payment loop**. Host platforms own fan auth, payments, ag
 
 That's **18 tickets** dissolved. Remaining tickets still apply (creator-side identity / auth, admin/ops tooling, compliance scaffolding for creators, twin engine, content engine, Hermes/Lala ops, onboarding, operational SLOs).
 
+> **Naming note:** these tickets were drafted before the **Hermes → Lala** rename (Phase 0, 2026-05-27). Wherever the body of a ticket below says "Hermes," read as "Lala" — same agent, new creator-visible name. Internal codename remains Hermes in code/packages.
+
 **Two new tickets** the agency model implies which weren't in the original audit:
 
 - **HID-074 Conversation-credit attribution layer.** `conversation_id` on every twin response; UTM propagation through outbound CTAs; host-platform conversion webhook ingestion; 7-30d attribution window matching. Foundational for rev-share billing. **Priority:** P0 (Phase 2).

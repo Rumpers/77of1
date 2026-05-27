@@ -355,7 +355,7 @@ const messages: Record<Locale, Messages> = {
       step3: {
         title: "Your consent",
         subtitle:
-          "You choose exactly what you're comfortable with. You can change these anytime via Hermes or your dashboard.",
+          "You choose exactly what you're comfortable with. You can change these anytime via Lala or your dashboard.",
         required_badge: "Required",
         optional_badge: "Optional",
         yes_label: "Yes",
@@ -375,9 +375,9 @@ const messages: Record<Locale, Messages> = {
         success: {
           title: "Consent recorded",
           body_with_persona:
-            "Your twin production is starting now. Hermes will message you when it's ready.",
+            "Your twin production is starting now. Lala will message you when it's ready.",
           body_no_persona:
-            "Your consent has been recorded. Your AI twin needs the Persona / Text permission to work — you can grant it anytime via Hermes or your dashboard.",
+            "Your consent has been recorded. Your AI twin needs the Persona / Text permission to work — you can grant it anytime via Lala or your dashboard.",
           done_label: "Done",
         },
         items: {
@@ -587,7 +587,7 @@ const messages: Record<Locale, Messages> = {
       step3: {
         title: "同意の確認",
         subtitle:
-          "ご自身が許可できる範囲を選択してください。いつでも Hermes またはダッシュボードから変更できます。",
+          "ご自身が許可できる範囲を選択してください。いつでも Lala またはダッシュボードから変更できます。",
         required_badge: "必須",
         optional_badge: "任意",
         yes_label: "はい",
@@ -607,9 +607,9 @@ const messages: Record<Locale, Messages> = {
         success: {
           title: "同意が記録されました",
           body_with_persona:
-            "AIツインの制作を開始します。準備ができ次第 Hermes からご連絡します。",
+            "AIツインの制作を開始します。準備ができ次第 Lala からご連絡します。",
           body_no_persona:
-            "同意が記録されました。AIツインにはペルソナ／テキストの許可が必要です。いつでも Hermes またはダッシュボードから許可できます。",
+            "同意が記録されました。AIツインにはペルソナ／テキストの許可が必要です。いつでも Lala またはダッシュボードから許可できます。",
           done_label: "完了",
         },
         items: {
@@ -817,7 +817,7 @@ const messages: Record<Locale, Messages> = {
       },
       step3: {
         title: "同意確認",
-        subtitle: "您可以自行選擇願意授權的範圍，隨時可透過 Hermes 或儀表板更改。",
+        subtitle: "您可以自行選擇願意授權的範圍，隨時可透過 Lala 或儀表板更改。",
         required_badge: "必填",
         optional_badge: "選填",
         yes_label: "是",
@@ -836,9 +836,9 @@ const messages: Record<Locale, Messages> = {
         },
         success: {
           title: "同意已記錄",
-          body_with_persona: "您的 AI 分身製作即將開始。準備好後 Hermes 會通知您。",
+          body_with_persona: "您的 AI 分身製作即將開始。準備好後 Lala 會通知您。",
           body_no_persona:
-            "您的同意已記錄。AI 分身需要人格／文字的授權才能運作，您可隨時透過 Hermes 或儀表板授予。",
+            "您的同意已記錄。AI 分身需要人格／文字的授權才能運作，您可隨時透過 Lala 或儀表板授予。",
           done_label: "完成",
         },
         items: {
