@@ -11,10 +11,41 @@ import { TypingIndicator } from "@/components/fan/TypingIndicator";
 import { LocaleSwitcher } from "@/components/fan/LocaleSwitcher";
 import { ReportDialog, type ReportCategory } from "@/components/fan/ReportDialog";
 import { PaywallDrawer } from "@/components/fan/PaywallDrawer";
+import { CrisisHelplineBubble } from "@/components/fan/CrisisHelplineBubble";
+import { MonetizationCTA } from "@/components/fan/MonetizationCTA";
 
 const MAX_TRIAL = 3;
 const CJK_FONT =
   '"Hiragino Kaku Gothic Pro", "Noto Sans CJK JP", "Microsoft JhengHei", system-ui, sans-serif';
+
+// Crisis helpline detection (COMPLY-02 — see api-server lib/helplines.ts).
+// When the AI reply text contains a locked helpline phone number, treat the
+// first "\n\n"-separated segment as the CrisisHelplineBubble and the rest as
+// the standard deflection bubble. Trial counter is NOT decremented on these
+// turns (UI-SPEC State Inventory — "Crisis injection" row).
+const HELPLINE_NUMBER_REGEX = /(988|0120-279-338|1925|2389 2222)/;
+
+function splitCrisisReply(text: string): {
+  isCrisis: boolean;
+  helplineSegment: string | null;
+  deflectionSegment: string;
+} {
+  if (!HELPLINE_NUMBER_REGEX.test(text)) {
+    return { isCrisis: false, helplineSegment: null, deflectionSegment: text };
+  }
+  const idx = text.indexOf("\n\n");
+  if (idx === -1) {
+    // Single block containing the helpline — render the entire thing as crisis,
+    // empty deflection. Defensive: server should always return "\n\n" but we
+    // don't crash if it doesn't.
+    return { isCrisis: true, helplineSegment: text, deflectionSegment: "" };
+  }
+  return {
+    isCrisis: true,
+    helplineSegment: text.slice(0, idx),
+    deflectionSegment: text.slice(idx + 2),
+  };
+}
 
 const trialKey = (h: string) => `7of1_trial_${h}`;
 function readTrial(handle: string): number {
@@ -34,6 +65,11 @@ type ChatMessage = {
   pending?: boolean;
   reported?: boolean;
   footerText?: string;
+  /** COMPLY-02 crisis flag — set when text starts with a helpline phrase. */
+  isCrisis?: boolean;
+  helplineSegment?: string | null;
+  /** CHAT-05 monetization pivot from server. */
+  showCta?: boolean;
 };
 
 export default function FanPage() {
@@ -107,10 +143,22 @@ export default function FanPage() {
 
     try {
       const data = await sendTwinMessage({ handle, message: text, locale });
-      const newCount = trialCount + 1;
-      writeTrial(handle, newCount);
-      setTrialCountState(newCount);
-      const aiMsg: ChatMessage = { id: `ai-${Date.now()}`, role: "ai", text: data.text, footerText: data.disclosure_footer };
+      const split = splitCrisisReply(data.text);
+      // Trial counter: do NOT decrement on crisis turns (UI-SPEC).
+      const newCount = split.isCrisis ? trialCount : trialCount + 1;
+      if (!split.isCrisis) {
+        writeTrial(handle, newCount);
+        setTrialCountState(newCount);
+      }
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: "ai",
+        text: split.deflectionSegment,
+        footerText: data.disclosure_footer,
+        isCrisis: split.isCrisis,
+        helplineSegment: split.helplineSegment,
+        showCta: data.monetization_pivot === true,
+      };
       setMessages((prev) => prev.filter((m) => !m.pending).concat(aiMsg));
       if (newCount >= MAX_TRIAL && !fanAuthenticated) setTimeout(() => setShowPaywall(true), 600);
     } catch (err) {
@@ -143,18 +191,34 @@ export default function FanPage() {
           <p className="text-center text-[#555] text-[0.8125rem] mt-8">{interpolate(t.empty_state, { handle })}</p>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} role={msg.role} text={msg.text} pending={msg.pending} brandColor={brandColor}>
-            {msg.pending && msg.role === "ai" && <TypingIndicator label={t.loading} />}
-            {msg.role === "ai" && !msg.pending && (
-              <DisclosureFooter handle={handle} locale={locale} footerText={msg.footerText}>
-                {!msg.reported ? (
-                  <button type="button" onClick={() => openReport(msg.id)} aria-label={t.report_button} className="bg-transparent border-0 cursor-pointer text-[0.6875rem] text-[#444] leading-none opacity-60 px-0.5">⚑</button>
-                ) : (
-                  <span className="text-[0.6875rem] text-[#555] opacity-50">✓</span>
-                )}
-              </DisclosureFooter>
+          <div key={msg.id} className="flex flex-col">
+            {msg.isCrisis && msg.helplineSegment && (
+              <CrisisHelplineBubble helplineText={msg.helplineSegment} locale={locale} />
             )}
-          </MessageBubble>
+            <MessageBubble role={msg.role} text={msg.text} pending={msg.pending} brandColor={brandColor}>
+              {msg.pending && msg.role === "ai" && <TypingIndicator label={t.loading} />}
+              {msg.role === "ai" && !msg.pending && (
+                <>
+                  <DisclosureFooter handle={handle} locale={locale} footerText={msg.footerText}>
+                    {!msg.reported ? (
+                      <button type="button" onClick={() => openReport(msg.id)} aria-label={t.report_button} className="bg-transparent border-0 cursor-pointer text-[0.6875rem] text-[#444] leading-none opacity-60 px-0.5">⚑</button>
+                    ) : (
+                      <span className="text-[0.6875rem] text-[#555] opacity-50">✓</span>
+                    )}
+                  </DisclosureFooter>
+                  {msg.showCta && profile?.monetization_url && (
+                    <MonetizationCTA
+                      platformName={profile.platform_name || "my page"}
+                      monetizationUrl={profile.monetization_url}
+                      locale={locale}
+                      ctaTemplate={t.monetization_cta}
+                      brandColor={brandColor}
+                    />
+                  )}
+                </>
+              )}
+            </MessageBubble>
+          </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
