@@ -1,7 +1,4 @@
 import crypto from "crypto";
-import { db } from "@workspace/db";
-import { creatorKycTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import type { CreatorKyc } from "@workspace/db";
 
 // ─── Status enum (collapsed from 9-state to 3-state per D-05) ────────────────
@@ -13,9 +10,17 @@ export type KycStatus = "pending" | "signed" | "rejected";
 // Re-export the Drizzle row type as KycRow for callers
 export type KycRow = CreatorKyc;
 
+// DB imports are lazy to avoid throwing at module load time when DATABASE_URL is absent.
+async function getDb() {
+  const { db, creatorKycTable } = await import("@workspace/db");
+  const { eq } = await import("drizzle-orm");
+  return { db, creatorKycTable, eq };
+}
+
 // ─── ensureKycRow ─────────────────────────────────────────────────────────────
 // Creates a KYC row if one does not exist. Returns the row.
 export async function ensureKycRow(creatorId: string): Promise<KycRow> {
+  const { db, creatorKycTable } = await getDb();
   await db
     .insert(creatorKycTable)
     .values({ creatorId, status: "pending" })
@@ -29,6 +34,7 @@ export async function ensureKycRow(creatorId: string): Promise<KycRow> {
 // ─── getKycRow ────────────────────────────────────────────────────────────────
 // Returns the full KYC row for a creator, or null if none exists.
 export async function getKycRow(creatorId: string): Promise<KycRow | null> {
+  const { db, creatorKycTable, eq } = await getDb();
   return db
     .select()
     .from(creatorKycTable)
@@ -41,6 +47,7 @@ export async function getKycRow(creatorId: string): Promise<KycRow | null> {
 // Twin production gate: returns true ONLY when status === 'signed'.
 // Strict positive assertion per D-05: null / missing row / pending / rejected all return false.
 export async function isKycSigned(creatorId: string): Promise<boolean> {
+  const { db, creatorKycTable, eq } = await getDb();
   const row = await db
     .select({ status: creatorKycTable.status })
     .from(creatorKycTable)
@@ -106,6 +113,7 @@ export async function initiateSignwellSigning(
   if (!signingUrl) throw new Error("SignWell returned no signing URL");
 
   // Update the KYC row via Drizzle — status stays 'pending' until webhook fires 'signed'
+  const { db, creatorKycTable, eq } = await getDb();
   await db
     .update(creatorKycTable)
     .set({
