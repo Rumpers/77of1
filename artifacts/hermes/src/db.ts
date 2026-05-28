@@ -1,25 +1,30 @@
-// Hermes DB helpers — all use service-role client to bypass RLS
-import { createClient } from "@supabase/supabase-js";
+// Hermes DB helpers — Drizzle + Replit PG (migrated from Supabase, Phase 1)
+import { db } from "@workspace/db";
+import {
+  creatorsTable,
+  creatorConfigTable,
+  creatorTotpTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
 
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key);
-}
+// ─── Creator lookup ───────────────────────────────────────────────────────────
 
+// Return type uses snake_case keys to match existing callers in index.ts
+// (creator.display_name, creator.id). Do not rename.
 export type CreatorRow = { id: string; display_name: string };
 
 export async function findCreatorByTelegramId(
   telegramUserId: number
 ): Promise<CreatorRow | null> {
-  const { data } = await getDb()
-    .from("creators")
-    .select("id, display_name")
-    .eq("telegram_user_id", String(telegramUserId))
-    .maybeSingle();
-  return data ?? null;
+  const rows = await db
+    .select({ id: creatorsTable.id, display_name: creatorsTable.displayName })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.telegramUserId, String(telegramUserId)))
+    .limit(1);
+  return rows[0] ?? null;
 }
+
+// ─── Kill-switch ──────────────────────────────────────────────────────────────
 
 export interface PauseResult {
   elapsed: number;
@@ -31,15 +36,14 @@ export async function setPaused(
   paused: boolean
 ): Promise<PauseResult> {
   const t0 = Date.now();
-  const { error } = await getDb()
-    .from("creator_config")
-    .update({ paused, updated_at: new Date().toISOString() })
-    .eq("creator_id", creatorId);
+  await db
+    .update(creatorConfigTable)
+    .set({ paused, updatedAt: new Date() })
+    .where(eq(creatorConfigTable.creatorId, creatorId));
   const elapsed = Date.now() - t0;
   console.log(
     `[hermes] kill-switch creator_id=${creatorId} paused=${paused} db_write_ms=${elapsed}`
   );
-  if (error) throw error;
   if (elapsed > 4000) {
     console.error(
       `[hermes] WARN kill-switch db write took ${elapsed}ms — approaching ≤5s SLA`
@@ -47,6 +51,12 @@ export async function setPaused(
   }
   return { elapsed };
 }
+
+// ─── Creator stats (partial — fan count is out-of-scope in Phase 1) ──────────
+//
+// D-10: fan_accounts / fan_blocks / fan_credits tables are not in @workspace/db.
+// activeFanCount is stubbed at 0 until Phase 2 wires the fan tables.
+// The paused flag is read from creator_config (in Phase 1 schema).
 
 export interface CreatorStats {
   paused: boolean;
@@ -56,23 +66,18 @@ export interface CreatorStats {
 export async function getCreatorStats(
   creatorId: string
 ): Promise<CreatorStats> {
-  const db = getDb();
-  const [fansResult, configResult] = await Promise.all([
-    db
-      .from("fan_accounts")
-      .select("*", { count: "exact", head: true })
-      .eq("creator_id", creatorId),
-    db
-      .from("creator_config")
-      .select("paused")
-      .eq("creator_id", creatorId)
-      .maybeSingle(),
-  ]);
+  const rows = await db
+    .select({ paused: creatorConfigTable.paused })
+    .from(creatorConfigTable)
+    .where(eq(creatorConfigTable.creatorId, creatorId))
+    .limit(1);
   return {
-    paused: configResult.data?.paused ?? false,
-    activeFanCount: fansResult.count ?? 0,
+    paused: rows[0]?.paused ?? false,
+    activeFanCount: 0, // PHASE-1 STUB: fan_accounts not in @workspace/db — wired in Phase 2
   };
 }
+
+// ─── TOTP helpers ─────────────────────────────────────────────────────────────
 
 export interface TotpRecord {
   creator_id: string;
@@ -81,13 +86,20 @@ export interface TotpRecord {
   recovery_codes: string[];
 }
 
-export async function getTotpRecord(creatorId: string): Promise<TotpRecord | null> {
-  const { data } = await getDb()
-    .from("creator_totp")
-    .select("creator_id, totp_secret, totp_enabled, recovery_codes")
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-  return data ?? null;
+export async function getTotpRecord(
+  creatorId: string
+): Promise<TotpRecord | null> {
+  const rows = await db
+    .select({
+      creator_id: creatorTotpTable.creatorId,
+      totp_secret: creatorTotpTable.totpSecret,
+      totp_enabled: creatorTotpTable.totpEnabled,
+      recovery_codes: creatorTotpTable.recoveryCodes,
+    })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function saveTotpEnabled(
@@ -95,188 +107,93 @@ export async function saveTotpEnabled(
   secret: string,
   hashedRecoveryCodes: string[]
 ): Promise<void> {
-  const { error } = await getDb()
-    .from("creator_totp")
-    .upsert({
-      creator_id: creatorId,
-      totp_secret: secret,
-      totp_enabled: true,
-      recovery_codes: hashedRecoveryCodes,
-      enabled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+  await db
+    .insert(creatorTotpTable)
+    .values({
+      creatorId,
+      totpSecret: secret,
+      totpEnabled: true,
+      recoveryCodes: hashedRecoveryCodes,
+      enabledAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: creatorTotpTable.creatorId,
+      set: {
+        totpSecret: secret,
+        totpEnabled: true,
+        recoveryCodes: hashedRecoveryCodes,
+        enabledAt: new Date(),
+        updatedAt: new Date(),
+      },
     });
-  if (error) throw error;
 }
 
 export async function disableTotpRecord(creatorId: string): Promise<void> {
-  const { error } = await getDb()
-    .from("creator_totp")
-    .update({
-      totp_enabled: false,
-      recovery_codes: [],
-      updated_at: new Date().toISOString(),
+  await db
+    .update(creatorTotpTable)
+    .set({
+      totpEnabled: false,
+      recoveryCodes: [],
+      updatedAt: new Date(),
     })
-    .eq("creator_id", creatorId);
-  if (error) throw error;
+    .where(eq(creatorTotpTable.creatorId, creatorId));
 }
 
 export async function updateRecoveryCodes(
   creatorId: string,
   hashedCodes: string[]
 ): Promise<void> {
-  const { error } = await getDb()
-    .from("creator_totp")
-    .update({ recovery_codes: hashedCodes, updated_at: new Date().toISOString() })
-    .eq("creator_id", creatorId);
-  if (error) throw error;
+  await db
+    .update(creatorTotpTable)
+    .set({ recoveryCodes: hashedCodes, updatedAt: new Date() })
+    .where(eq(creatorTotpTable.creatorId, creatorId));
 }
 
-// ─── Creator preferences (HID-056) ───────────────────────────────────────────
+// ─── Creator preferences ──────────────────────────────────────────────────────
 
 export interface CreatorPreferences {
+  paused: boolean;
   timezone: string;
-  hermesLanguage: string;
+  hermes_language: string;
 }
 
 export async function getCreatorPreferences(
   creatorId: string
-): Promise<CreatorPreferences> {
-  const { data } = await getDb()
-    .from("creator_config")
-    .select("timezone, hermes_language")
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-  return {
-    timezone: data?.timezone ?? "UTC",
-    hermesLanguage: data?.hermes_language ?? "en",
-  };
+): Promise<CreatorPreferences | null> {
+  const rows = await db
+    .select({
+      paused: creatorConfigTable.paused,
+      timezone: creatorConfigTable.timezone,
+      hermes_language: creatorConfigTable.hermesLanguage,
+    })
+    .from(creatorConfigTable)
+    .where(eq(creatorConfigTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function setTimezone(
   creatorId: string,
   timezone: string
 ): Promise<void> {
-  const { error } = await getDb()
-    .from("creator_config")
-    .update({ timezone, updated_at: new Date().toISOString() })
-    .eq("creator_id", creatorId);
-  if (error) throw error;
+  await db
+    .insert(creatorConfigTable)
+    .values({ creatorId, timezone })
+    .onConflictDoUpdate({
+      target: creatorConfigTable.creatorId,
+      set: { timezone, updatedAt: new Date() },
+    });
 }
 
 export async function setHermesLanguage(
   creatorId: string,
   language: string
 ): Promise<void> {
-  const { error } = await getDb()
-    .from("creator_config")
-    .update({ hermes_language: language, updated_at: new Date().toISOString() })
-    .eq("creator_id", creatorId);
-  if (error) throw error;
-}
-
-// ─── Fan rows ─────────────────────────────────────────────────────────────────
-
-export type FanRow = {
-  id: string;
-  created_at: string;
-  replit_user_id: string | null;
-  tier: string;
-};
-
-export async function listFansForCreator(creatorId: string): Promise<FanRow[]> {
-  const { data } = await getDb()
-    .from("fans")
-    .select("id, created_at, replit_user_id, tier")
-    .eq("creator_id", creatorId)
-    .order("created_at", { ascending: false })
-    .limit(20);
-  return data ?? [];
-}
-
-export interface BlockFanResult {
-  elapsed: number;
-  creditsRefunded: number;
-}
-
-// Block a fan and refund their remaining credits.
-// SLA: total write must complete ≤5s (same contract as kill-switch).
-export async function blockFan(
-  creatorId: string,
-  fanId: string,
-  reason?: string
-): Promise<BlockFanResult> {
-  const t0 = Date.now();
-  const db = getDb();
-
-  // 1. Upsert block record (idempotent: safe to call twice)
-  const { error: blockError } = await db
-    .from("fan_blocks")
-    .upsert(
-      { creator_id: creatorId, fan_id: fanId, blocked_by: "creator", reason: reason ?? null },
-      { onConflict: "creator_id,fan_id" }
-    );
-  if (blockError) throw blockError;
-
-  // 2. Read current credit balance
-  const { data: creditsRow } = await db
-    .from("fan_credits")
-    .select("balance")
-    .eq("fan_id", fanId)
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-
-  const balance = creditsRow?.balance ?? 0;
-
-  // 3. Refund remaining credits if any
-  if (balance > 0) {
-    const { error: balanceError } = await db
-      .from("fan_credits")
-      .update({ balance: 0, updated_at: new Date().toISOString() })
-      .eq("fan_id", fanId)
-      .eq("creator_id", creatorId);
-    if (balanceError) throw balanceError;
-
-    const idempotencyKey = `block_refund:${creatorId}:${fanId}:${Date.now()}`;
-    const { error: txError } = await db.from("credit_transactions").insert({
-      fan_id: fanId,
-      creator_id: creatorId,
-      kind: "refund",
-      amount: balance,
-      idempotency_key: idempotencyKey,
+  await db
+    .insert(creatorConfigTable)
+    .values({ creatorId, hermesLanguage: language })
+    .onConflictDoUpdate({
+      target: creatorConfigTable.creatorId,
+      set: { hermesLanguage: language, updatedAt: new Date() },
     });
-    if (txError) throw txError;
-  }
-
-  // 4. Append-only audit log
-  await db.from("audit_log").insert({
-    creator_id: creatorId,
-    fan_id: fanId,
-    event_type: "fan_blocked",
-    payload: { reason: reason ?? null, credits_refunded: balance, blocked_by: "creator" },
-  });
-
-  const elapsed = Date.now() - t0;
-  console.log(
-    `[hermes] fan_blocked creator_id=${creatorId} fan_id=${fanId} credits_refunded=${balance} total_ms=${elapsed}`
-  );
-  if (elapsed > 4000) {
-    console.error(
-      `[hermes] WARN fan_block write took ${elapsed}ms — approaching ≤5s SLA`
-    );
-  }
-  return { elapsed, creditsRefunded: balance };
-}
-
-// Fast check used by twin-engine and credits API before serving any fan request.
-export async function isFanBlocked(
-  creatorId: string,
-  fanId: string
-): Promise<boolean> {
-  const { data } = await getDb()
-    .from("fan_blocks")
-    .select("fan_id")
-    .eq("creator_id", creatorId)
-    .eq("fan_id", fanId)
-    .maybeSingle();
-  return data !== null;
 }
