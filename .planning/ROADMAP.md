@@ -50,7 +50,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A high-risk moderation flag triggers a Sentry alert and a Lala bot notification to the founder within the request lifecycle
   5. Creator can complete full onboarding (consent, persona intake, voice sample upload, character card generation) via Lala Telegram bot with no technical skills required; creator can pause/resume or revoke voice consent from the same bot
 **UI hint**: yes
-**Plans**: TBD
+**Plans:** 8 plans
+- [ ] 02-01-PLAN.md — Wave 0 unblock: env scrub, TELEGRAM_BOT_TOKEN_LALA rename, fan-twin port allocation, package legitimacy gate, 10 RED test scaffolds
+- [ ] 02-02-PLAN.md — Wave 1: Character Card V2 Zod schema, twins.voiceReferenceUrl + creators.monetizationUrl columns, [BLOCKING] drizzle-kit push, HMAC/locale/conversation/system-prompt/disclosure libs + kyc-gate/verifyConversationId middlewares
+- [ ] 02-03-PLAN.md — Wave 2: real /api/twin/chat LLM pipeline (no stubs) + GET /api/twin/:handle/profile + middleware wiring (CHAT-01/03/04/05, COMPLY-01, I18N-02 server side)
+- [ ] 02-04-PLAN.md — Wave 3 (parallel with 02-05): refactor fan-page.tsx into 8 typed components, LocaleSwitcher, lib/api.ts client, .dark CSS variables, i18n string extensions
+- [ ] 02-05-PLAN.md — Wave 3 (parallel with 02-04): six-layer moderation pipeline — OpenAiModeratorProvider, L1+L3 wrappers, deflections/helplines/notify-founder, CrisisHelplineBubble + MonetizationCTA UI (MOD-01/02/03/04/05/06, COMPLY-02)
+- [ ] 02-06-PLAN.md — Wave 4: extract shared @workspace/twin-runtime lib, scaffold fan-twin artifact (async-ack webhook), fill worker text-generation pipeline with Telegram delivery (CHAT-02, CHAT-06)
+- [ ] 02-07-PLAN.md — Wave 5: Hermes @telegraf/session/pg migration, consent + persona WizardScenes, twins.character_card populated, KYC status line in /status (ONBOARD-01 consent+persona, KYC-03)
+- [ ] 02-08-PLAN.md — Wave 5: voice sample WizardScene + Replit Object Storage upload + /revoke_voice command + consent-revocation worker body (ONBOARD-01 voice slice + ONBOARD-03)
 
 ### Phase 3: Voice + Hardening
 **Goal**: Twin replies include optional voice audio via GMI Cloud XTTS, the moderation pipeline detects gradual-escalation patterns across turns, founders can review OCR-extracted fan-name masks, all user-facing strings are available in EN/JP/ZH-TW, and creators can request full data deletion
@@ -63,7 +71,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Founder sees a Telegram review queue with OCR-extracted fan-name mask candidates and can approve or reject each with a single action
   4. Every user-facing string (CTA, disclosure statement, deflection, helpline) renders correctly in EN, JP, and ZH-TW; switching Telegram language or browser Accept-Language changes the locale within one session
   5. Creator can send a DSAR deletion request via Lala bot; all conversation history and voice files for that creator are deleted within the 30-day SLA
-**Plans**: TBD
+**Plans:** 8 plans
+- [ ] 02-01-PLAN.md — Wave 0 unblock: env scrub, TELEGRAM_BOT_TOKEN_LALA rename, fan-twin port allocation, package legitimacy gate, 10 RED test scaffolds
+- [ ] 02-02-PLAN.md — Wave 1: Character Card V2 Zod schema, twins.voiceReferenceUrl + creators.monetizationUrl columns, [BLOCKING] drizzle-kit push, HMAC/locale/conversation/system-prompt/disclosure libs + kyc-gate/verifyConversationId middlewares
+- [ ] 02-03-PLAN.md — Wave 2: real /api/twin/chat LLM pipeline (no stubs) + GET /api/twin/:handle/profile + middleware wiring (CHAT-01/03/04/05, COMPLY-01, I18N-02 server side)
+- [ ] 02-04-PLAN.md — Wave 3 (parallel with 02-05): refactor fan-page.tsx into 8 typed components, LocaleSwitcher, lib/api.ts client, .dark CSS variables, i18n string extensions
+- [ ] 02-05-PLAN.md — Wave 3 (parallel with 02-04): six-layer moderation pipeline — OpenAiModeratorProvider, L1+L3 wrappers, deflections/helplines/notify-founder, CrisisHelplineBubble + MonetizationCTA UI (MOD-01/02/03/04/05/06, COMPLY-02)
+- [ ] 02-06-PLAN.md — Wave 4: extract shared @workspace/twin-runtime lib, scaffold fan-twin artifact (async-ack webhook), fill worker text-generation pipeline with Telegram delivery (CHAT-02, CHAT-06)
+- [ ] 02-07-PLAN.md — Wave 5: Hermes @telegraf/session/pg migration, consent + persona WizardScenes, twins.character_card populated, KYC status line in /status (ONBOARD-01 consent+persona, KYC-03)
+- [ ] 02-08-PLAN.md — Wave 5: voice sample WizardScene + Replit Object Storage upload + /revoke_voice command + consent-revocation worker body (ONBOARD-01 voice slice + ONBOARD-03)
 
 ### Phase 4: Eval Gate + Go-Live
 **Goal**: The creator's twin must pass a 30-case evaluation suite (100% on hard-limit and prompt-injection categories) before the twin is made live; a weekly regression cron ensures the standard holds post-launch
@@ -73,7 +89,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. Running the eval suite against a creator's twin produces a pass/fail report across all 30 cases (10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection); the twin cannot be set live unless hard-limit and injection scores are both 100%
   2. A deliberate regression (lowering a hard-limit guardrail) causes the weekly cron to fire a Sentry alert within the next scheduled run
-**Plans**: TBD
+**Plans:** 8 plans
+- [ ] 02-01-PLAN.md — Wave 0 unblock: env scrub, TELEGRAM_BOT_TOKEN_LALA rename, fan-twin port allocation, package legitimacy gate, 10 RED test scaffolds
+- [ ] 02-02-PLAN.md — Wave 1: Character Card V2 Zod schema, twins.voiceReferenceUrl + creators.monetizationUrl columns, [BLOCKING] drizzle-kit push, HMAC/locale/conversation/system-prompt/disclosure libs + kyc-gate/verifyConversationId middlewares
+- [ ] 02-03-PLAN.md — Wave 2: real /api/twin/chat LLM pipeline (no stubs) + GET /api/twin/:handle/profile + middleware wiring (CHAT-01/03/04/05, COMPLY-01, I18N-02 server side)
+- [ ] 02-04-PLAN.md — Wave 3 (parallel with 02-05): refactor fan-page.tsx into 8 typed components, LocaleSwitcher, lib/api.ts client, .dark CSS variables, i18n string extensions
+- [ ] 02-05-PLAN.md — Wave 3 (parallel with 02-04): six-layer moderation pipeline — OpenAiModeratorProvider, L1+L3 wrappers, deflections/helplines/notify-founder, CrisisHelplineBubble + MonetizationCTA UI (MOD-01/02/03/04/05/06, COMPLY-02)
+- [ ] 02-06-PLAN.md — Wave 4: extract shared @workspace/twin-runtime lib, scaffold fan-twin artifact (async-ack webhook), fill worker text-generation pipeline with Telegram delivery (CHAT-02, CHAT-06)
+- [ ] 02-07-PLAN.md — Wave 5: Hermes @telegraf/session/pg migration, consent + persona WizardScenes, twins.character_card populated, KYC status line in /status (ONBOARD-01 consent+persona, KYC-03)
+- [ ] 02-08-PLAN.md — Wave 5: voice sample WizardScene + Replit Object Storage upload + /revoke_voice command + consent-revocation worker body (ONBOARD-01 voice slice + ONBOARD-03)
 
 ## Progress
 
