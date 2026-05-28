@@ -1,19 +1,11 @@
 // Resend webhook handler — HID-001
-// Receives bounce and complaint events from Resend and records them to the
-// email_suppression_log audit table. Resend also maintains its own suppression
-// list and will not re-deliver to suppressed addresses.
+// PHASE-1 STUB: email_suppression_log table not in @workspace/db Phase 1 schema.
+// Restored in Phase 2 when email suppression tables are migrated to Drizzle.
 //
-// Webhook verification: Resend signs payloads with a secret (RESEND_WEBHOOK_SECRET).
-// Register the webhook in Resend dashboard → Webhooks → add endpoint:
-//   https://<your-domain>/api/webhooks/email
-//   Events: email.bounced, email.complained
-//
-// Middleware: this route requires raw body (Buffer) for HMAC verification.
-// Register it BEFORE express.json() middleware in the main app.
+// POST /api/webhooks/email — receive Resend bounce/complaint events
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import crypto from "crypto";
-import { getSupabase } from "../lib/supabase.js";
 
 const router: IRouter = Router();
 
@@ -39,7 +31,6 @@ function verifyResendSignature(
 ): boolean {
   const secret = process.env["RESEND_WEBHOOK_SECRET"];
   if (!secret) {
-    // If no secret configured, skip verification (dev only).
     return process.env["NODE_ENV"] !== "production";
   }
   if (!signatureHeader) return false;
@@ -57,6 +48,7 @@ function verifyResendSignature(
 
 // POST /api/webhooks/email
 // Must be mounted before express.json() — raw body required.
+// Signature verification preserved; DB write stubbed until Phase 2.
 router.post("/webhooks/email", async (req: Request, res: Response) => {
   const rawBody = req.body as Buffer;
   const sig = req.headers["resend-signature"] as string | undefined;
@@ -74,27 +66,14 @@ router.post("/webhooks/email", async (req: Request, res: Response) => {
     return;
   }
 
-  const { type, data } = event;
+  const { type } = event;
 
   if (type === "email.bounced" || type === "email.complained") {
-    const reason = type === "email.bounced" ? "bounce" : "complaint";
-    const supabase = getSupabase();
-
-    for (const email of data.to) {
-      const { error } = await supabase.from("email_suppression_log").insert({
-        email,
-        reason,
-        source: `resend_${reason}`,
-        metadata: { email_id: data.email_id, resend_event: type },
-      });
-
-      if (error) {
-        req.log?.error(
-          { err: error.message, email, reason },
-          "[email-webhook] failed to write suppression_log"
-        );
-      }
-    }
+    // PHASE-1 STUB: email_suppression_log not in Phase 1 schema — restored in Phase 2
+    req.log?.warn?.(
+      { eventType: type },
+      "[email-webhook] PHASE-1 STUB — suppression log write skipped (email_suppression_log not in Phase 1 schema)",
+    );
   }
 
   // Always return 200 — Resend retries on non-2xx.
