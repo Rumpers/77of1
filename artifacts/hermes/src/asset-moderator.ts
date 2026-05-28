@@ -3,7 +3,8 @@
 // Shared logic: same GMI vision API, same system prompt, same harm categories.
 
 import { createHash } from "crypto";
-import { createClient } from "@supabase/supabase-js";
+import { db } from "@workspace/db";
+import { safetyAuditLogTable } from "@workspace/db";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -193,13 +194,13 @@ export async function moderateVideoWithThumbnail(
 }
 
 // ── audit log write ────────────────────────────────────────────────────────────
-
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key, { auth: { persistSession: false } });
-}
+//
+// Writes to safetyAuditLogTable (D-14: retentionCategory='audit').
+// asset_moderation_audit_log is not in the Phase 1 @workspace/db schema;
+// asset moderation results are stored in the safety_audit_log table using
+// hashed identifiers only (COMPLY-03: no raw fan_id or message text).
+// The fileSha256 is used as both fanIdHash and messageHash since there is no
+// fan identity involved in creator asset uploads.
 
 export async function writeAssetModerationAudit(entry: {
   creatorId: string;
@@ -208,58 +209,54 @@ export async function writeAssetModerationAudit(entry: {
   channel: "web" | "telegram";
   result: AssetModerationResult;
 }): Promise<void> {
-  try {
-    const db = getDb();
-    const { error } = await db.from("asset_moderation_audit_log").insert({
-      creator_id: entry.creatorId,
-      asset_id: entry.assetId,
-      asset_type: entry.assetType,
-      channel: entry.channel,
-      provider: entry.result.provider,
-      passed: entry.result.passed,
-      flagged_categories: entry.result.flaggedCategories,
-      confidence: entry.result.confidence,
-      latency_ms: entry.result.latencyMs,
-      file_sha256: entry.result.fileSha256,
-    });
-    if (error) {
-      console.error(`[asset-moderator] audit write failed: ${error.message}`);
+  void (async () => {
+    try {
+      // Determine crisis level from flagged categories
+      const crisisLevel = entry.result.passed
+        ? ("none" as const)
+        : entry.result.flaggedCategories.some((c) =>
+              c === "csam" || c === "minor_exploit"
+            )
+          ? ("high" as const)
+          : entry.result.flaggedCategories.some((c) =>
+                c === "non_consensual"
+              )
+            ? ("medium" as const)
+            : ("low" as const);
+
+      await db.insert(safetyAuditLogTable).values({
+        creatorId: entry.creatorId,
+        // Use file sha256 as the hashed asset identifier (no raw fan_id in creator uploads)
+        fanIdHash: createHash("sha256").update(entry.result.fileSha256).digest("hex"),
+        sessionId: entry.assetId ?? entry.result.fileSha256,
+        messageHash: entry.result.fileSha256,
+        crisisLevel,
+        crisisType: entry.result.flaggedCategories.join(",") || null,
+        locale: "en",
+        confidence: entry.result.confidence,
+        responseSent: false,
+        twinPaused: false,
+        alerted: false,
+        retentionCategory: "audit",
+      });
+    } catch (err) {
+      console.error(
+        `[asset-moderator] audit write exception: ${(err as Error).message}`,
+      );
     }
-  } catch (err) {
-    console.error(
-      `[asset-moderator] audit write exception: ${(err as Error).message}`,
-    );
-  }
+  })();
 }
 
 // Insert an approved asset row into creator_assets.
+// PHASE-1 STUB: creator_assets table not in @workspace/db — wired in Phase 2.
 export async function insertApprovedAsset(entry: {
   creatorId: string;
   assetType: "photo" | "video";
   storagePath: string;
 }): Promise<string | null> {
-  try {
-    const db = getDb();
-    const { data, error } = await db
-      .from("creator_assets")
-      .insert({
-        creator_id: entry.creatorId,
-        asset_type: entry.assetType,
-        storage_path: entry.storagePath,
-        consent_status: "pending",
-        moderation_status: "approved",
-      })
-      .select("id")
-      .single();
-    if (error) {
-      console.error(`[asset-moderator] creator_assets insert error: ${error.message}`);
-      return null;
-    }
-    return data?.id as string | null;
-  } catch (err) {
-    console.error(
-      `[asset-moderator] insert exception: ${(err as Error).message}`,
-    );
-    return null;
-  }
+  // PHASE-1 STUB: creator_assets write deferred to Phase 2 — out of Phase 1 schema scope
+  console.log(
+    `[asset-moderator] STUB: creator_assets insert deferred to Phase 2 — creatorId=${entry.creatorId} assetType=${entry.assetType} storagePath=${entry.storagePath}`,
+  );
+  return null;
 }
