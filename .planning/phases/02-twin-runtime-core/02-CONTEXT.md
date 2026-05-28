@@ -28,11 +28,17 @@ decided_by: founder (auto-mode resolution per planning_context directives)
 
 - **D-02-09: One-shot (non-streaming) LLM responses.** Streaming (`STREAM-01`) is v2. Moderation L3 must run on full LLM output atomically; speculative-display rollback is too complex for Phase 2.
 
-- **D-02-10: Monetization CTA cadence — every 5th AI reply OR persona-pivot text match.** Server (api-server) attaches `monetization_pivot: true` + `monetization_url` + `platform_name` to response. Client renders `<MonetizationCTA />` pill when flag is true. `monetization_url` lives in `creators.monetizationUrl` column (new — added in 02-02 schema task).
+- **D-02-10: Monetization CTA cadence — every 5th AI reply OR persona-pivot text match.** Server (api-server) attaches `monetization_pivot: true` + `monetization_url` + `platform_name` to response. Client renders `<MonetizationCTA />` pill when flag is true. `monetization_url` lives in `creators.monetizationUrl` column (new — added in 02-02 schema task). `platform_name` and `platform_url` are CAPTURED in the persona wizard (plan 02-07) and stored in `creators.config` JSONB as `{platform_name, platform_url, ...}`. Same `platform_url` is the value written to `creators.monetizationUrl` (so they stay in sync — single source of truth at config write time).
 
 - **D-02-11: Refactor inline-styled `fan-page.tsx` into typed components.** Per UI-SPEC Component Inventory — extract to `artifacts/web/src/components/fan/*.tsx`. Existing 813-line page becomes a composition shell. This is Phase 2 scope (folded into Wave 1 plan 02-04 and Wave 2 plan 02-05).
 
 - **D-02-12: SB 243 disclosure footer is server-rendered, not client-computed.** Web: api-server returns `disclosure_footer` field on every `/api/twin/chat` response. Telegram: worker appends `"\n\n— " + getDisclosureFooter(locale, handle)` before `sendMessage`. Single source of truth at `api-server/src/lib/disclosure.ts` (or `lib/strings/disclosure.ts`).
+
+- **D-02-13: PERSONA-02 constitution storage = Replit Object Storage at `creators/{creatorId}/constitution.md`.** Per RESEARCH Architectural Responsibility Map row "Persona storage": Character Card V2 in `twins.character_card` JSONB is the structured spec; PERSONA-02 constitution is a longer free-form Markdown document the creator can hand-edit (creator's voice, taboos, lore). Stored in the SAME Replit Object Storage bucket as voice samples (D-02-02) — `REPLIT_OBJECT_STORAGE_BUCKET` env var, key `creators/{creatorId}/constitution.md`. Plan 02-07 persona wizard final step writes a STUB constitution (`# {name}'s constitution\n\n(Tell me about your world, taboos, and the things only your closest fans know. Edit this file directly.)`) so the file exists. Plan 02-02 `system-prompt.ts` attempts to fetch the file via `lib/twin-runtime` object-storage helper and PREPENDS its content to the system prompt when present. Silently skip if absent (graceful degrade — Character Card V2 alone is still a valid persona).
+
+- **D-02-14: Skip `i18next-http-middleware` install — use inline `detectLocale(req)`.** Per RESEARCH "Don't Hand-Roll" guidance balanced against the goal of minimizing new deps for a single-handler use case. The route handler in `routes/twin.ts` calls `detectLocale(req)` directly (already exists at `lib/locale.ts` from 02-02). `i18next-http-middleware` is REMOVED from plan 02-01 Task 0 legitimacy gate and NOT installed by plan 02-03. Reconsider in Phase 3 if a second consumer needs middleware-level locale negotiation.
+
+- **D-02-15: MOD-02 ownership = plan 02-02 (system-prompt.ts is the L2 originator).** MOD-02 is the L2 layer (Character Card V2 system_prompt guardrail). `system-prompt.ts` (built in 02-02) composes the persona meta-instruction + post_history_instructions guardrails into the LLM system prompt — that IS L2. Plans 02-05 and 02-06b consume the system-prompt output but do not author L2 themselves. Listing 02-02 as MOD-02's originator removes the "claimed by 02-05/06 but delivered by 02-02" traceability mismatch.
 
 ## Deferred Ideas
 
@@ -47,9 +53,10 @@ decided_by: founder (auto-mode resolution per planning_context directives)
 
 ## Claude's Discretion
 
-- Exact wave packing within the constraints above (8 plans, 5 waves)
+- Exact wave packing within the constraints above (9 plans, 6 waves after revision 1)
 - Test mock harness shapes (follow `safety-audit.test.ts` pattern from PATTERNS S7)
 - Helicone routing toggle in `OpenAiModeratorProvider` (optional per `HELICONE_API_KEY`)
 - Exact wording of safe-deflection strings beyond the UI-SPEC table — copy verbatim from UI-SPEC
 - Telegraf session storage table name (default `telegraf_sessions`; let `@telegraf/session/pg` create it)
 - Whether to share `lib/strings/` as a new workspace package or inline strings into `api-server/src/lib/*` — discretion says **inline** for Phase 2 (one consumer for now), promote to `lib/strings/` if fan-twin or worker need them in Phase 3
+- Exact prepend format for PERSONA-02 constitution into the system prompt (suggested: `## Constitution\n\n{constitution_md}\n\n---\n\n{existing_system_prompt}`) — verify with founder smoke once a real constitution exists

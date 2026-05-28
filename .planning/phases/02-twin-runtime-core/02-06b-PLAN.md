@@ -1,9 +1,9 @@
 ---
 phase: 02-twin-runtime-core
-plan: 06
+plan: 06b
 type: execute
-wave: 4
-depends_on: [02-02, 02-05]
+wave: 6
+depends_on: [02-06a]
 files_modified:
   - artifacts/fan-twin/package.json
   - artifacts/fan-twin/src/index.ts
@@ -13,28 +13,26 @@ files_modified:
   - artifacts/fan-twin/src/__tests__/webhook-ack.test.ts
   - artifacts/worker/src/workers/text-generation.ts
   - artifacts/worker/package.json
-  - lib/queue/src/types.ts
 autonomous: true
-requirements: [CHAT-02, CHAT-06, COMPLY-01, MOD-01, MOD-02, MOD-03, MOD-04, MOD-05, MOD-06, COMPLY-02, I18N-02]
+requirements: [CHAT-02, CHAT-06, COMPLY-01, MOD-01, MOD-03, MOD-04, MOD-05, MOD-06, COMPLY-02, PERSONA-02, I18N-02]
 tags: [phase-2, fan-twin, telegram, worker, async, chat-06]
 
 must_haves:
   truths:
     - "Fan posts text to fan-twin Telegram bot → bot returns HTTP 200 within ~50ms (BullMQ enqueue) — no Telegram 60s timeout possible"
     - "Worker drains textGeneration queue, runs L1/L2/L3 moderation pipeline, calls GMI, sends reply via bot.telegram.sendMessage"
+    - "Worker calls readConstitution(creatorId) and passes result to buildSystemPrompt — PERSONA-02 honored on Telegram surface as well as web"
     - "Duplicate Telegram update (same update_id) processed once (BullMQ jobId dedup)"
     - "Telegram reply includes COMPLY-01 disclosure footer in detected locale (— AI twin · @handle_ai)"
     - "Self-harm input via Telegram → helpline + deflection delivered; safety_audit_log written; founder notify fired"
     - "Outbound Telegraf client in worker has no .launch() (no webhook conflict with fan-twin artifact)"
     - "fan-twin uses @telegraf/session/pg for session persistence (survives Replit restart)"
-    - "TextGenerationPayload extended with locale, conversationId, deliveryChannel, telegramChatId, twinId? — type-checked at compile time"
+    - "fan-twin imports @workspace/twin-runtime (built in 02-06a) — no direct imports from api-server source"
   artifacts:
     - path: "artifacts/fan-twin/src/index.ts"
       provides: "Telegraf bot with async-ack webhook handler"
     - path: "artifacts/worker/src/workers/text-generation.ts"
-      provides: "Real pipeline body — L1/L3 moderation + GMI + Telegram delivery"
-    - path: "lib/queue/src/types.ts"
-      contains: "extended TextGenerationPayload with locale + conversationId + deliveryChannel + telegramChatId"
+      provides: "Real pipeline body — L1/L3 moderation + GMI + Telegram delivery + PERSONA-02 constitution"
     - path: "artifacts/fan-twin/src/__tests__/webhook-ack.test.ts"
       provides: "Integration test asserting webhook ACKs <100ms regardless of downstream LLM latency"
   key_links:
@@ -51,17 +49,21 @@ must_haves:
       via: "outbound Telegraf client (no .launch)"
       pattern: "telegram\\.sendMessage"
     - from: "artifacts/worker/src/workers/text-generation.ts"
+      to: "@workspace/twin-runtime readConstitution + buildSystemPrompt"
+      via: "constitution awaited then passed into prompt builder"
+      pattern: "readConstitution|buildSystemPrompt"
+    - from: "artifacts/worker/src/workers/text-generation.ts"
       to: "getModeratorProvider + getTextProvider"
       via: "imports from @workspace/providers"
       pattern: "getModeratorProvider|getTextProvider"
 ---
 
 <objective>
-Wave 4a: stand up the Telegram fan-twin artifact and fill the worker's text-generation body so a fan can chat with the creator's twin through Telegram. Webhook ACKs immediately; worker handles LLM + moderation + delivery asynchronously per CHAT-06.
+Wave 6 (split out of original 02-06 per checker WARNING 7): stand up the Telegram fan-twin artifact and fill the worker's text-generation body so a fan can chat with the creator's twin through Telegram. Webhook ACKs immediately; worker handles LLM + moderation + delivery asynchronously per CHAT-06. Depends on 02-06a — all twin-runtime libs are now imported from `@workspace/twin-runtime`.
 
 Purpose: CHAT-02 (fan-twin bot) and CHAT-06 (async ack) are mandated by REQUIREMENTS. Pitfall #7 (429 retry storm) is the technical reason — sync paths under load cause Telegram to re-deliver updates and amplify outbound load. The async pattern is architectural, not performance optimization.
 
-Output: Functional `artifacts/fan-twin/` artifact + worker pipeline filled. Self-harm flow works end-to-end through Telegram (helpline injection, founder notify, audit row). Single-tenant per D-02-01.
+Output: Functional `artifacts/fan-twin/` artifact + worker pipeline filled. Self-harm flow works end-to-end through Telegram (helpline injection, founder notify, audit row). PERSONA-02 constitution is read by worker just like the web pipeline reads it in 02-03. Single-tenant per D-02-01.
 </objective>
 
 <execution_context>
@@ -76,41 +78,36 @@ Output: Functional `artifacts/fan-twin/` artifact + worker pipeline filled. Self
 @.planning/phases/02-twin-runtime-core/02-01-SUMMARY.md
 @.planning/phases/02-twin-runtime-core/02-02-SUMMARY.md
 @.planning/phases/02-twin-runtime-core/02-05-SUMMARY.md
+@.planning/phases/02-twin-runtime-core/02-06a-SUMMARY.md
 @artifacts/hermes/src/index.ts
 @artifacts/hermes/package.json
 @artifacts/worker/src/workers/text-generation.ts
 @lib/queue/src/types.ts
-@artifacts/api-server/src/lib/moderation.ts
-@artifacts/api-server/src/lib/conversation.ts
-@artifacts/api-server/src/lib/hmac-conversation.ts
-@artifacts/api-server/src/lib/system-prompt.ts
-@artifacts/api-server/src/lib/disclosure.ts
-@artifacts/api-server/src/lib/safety-audit.ts
 </context>
 
 <interfaces>
-<!-- Wave 2 + 3 outputs consumed here -->
-
-From lib/queue/src/types.ts (current):
-- `TextGenerationPayload extends JobPayloadBase { type: "text-generation"; prompt: string }`
-- JobPayloadBase: `{ jobDbId, creatorId, fanId, consentGrantVersion }`
-- **Extend** with: `locale: "en"|"ja"|"zh-TW"`, `conversationId: string`, `deliveryChannel: "web"|"telegram"`, `telegramChatId?: number`, `twinId?: string`
+<!-- All twin-runtime libs are now in @workspace/twin-runtime (built in 02-06a) -->
 
 From @workspace/queue (lib/queue/src/queues.ts):
 - `textGeneration: Queue<TextGenerationPayload>` exported
 - `.add(jobName, payload, opts?)` where opts.jobId enables dedup
 
+From @workspace/twin-runtime (built in 02-06a):
+- runL1Moderation, runL3Moderation, composeFlaggedReply, severityFromCategories
+- loadHistory, persistTurn
+- buildSystemPrompt(card, locale, constitution?)
+- readConstitution(creatorId) — PERSONA-02 reader (D-02-13)
+- getDisclosureFooter
+- getHelpline, getDeflection
+- deriveTelegramConversationId
+- notifyFounderAsync (already invoked inside moderation.ts internals)
+
+From lib/queue/src/types.ts (extended in 02-06a):
+- TextGenerationPayload now includes locale, conversationId, deliveryChannel, telegramChatId, twinId, handle
+
 From artifacts/hermes/src/index.ts (lines 524-541):
 - Telegraf launch pattern: webhook in prod (`WEBHOOK_URL` + optional `WEBHOOK_SECRET`), long-poll in dev
 - SIGTERM/SIGINT graceful shutdown
-
-From artifacts/api-server/src/lib/* (built in 02-02, 02-05):
-- runL1Moderation, runL3Moderation (lib/moderation.ts)
-- loadHistory, persistTurn (lib/conversation.ts)
-- buildSystemPrompt (lib/system-prompt.ts)
-- getDisclosureFooter (lib/disclosure.ts)
-- deriveTelegramConversationId (lib/hmac-conversation.ts)
-- These will be IMPORTED into worker via @workspace/api-server alias OR moved into a shared lib. **Decision per discretion:** create `lib/twin-runtime/` package OR copy the bodies (small, ~30 lines each) into worker. CHOOSE: import via relative path `../../../api-server/src/lib/...` is brittle; recommend creating `lib/twin-runtime/` as a new workspace package OR exposing these from a `@workspace/api-server-lib` export. Simplest for Phase 2: add a `"lib/twin-runtime/"` workspace package that re-exports these libs. (See Task 1 action.)
 
 From hermes outbound pattern (Pitfall: worker can't .launch()):
 - `new Telegraf(token)` without `.launch()` → only `bot.telegram.sendMessage(...)` calls allowed
@@ -119,78 +116,15 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
 <tasks>
 
 <task type="auto" tdd="true">
-  <name>Task 1: Extract twin-runtime libs into shared @workspace/twin-runtime package + extend TextGenerationPayload</name>
-  <files>lib/twin-runtime/package.json, lib/twin-runtime/tsconfig.json, lib/twin-runtime/src/index.ts, lib/twin-runtime/src/moderation.ts, lib/twin-runtime/src/conversation.ts, lib/twin-runtime/src/hmac-conversation.ts, lib/twin-runtime/src/system-prompt.ts, lib/twin-runtime/src/disclosure.ts, lib/twin-runtime/src/deflections.ts, lib/twin-runtime/src/helplines.ts, lib/twin-runtime/src/notify-founder.ts, lib/twin-runtime/src/locale.ts, artifacts/api-server/src/lib/moderation.ts, artifacts/api-server/src/lib/conversation.ts, artifacts/api-server/src/lib/hmac-conversation.ts, artifacts/api-server/src/lib/system-prompt.ts, artifacts/api-server/src/lib/disclosure.ts, artifacts/api-server/src/lib/deflections.ts, artifacts/api-server/src/lib/helplines.ts, artifacts/api-server/src/lib/notify-founder.ts, artifacts/api-server/src/lib/locale.ts, artifacts/api-server/package.json, lib/queue/src/types.ts, lib/queue/package.json, pnpm-workspace.yaml</files>
-  <read_first>
-    - artifacts/api-server/src/lib/{moderation,conversation,hmac-conversation,system-prompt,disclosure,deflections,helplines,notify-founder,locale}.ts (all 9 files built in 02-02 + 02-05 — these MOVE)
-    - lib/queue/src/types.ts (current TextGenerationPayload shape)
-    - lib/db/package.json (workspace package shape)
-    - pnpm-workspace.yaml (packages glob)
-  </read_first>
-  <action>
-    Create new workspace package `lib/twin-runtime/`:
-    - `package.json`: `{name: "@workspace/twin-runtime", version: "0.0.0", main: "./dist/index.js", types: "./dist/index.d.ts", scripts: {build, typecheck}, dependencies: {@workspace/db: workspace:*, @workspace/providers: workspace:*, drizzle-orm: catalog:, zod: catalog:}}`
-    - `tsconfig.json`: extend root tsconfig.base.json (mirror lib/db/tsconfig.json)
-    - `src/index.ts`: re-export everything from the 9 sub-modules
-
-    MOVE all 9 lib files from `artifacts/api-server/src/lib/` to `lib/twin-runtime/src/`:
-    - moderation.ts, conversation.ts, hmac-conversation.ts, system-prompt.ts, disclosure.ts, deflections.ts, helplines.ts, notify-founder.ts, locale.ts
-    - Each file keeps its lazy-getDb pattern (PATTERNS S1) — lazy import shape unchanged
-    - Update internal imports: relative `.js` extensions stay; cross-module imports adjust from `../lib/x.js` to `./x.js` (since they're now siblings)
-
-    Update `artifacts/api-server/src/lib/`: REPLACE each moved file with a thin re-export:
-    ```ts
-    export * from "@workspace/twin-runtime/dist/moderation.js";  // or barrel-re-export through @workspace/twin-runtime
-    ```
-    Simplest: leave a single re-export file per module: `artifacts/api-server/src/lib/moderation.ts` becomes `export { runL1Moderation, runL3Moderation, composeFlaggedReply, severityFromCategories } from "@workspace/twin-runtime";`. Same for the other 8 files. This keeps api-server's existing imports stable.
-
-    Add `"@workspace/twin-runtime": "workspace:*"` to `artifacts/api-server/package.json` dependencies. Also add to `lib/queue/package.json` and `artifacts/worker/package.json` (for the worker task below).
-
-    Update `pnpm-workspace.yaml` if the `packages` array doesn't already glob `lib/*`.
-
-    Extend `lib/queue/src/types.ts` TextGenerationPayload:
-    ```ts
-    export interface TextGenerationPayload extends JobPayloadBase {
-      type: "text-generation";
-      prompt: string;
-      locale: "en" | "ja" | "zh-TW";       // NEW
-      conversationId: string;                 // NEW
-      deliveryChannel: "web" | "telegram";   // NEW
-      telegramChatId?: number;                // NEW — required when deliveryChannel="telegram"
-      twinId?: string;                        // NEW — optional, resolved by worker
-      handle?: string;                        // NEW — for disclosure footer
-    }
-    ```
-
-    Run `pnpm install` (workspace recognizes new package). Run `pnpm --filter @workspace/twin-runtime run build` and `pnpm --filter @workspace/api-server exec tsc --noEmit` — should both pass.
-  </action>
-  <verify>
-    <automated>pnpm install --frozen-lockfile=false && pnpm --filter @workspace/twin-runtime exec tsc --noEmit && pnpm --filter @workspace/api-server exec tsc --noEmit && pnpm --filter @workspace/api-server exec vitest run 2>&1 | tail -20 | grep -E "passed|fail"</automated>
-  </verify>
-  <done>
-    - lib/twin-runtime/ exists as a workspace package
-    - 9 lib files moved; api-server has thin re-exports preserving import surface
-    - TextGenerationPayload extended with 5 new fields
-    - api-server still typechecks and all existing tests pass (no regression)
-    - lib/queue and artifacts/worker have @workspace/twin-runtime in deps
-  </done>
-  <acceptance_criteria>
-    - Worker can `import { runL1Moderation } from "@workspace/twin-runtime"` without reaching into api-server's source
-    - api-server existing source unchanged at import-site level (imports still resolve)
-    - TextGenerationPayload fully types the Telegram-delivery contract
-  </acceptance_criteria>
-</task>
-
-<task type="auto" tdd="true">
-  <name>Task 2: Scaffold artifacts/fan-twin/src/ + install deps + async webhook ACK + session/conversation/locale helpers</name>
+  <name>Task 1: Scaffold artifacts/fan-twin/src/ + install deps + async webhook ACK + session/conversation/locale helpers</name>
   <files>artifacts/fan-twin/package.json, artifacts/fan-twin/src/index.ts, artifacts/fan-twin/src/session.ts, artifacts/fan-twin/src/conversation.ts, artifacts/fan-twin/src/locale.ts, artifacts/fan-twin/src/__tests__/webhook-ack.test.ts</files>
   <read_first>
-    - artifacts/fan-twin/package.json (skeleton from 02-01)
+    - artifacts/fan-twin/package.json (skeleton from 02-01 + @workspace/twin-runtime added in 02-06a)
     - artifacts/hermes/src/index.ts (Telegraf launch pattern — lines 524-541; bot.on('text') pattern)
     - .planning/phases/02-twin-runtime-core/02-PATTERNS.md (C3 — fan-twin index.ts skeleton; C1 — package.json diff; S5 — Telegraf launch)
     - .planning/phases/02-twin-runtime-core/02-RESEARCH.md (Pattern 4 — full fan-twin index.ts with @telegraf/session/pg; Pitfall #7 — async ack mandate)
     - lib/queue/src/queues.ts (textGeneration queue handle)
-    - lib/queue/src/types.ts (extended TextGenerationPayload from Task 1)
+    - lib/queue/src/types.ts (extended TextGenerationPayload from 02-06a)
   </read_first>
   <behavior>
     - Bot starts in dev (long-poll) and prod (webhook) modes per WEBHOOK_URL_FAN_TWIN env
@@ -202,9 +136,9 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
   </behavior>
   <action>
     Update `artifacts/fan-twin/package.json` per PATTERNS C1:
-    - Add deps: `@workspace/db`, `@workspace/queue`, `@workspace/twin-runtime`, `@telegraf/session` (version confirmed in 02-01 Task 0), `telegraf ^4.16.3`, `drizzle-orm catalog:`, `pg ^8.20.0`, `zod catalog:`
+    - Add deps: `@workspace/db`, `@workspace/queue`, `@workspace/twin-runtime` (already added in 02-06a), `@telegraf/session` (version confirmed in 02-01 Task 0), `telegraf ^4.16.3`, `drizzle-orm catalog:`, `pg ^8.20.0`, `zod catalog:`
     - Mirror hermes devDependencies (esbuild + tsx + vitest)
-    - Run `pnpm --filter @workspace/fan-twin add @telegraf/session@<version> @workspace/db @workspace/queue @workspace/twin-runtime pg telegraf drizzle-orm zod`
+    - Run `pnpm --filter @workspace/fan-twin add @telegraf/session@<version> @workspace/db @workspace/queue pg telegraf drizzle-orm zod`
     - Run `pnpm --filter @workspace/fan-twin add -D vitest tsx esbuild`
 
     Create `artifacts/fan-twin/src/session.ts` per RESEARCH Pattern 4:
@@ -251,15 +185,15 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
 </task>
 
 <task type="auto" tdd="true">
-  <name>Task 3: Fill artifacts/worker/src/workers/text-generation.ts pipeline + outbound Telegraf client</name>
+  <name>Task 2: Fill artifacts/worker/src/workers/text-generation.ts pipeline + outbound Telegraf client + PERSONA-02 constitution read</name>
   <files>artifacts/worker/src/workers/text-generation.ts, artifacts/worker/package.json</files>
   <read_first>
     - artifacts/worker/src/workers/text-generation.ts (existing stub — KEEP lifecycle scaffolding lines 8-38, 58-77 verbatim per PATTERNS B1)
     - artifacts/worker/src/workers/voice-generation.ts (sibling skeleton — pattern reference)
     - .planning/phases/02-twin-runtime-core/02-PATTERNS.md (B1 — text-generation pipeline; Pitfall: worker can't .launch())
     - .planning/phases/02-twin-runtime-core/02-RESEARCH.md (Pattern 5 — full worker-side delivery)
-    - lib/queue/src/types.ts (newly extended TextGenerationPayload from Task 1)
-    - artifacts/api-server/src/routes/twin.ts (web-side pipeline — same shape; worker mirrors it)
+    - lib/queue/src/types.ts (newly extended TextGenerationPayload from 02-06a)
+    - artifacts/api-server/src/routes/twin.ts (web-side pipeline — same shape; worker mirrors it including readConstitution wiring from 02-03)
     - lib/db/src/schema/index.ts (creatorConfigTable, creatorsTable, twinsTable, conversationMessagesTable)
   </read_first>
   <behavior>
@@ -268,7 +202,7 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
     - For deliveryChannel="web" jobs: NO-OP (web is sync — this worker only handles Telegram)
     - Pause/kill-switch gate: if creator_config.paused OR creators.kill_switch_active → send pause message + return (no LLM call)
     - L1 flagged: send helpline + deflection via Telegram; audit + founder notify; return
-    - LLM call: persist user turn, build system prompt from twin.characterCard, call getTextProvider().generateText with history
+    - LLM call: persist user turn, READ CONSTITUTION via readConstitution(creatorId), build system prompt from twin.characterCard + constitution, call getTextProvider().generateText with history
     - L3 flagged: replace with deflection; audit + founder notify
     - Persist assistant turn (safe reply only)
     - Outbound: bot.telegram.sendMessage(chatId, safeReply + "\n\n— " + getDisclosureFooter(locale, handle), {parse_mode: "Markdown"})
@@ -276,7 +210,7 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
     - Outbound Telegraf instance: module-scope singleton `new Telegraf(token)` with NO .launch() — pure HTTP client per Pitfall
   </behavior>
   <action>
-    Ensure `@workspace/twin-runtime` is in `artifacts/worker/package.json` deps (added in Task 1).
+    Ensure `@workspace/twin-runtime` is in `artifacts/worker/package.json` deps (added in 02-06a Task 1).
 
     Read existing `artifacts/worker/src/workers/text-generation.ts` to preserve lifecycle scaffolding per PATTERNS B1 (status update to 'processing' with bullmqJobId+attemptCount, failed handler, complete status update).
 
@@ -290,28 +224,29 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
     6. L1 mod: `const l1 = await runL1Moderation({text: prompt, locale, creatorId, fanIdHash: hashFanId(fanId), sessionId: conversationId})` (use twin-runtime helpers). If flagged: handle crisis path (helpline + deflection — TWO sendMessage calls per UI-SPEC Telegram formatting) OR single deflection sendMessage; return
     7. Resolve twin: `const twin = await db.select().from(twinsTable).where(eq(twinsTable.creatorId, creatorId)).limit(1)`
     8. Load history: `loadHistory(conversationId, 20)`
-    9. Build system prompt: `buildSystemPrompt(twin[0]?.characterCard, locale)`
-    10. Persist user turn
-    11. LLM: `getTextProvider().generateText({creatorId, fanId: hashFanId(fanId), messages: [...history, {role: 'user', content: prompt}], systemPrompt, maxTokens: 512})`
-    12. L3 mod on llm.content
-    13. `const safeReply = l3.flagged ? l3.reply! : llm.content`
-    14. Persist assistant turn (safeReply)
-    15. Deliver: `await fanTwinOut.telegram.sendMessage(telegramChatId, safeReply + "\n\n— " + getDisclosureFooter(locale, handle), {parse_mode: 'Markdown'})`
-    16. If crisis path AND payload.monetization_pivot (not relevant since crisis turns skip CTA per UI-SPEC) — n/a
+    9. **PERSONA-02 read (D-02-13):** `const constitution = await readConstitution(creatorId)` — null when absent or storage unavailable; never throws
+    10. Build system prompt: `buildSystemPrompt(twin[0]?.characterCard, locale, constitution)` — same call signature as 02-03 web path
+    11. Persist user turn
+    12. LLM: `getTextProvider().generateText({creatorId, fanId: hashFanId(fanId), messages: [...history, {role: 'user', content: prompt}], systemPrompt, maxTokens: 512})`
+    13. L3 mod on llm.content
+    14. `const safeReply = l3.flagged ? l3.reply! : llm.content`
+    15. Persist assistant turn (safeReply)
+    16. Deliver: `await fanTwinOut.telegram.sendMessage(telegramChatId, safeReply + "\n\n— " + getDisclosureFooter(locale, handle), {parse_mode: 'Markdown'})`
     17. On any error in pipeline: log via pino, throw to let BullMQ retry per existing failed handler
 
-    Imports from @workspace/twin-runtime: `runL1Moderation, runL3Moderation, loadHistory, persistTurn, buildSystemPrompt, getDisclosureFooter, composeFlaggedReply, getHelpline, getDeflection`. Imports from @workspace/api-server are NOT used — twin-runtime is the shared lib.
+    Imports from @workspace/twin-runtime: `runL1Moderation, runL3Moderation, loadHistory, persistTurn, buildSystemPrompt, readConstitution, getDisclosureFooter, composeFlaggedReply, getHelpline, getDeflection`. Imports from @workspace/api-server are NOT used — twin-runtime is the shared lib.
 
     Update payload type assertion to use extended TextGenerationPayload from lib/queue/src/types.ts.
   </action>
   <verify>
-    <automated>pnpm --filter @workspace/worker exec tsc --noEmit && grep -c "fanTwinOut\\.telegram\\.sendMessage\|fanTwinOut.telegram.sendMessage" artifacts/worker/src/workers/text-generation.ts | awk '{exit ($1>=1)?0:1}' && ! grep -E "fanTwinOut\\.launch|\\.launch\\(\\)" artifacts/worker/src/workers/text-generation.ts && grep -c "runL1Moderation\|runL3Moderation" artifacts/worker/src/workers/text-generation.ts | awk '{exit ($1>=2)?0:1}'</automated>
+    <automated>pnpm --filter @workspace/worker exec tsc --noEmit && grep -c "fanTwinOut\\.telegram\\.sendMessage\|fanTwinOut.telegram.sendMessage" artifacts/worker/src/workers/text-generation.ts | awk '{exit ($1>=1)?0:1}' && ! grep -E "fanTwinOut\\.launch|\\.launch\\(\\)" artifacts/worker/src/workers/text-generation.ts && grep -c "runL1Moderation\|runL3Moderation" artifacts/worker/src/workers/text-generation.ts | awk '{exit ($1>=2)?0:1}' && grep -c "readConstitution" artifacts/worker/src/workers/text-generation.ts | awk '{exit ($1>=1)?0:1}'</automated>
   </verify>
   <done>
     - Worker typechecks
     - Pipeline body replaces STUB; lifecycle scaffolding preserved
     - Outbound Telegraf client has no .launch() (Pitfall mitigated)
     - L1 + L3 moderation invoked
+    - readConstitution called and passed to buildSystemPrompt (PERSONA-02 parity with web pipeline)
     - Disclosure footer appended to every outbound message
   </done>
   <acceptance_criteria>
@@ -319,6 +254,7 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
     - Per MOD-01/03/04/05/06: full moderation pipeline runs in worker (mirrors api-server web path)
     - Per COMPLY-01: disclosure footer on every Telegram reply
     - Per COMPLY-02: self-harm flagged input → helpline + deflection delivered via two sendMessage calls
+    - Per PERSONA-02 (D-02-13): constitution read happens in BOTH the web (02-03) and Telegram (this plan) pipelines — single source helper readConstitution
     - Per PATTERNS S6: KYC gate runs inline in worker (paste isKycSigned check before pause gate, OR rely on api-server having gated via twin-profile API — discretion: keep redundant in-worker check for defense-in-depth)
     - Per S2: notify-founder is fire-and-forget (already inside moderation.ts wrappers)
   </acceptance_criteria>
@@ -335,31 +271,35 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
 | fan-twin → BullMQ Redis | trusted (same Replit instance); payload type-checked via TextGenerationPayload |
 | worker → GMI + OpenAI moderation | outbound HTTPS; same trust as api-server |
 | worker → Telegram Bot API | outbound HTTPS; uses TELEGRAM_BOT_TOKEN_FAN_TWIN |
+| worker → Replit Object Storage (constitution read) | outbound HTTPS; same trust as api-server |
 
 ## STRIDE Threat Register
 
 | Threat ID | Category | Component | Disposition | Mitigation Plan |
 |-----------|----------|-----------|-------------|-----------------|
-| T-02-06-01 | Spoofing | webhook spoofing (third-party POST to fan-twin URL) | mitigate | Telegraf launch with `secretToken: WEBHOOK_SECRET_FAN_TWIN`; Telegram includes header `X-Telegram-Bot-Api-Secret-Token`; Telegraf rejects mismatches |
-| T-02-06-02 | DoS | 429 Telegram retry storm (sync handler) | mitigate | Async ACK mandated (CHAT-06); webhook handler only enqueues; worker rate-limited via BullMQ concurrency |
-| T-02-06-03 | Tampering | duplicate update_id replay | mitigate | `jobId: tg-${update_id}` — BullMQ silently drops dupes |
-| T-02-06-04 | Tampering | KYC gate bypass on Telegram path | mitigate | PATTERNS S6 — worker re-runs isKycSigned check inline; api-server's gate not relied on (defense-in-depth) |
-| T-02-06-05 | Info Disclosure | TELEGRAM_BOT_TOKEN_FAN_TWIN in worker logs | mitigate | Token never interpolated into log strings; only used as Telegraf constructor arg |
-| T-02-06-06 | Info Disclosure | bot.telegram error response leaks chat metadata to logs | mitigate | pino redact extension covers `req.body`; worker logs error.message only, not error.cause |
-| T-02-06-07 | Tampering | worker .launch() conflict with fan-twin .launch() | mitigate | New module-level pitfall (RESEARCH calls out): worker uses `new Telegraf(token)` without `.launch()` — verified via grep in <verify> |
-| T-02-06-08 | Compliance violation | crisis helpline not delivered to Telegram fan | mitigate | UI-SPEC Telegram formatting mandates two sendMessage calls (helpline first, deflection second); composeFlaggedReply returns helpline+deflection joined which the worker splits |
-| T-02-06-SC | Tampering | @telegraf/session install | mitigate | Plan 02-01 Task 0 founder approval; version pinned from approval message |
+| T-02-06b-01 | Spoofing | webhook spoofing (third-party POST to fan-twin URL) | mitigate | Telegraf launch with `secretToken: WEBHOOK_SECRET_FAN_TWIN`; Telegram includes header `X-Telegram-Bot-Api-Secret-Token`; Telegraf rejects mismatches |
+| T-02-06b-02 | DoS | 429 Telegram retry storm (sync handler) | mitigate | Async ACK mandated (CHAT-06); webhook handler only enqueues; worker rate-limited via BullMQ concurrency |
+| T-02-06b-03 | Tampering | duplicate update_id replay | mitigate | `jobId: tg-${update_id}` — BullMQ silently drops dupes |
+| T-02-06b-04 | Tampering | KYC gate bypass on Telegram path | mitigate | PATTERNS S6 — worker re-runs isKycSigned check inline; api-server's gate not relied on (defense-in-depth) |
+| T-02-06b-05 | Info Disclosure | TELEGRAM_BOT_TOKEN_FAN_TWIN in worker logs | mitigate | Token never interpolated into log strings; only used as Telegraf constructor arg |
+| T-02-06b-06 | Info Disclosure | bot.telegram error response leaks chat metadata to logs | mitigate | pino redact extension covers `req.body`; worker logs error.message only, not error.cause |
+| T-02-06b-07 | Tampering | worker .launch() conflict with fan-twin .launch() | mitigate | New module-level pitfall (RESEARCH calls out): worker uses `new Telegraf(token)` without `.launch()` — verified via grep in <verify> |
+| T-02-06b-08 | Compliance violation | crisis helpline not delivered to Telegram fan | mitigate | UI-SPEC Telegram formatting mandates two sendMessage calls (helpline first, deflection second); composeFlaggedReply returns helpline+deflection joined which the worker splits |
+| T-02-06b-09 | Info Disclosure | constitution.md content delivered to fan via Telegram | accept | Same disposition as T-02-02-06 (web path): constitution IS deliberately injected into LLM context; L3 moderation catches accidental disclosure |
+| T-02-06b-SC | Tampering | @telegraf/session install | mitigate | Plan 02-01 Task 0 founder approval; version pinned from approval message |
 </threat_model>
 
 <verification>
-- `pnpm --filter @workspace/twin-runtime exec tsc --noEmit` exits 0
+- `pnpm --filter @workspace/twin-runtime exec tsc --noEmit` exits 0 (regression check)
 - `pnpm --filter @workspace/fan-twin exec tsc --noEmit` exits 0
 - `pnpm --filter @workspace/worker exec tsc --noEmit` exits 0
-- `pnpm --filter @workspace/api-server exec tsc --noEmit` exits 0 (regression check after lib move)
+- `pnpm --filter @workspace/api-server exec tsc --noEmit` exits 0 (regression check after 02-06a)
 - `pnpm --filter @workspace/api-server run test` full suite still passes
 - `pnpm --filter @workspace/fan-twin exec vitest run src/__tests__/webhook-ack.test.ts` exits 0
 - `grep -c "\\.launch" artifacts/worker/src/workers/text-generation.ts` returns 0
+- `grep -c "readConstitution" artifacts/worker/src/workers/text-generation.ts` ≥ 1 (PERSONA-02 wired on Telegram path)
 - Manual integration (founder, in Replit): send "hi" to fan-twin bot → reply arrives within ~5s with disclosure footer; send "I want to hurt myself" in JP locale → two messages arrive (helpline 0120-279-338, then deflection); founder Telegram receives alert
+- Manual integration: with `creators/{creatorId}/constitution.md` present in bucket → assistant replies reflect its content; remove the file → assistant replies degrade gracefully to Character Card V2 alone
 </verification>
 
 <success_criteria>
@@ -367,10 +307,10 @@ From hermes outbound pattern (Pitfall: worker can't .launch()):
 - Webhook ACKs <100ms (test passes)
 - Worker drains queue and delivers reply via Telegram with disclosure footer
 - Crisis path delivers helpline + deflection in two messages
-- @workspace/twin-runtime exists as shared lib; api-server + worker both consume it
-- TextGenerationPayload extended with Telegram fields
+- PERSONA-02 constitution is read and prepended on the Telegram path (parity with web path in 02-03)
+- fan-twin and worker consume @workspace/twin-runtime exclusively (no reach into api-server source)
 </success_criteria>
 
 <output>
-Create `.planning/phases/02-twin-runtime-core/02-06-SUMMARY.md` with: BotFather bot username, founder smoke-test result, fan-twin port confirmation, twin-runtime package structure.
+Create `.planning/phases/02-twin-runtime-core/02-06b-SUMMARY.md` with: BotFather bot username, founder smoke-test result (text path + crisis path + constitution presence/absence), fan-twin port confirmation.
 </output>
