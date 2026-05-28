@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
+    "@workspace/queue": "workspace:*",
+    "@workspace/twin-runtime": "workspace:*",
     "@telegraf/session": "2.0.0-beta.7",
     "drizzle-orm": "catalog:",
     "pg": "^8.20.0",
