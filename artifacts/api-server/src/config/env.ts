@@ -27,13 +27,11 @@ const envSchema = z.object({
     .string()
     .min(32, "HMAC_CONVERSATION_SECRET must be ≥32 characters"),
 
-  // Telegram bot tokens — both required (Phase 2: separate creator/fan bots)
-  TELEGRAM_BOT_TOKEN_LALA: z
-    .string()
-    .min(1, "TELEGRAM_BOT_TOKEN_LALA is required (renamed from TELEGRAM_BOT_TOKEN)"),
-  TELEGRAM_BOT_TOKEN_FAN_TWIN: z
-    .string()
-    .min(1, "TELEGRAM_BOT_TOKEN_FAN_TWIN is required"),
+  // Telegram bot tokens — consumed by hermes/fan-twin artifacts, not api-server.
+  // Optional here so api-server can boot for web-only smoke without them; the
+  // artifacts that need them validate their own env at their own boot.
+  TELEGRAM_BOT_TOKEN_LALA: z.string().optional(),
+  TELEGRAM_BOT_TOKEN_FAN_TWIN: z.string().optional(),
 
   // Founder alert channel — recommended for L5 (Sentry + Telegram notify)
   FOUNDER_TELEGRAM_CHAT_ID: z.string().optional(),
