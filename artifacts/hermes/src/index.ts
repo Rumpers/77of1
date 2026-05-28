@@ -17,6 +17,7 @@ import {
 } from "./asset-moderator.js";
 import { sessionMiddleware } from "./session.js";
 import { consentWizard } from "./scenes/consent.scene.js";
+import { personaWizard } from "./scenes/persona.scene.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
@@ -31,7 +32,7 @@ const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
 // command handler that calls ctx.scene.enter(...). Order matters:
 //   1. sessionMiddleware (@telegraf/session/pg) — provides ctx.session
 //   2. stage.middleware() — provides ctx.scene with wizard-context support
-const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard]);
+const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard]);
 bot.use(sessionMiddleware);
 bot.use(stage.middleware());
 
@@ -191,6 +192,30 @@ bot.command("consent", async (ctx) => {
 
   console.log(`[hermes] /consent started creator_id=${creator.id} (scene)`);
   await ctx.scene.enter("consent-wizard", { creatorId: creator.id, currentIndex: 0, answers: {} });
+});
+
+// /persona — onboarding Step 2 (NEW in 02-07): Character Card V2 wizard.
+// Captures 6 persona fields + platform_name + platform_url; writes to
+// twins.character_card JSONB; mirrors platform_url into creators.monetizationUrl
+// (D-02-10 — CHAT-05 soft CTA data source); writes constitution.md stub to
+// Replit Object Storage (D-02-13 — PERSONA-02).
+bot.command("persona", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  console.log(`[hermes] /persona started creator_id=${creator.id} (scene)`);
+  await ctx.scene.enter("persona-wizard", {
+    creatorId: creator.id,
+    creatorName: creator.display_name,
+    currentIndex: 0,
+    answers: {},
+  });
 });
 
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
