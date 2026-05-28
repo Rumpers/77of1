@@ -12,7 +12,7 @@ Four phases over four weeks deliver the first live creator: Phase 1 strips Supab
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Baseline Repair** - Supabase removed, Drizzle + Replit PG live, KYC gate enforced, data minimization wired
+- [x] **Phase 1: Baseline Repair** - Supabase removed, Drizzle + Replit PG live, KYC gate enforced, data minimization wired (completed 2026-05-28)
 - [ ] **Phase 2: Twin Runtime Core** - Both chat surfaces live with full moderation pipeline, SB 243 compliance, and async Telegram ack
 - [ ] **Phase 3: Voice + Hardening** - GMI XTTS voice replies, escalation scoring, OCR intake queue, i18n complete, DSAR deletion
 - [ ] **Phase 4: Eval Gate + Go-Live** - 30-case eval suite passes 100% hard-limit; weekly regression cron active; first creator goes live
@@ -31,12 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The Drizzle schema migration runs clean and defines all seven core tables: `creators`, `twins`, `creator_kyc`, `consent_grants`, `conversation_messages`, `generation_jobs`, `safety_audit_log`
   5. No raw fan message content or PII appears in any log line or audit record; only hashed identifiers are persisted
 **Plans**: 6 plans
-- [ ] 01-01-PLAN.md — Drizzle schema for 8 core tables + creator_totp; drizzle-kit push to Replit PG; failing E2E test for KYC gate
-- [ ] 01-02-PLAN.md — api-server KYC vertical slice: isKycSigned + twin route 423 gate + Drizzle health probe + SignWell voice-synthesis clause checkpoint
-- [ ] 01-03-PLAN.md — Hermes Telegram bot fully migrated to @workspace/db; kill-switch SLA preserved; fan-payment functions deleted
-- [ ] 01-04a-PLAN.md — api-server leaf route stubs: safety-audit.ts rewritten with retention_category; supabase.ts deleted; 15 leaf route files Drizzle-migrated or 503-stubbed
-- [ ] 01-04b-PLAN.md — artifacts/worker migrated to @workspace/db; BullMQ scaffolding preserved; worker bodies stubbed per D-13
-- [ ] 01-04c-PLAN.md — Phase 1 cleanup: scrub @supabase/supabase-js from api-server/worker; delete apps/web/; cold-start verification; founder Replit Secrets checkpoint
+- [x] 01-01-PLAN.md — Drizzle schema for 8 core tables + creator_totp; drizzle-kit push to Replit PG; failing E2E test for KYC gate
+- [x] 01-02-PLAN.md — api-server KYC vertical slice: isKycSigned + twin route 423 gate + Drizzle health probe + SignWell voice-synthesis clause checkpoint
+- [x] 01-03-PLAN.md — Hermes Telegram bot fully migrated to @workspace/db; kill-switch SLA preserved; fan-payment functions deleted
+- [x] 01-04a-PLAN.md — api-server leaf route stubs: safety-audit.ts rewritten with retention_category; supabase.ts deleted; 15 leaf route files Drizzle-migrated or 503-stubbed
+- [x] 01-04b-PLAN.md — artifacts/worker migrated to @workspace/db; BullMQ scaffolding preserved; worker bodies stubbed per D-13
+- [x] 01-04c-PLAN.md — Phase 1 cleanup: scrub @supabase/supabase-js from api-server/worker; delete apps/web/; cold-start verification; founder Replit Secrets checkpoint
 
 ### Phase 2: Twin Runtime Core
 **Goal**: A fan can open `lala.la/[handle]` or a Telegram fan-twin bot, send a message to the creator's AI twin, receive a response that passed six moderation layers, and see a California SB 243 AI disclosure — all within 30 seconds of first message
@@ -82,7 +82,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Baseline Repair | 0/6 | Not started | - |
+| 1. Baseline Repair | 6/6 | Complete   | 2026-05-28 |
 | 2. Twin Runtime Core | 0/TBD | Not started | - |
 | 3. Voice + Hardening | 0/TBD | Not started | - |
 | 4. Eval Gate + Go-Live | 0/TBD | Not started | - |
