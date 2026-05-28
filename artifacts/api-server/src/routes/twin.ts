@@ -52,6 +52,11 @@ router.post("/twin/chat", async (req: Request, res: Response) => {
     return;
   }
 
+  if (!handle || typeof handle !== "string" || !handle.trim()) {
+    res.status(400).json({ error: "handle is required" });
+    return;
+  }
+
   // ── KYC gate (D-05: strict positive assertion) ────────────────────────────
   // Resolve creator by handle. Required before any LLM/response work (T-02-01).
   if (handle) {
