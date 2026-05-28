@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface FanSignupInput {
-  creatorId: string;
-}
+export type OauthCallbackParams = {
+code?: string;
+state?: string;
+error?: string;
+};

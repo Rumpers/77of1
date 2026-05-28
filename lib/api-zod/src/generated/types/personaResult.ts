@@ -5,8 +5,8 @@
  * 7of1 API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { AuthSession } from './authSession';
 
-export interface FanSignupResult {
-  session: AuthSession;
+export interface PersonaResult {
+  ok: boolean;
+  saved_count: number;
 }

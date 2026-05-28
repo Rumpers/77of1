@@ -5,6 +5,16 @@
  * 7of1 API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ErrorResponse {
+  error: string;
+  /** @nullable */
+  remainingBalance?: number | null;
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
 export interface HealthStatus {
   status: string;
   service?: string;
@@ -31,36 +41,80 @@ export interface QueueHealth {
   error?: string | null;
 }
 
-export interface ReplitUser {
-  id: string;
-  name: string;
-  roles: string;
-  bio: string;
-  profileImage: string;
-  url: string;
-  teams: string;
-}
-
 export interface SessionResponse {
   authenticated: boolean;
-  user?: ReplitUser;
-}
-
-export interface AuthSession {
-  userId: string;
+  /** @nullable */
+  userId?: string | null;
   /** @nullable */
   fanId?: string | null;
   /** @nullable */
   creatorId?: string | null;
-  sessionToken: string;
+  /** @nullable */
+  role?: string | null;
 }
 
-export interface FanSignupInput {
-  creatorId: string;
+export interface SendOtpInput {
+  email: string;
+  creatorId?: string;
+  handle?: string;
 }
 
-export interface FanSignupResult {
-  session: AuthSession;
+export interface SendOtpResult {
+  sent: boolean;
+}
+
+export interface VerifyOtpInput {
+  email: string;
+  token: string;
+  creatorId?: string;
+  handle?: string;
+}
+
+export interface VerifyOtpResult {
+  ok: boolean;
+  /** @nullable */
+  fanId?: string | null;
+  /** @nullable */
+  creatorId?: string | null;
+  isNew?: boolean;
+}
+
+export interface SendPhoneOtpInput {
+  phone: string;
+  creatorId?: string;
+  handle?: string;
+}
+
+export interface VerifyPhoneOtpInput {
+  phone: string;
+  token: string;
+  creatorId?: string;
+  handle?: string;
+}
+
+export interface TelegramConnectInput {
+  telegramUserId: string;
+  telegramUsername?: string;
+}
+
+export type TwinChatInputLocale = typeof TwinChatInputLocale[keyof typeof TwinChatInputLocale];
+
+
+export const TwinChatInputLocale = {
+  en: 'en',
+  ja: 'ja',
+  'zh-TW': 'zh-TW',
+} as const;
+
+export interface TwinChatInput {
+  message: string;
+  handle?: string;
+  locale?: TwinChatInputLocale;
+}
+
+export interface TwinChatResponse {
+  text: string;
+  disclosure_footer: string;
 }
 
 export interface DeductCreditsInput {
@@ -91,13 +145,380 @@ export interface WebhookResponse {
   received: boolean;
 }
 
-export interface ErrorResponse {
-  error: string;
-  /** @nullable */
-  remainingBalance?: number | null;
+export type ConsentGrantType = typeof ConsentGrantType[keyof typeof ConsentGrantType];
+
+
+export const ConsentGrantType = {
+  persona_text: 'persona_text',
+  voice: 'voice',
+  image: 'image',
+  talking_video: 'talking_video',
+  fullbody_video: 'fullbody_video',
+} as const;
+
+export interface ConsentAnswers {
+  persona_text: boolean;
+  voice: boolean;
+  image: boolean;
+  talking_video: boolean;
+  fullbody_video: boolean;
 }
 
-export type CreatorLinkParams = {
+export interface ConsentInput {
+  answers: ConsentAnswers;
+}
+
+export interface ConsentResult {
+  ok: boolean;
+  persona_text_granted: boolean;
+}
+
+export interface PersonaResponse {
+  prompt: string;
+  answer: string;
+}
+
+export interface PersonaInput {
+  responses: PersonaResponse[];
+}
+
+export interface PersonaResult {
+  ok: boolean;
+  saved_count: number;
+}
+
+export interface AssetUploadResult {
+  ok: boolean;
+  asset_ids: string[];
+}
+
+export interface AssetRejected {
+  filename: string;
+  reason: string;
+}
+
+export interface AssetRejectionResult {
+  ok: boolean;
+  rejected: AssetRejected[];
+}
+
+export interface ConsentRevokeResult {
+  ok: boolean;
+  modalityId: string;
+  consentGrantId: string;
+  /** true if job was enqueued to BullMQ; false if DB fallback was used */
+  queued: boolean;
+}
+
+export interface KillSwitchResult {
+  ok: boolean;
+  killSwitch: boolean;
+  /** true if job was enqueued to BullMQ; false if DB fallback was used */
+  queued: boolean;
+}
+
+export interface FailedJob {
+  id: string;
+  modality: string;
+  /** @nullable */
+  error?: string | null;
+  created_at: string;
+  fan_facing_status: string;
+}
+
+export interface FailedJobsResult {
+  jobs: FailedJob[];
+}
+
+export interface CreatorNotifications {
+  has_dlq_jobs: boolean;
+  /** @nullable */
+  last_dlq_at: string | null;
+}
+
+export interface DismissNotificationResult {
+  dismissed: boolean;
+}
+
+export interface SubscriptionRetryResult {
+  queued: boolean;
+  subscriptionId: string;
+  attempt: number;
+}
+
+export type FanRecoverInputMethod = typeof FanRecoverInputMethod[keyof typeof FanRecoverInputMethod];
+
+
+export const FanRecoverInputMethod = {
+  backup_email: 'backup_email',
+  backup_phone: 'backup_phone',
+} as const;
+
+export interface FanRecoverInput {
+  method: FanRecoverInputMethod;
+  contact: string;
+  creatorId?: string;
+  handle?: string;
+}
+
+export type FanRecoverIdAttestationInputMethod = typeof FanRecoverIdAttestationInputMethod[keyof typeof FanRecoverIdAttestationInputMethod];
+
+
+export const FanRecoverIdAttestationInputMethod = {
+  id_attestation: 'id_attestation',
+} as const;
+
+export interface FanRecoverIdAttestationInput {
+  method: FanRecoverIdAttestationInputMethod;
+  full_name: string;
+  dob: string;
+  id_document: Blob;
+  contact?: string;
+  creatorId?: string;
+  handle?: string;
+}
+
+export interface FanRecoverResult {
+  sent: boolean;
+  fraud_hold?: boolean;
+}
+
+export interface FanRecoverIdResult {
+  queued: boolean;
+  request_id: string;
+}
+
+export type DsarRequestRequesterType = typeof DsarRequestRequesterType[keyof typeof DsarRequestRequesterType];
+
+
+export const DsarRequestRequesterType = {
+  fan: 'fan',
+  creator: 'creator',
+} as const;
+
+export type DsarRequestStatus = typeof DsarRequestStatus[keyof typeof DsarRequestStatus];
+
+
+export const DsarRequestStatus = {
+  processing: 'processing',
+  ready: 'ready',
+  downloaded: 'downloaded',
+  expired: 'expired',
+  failed: 'failed',
+} as const;
+
+export interface DsarRequest {
+  id: string;
+  requester_type: DsarRequestRequesterType;
+  status: DsarRequestStatus;
+  requested_at: string;
+  /** @nullable */
+  ready_at?: string | null;
+  /** @nullable */
+  expires_at?: string | null;
+  /** @nullable */
+  downloaded_at?: string | null;
+  /** @nullable */
+  download_token?: string | null;
+}
+
+export interface DsarStatusResult {
+  latest: DsarRequest | null;
+  can_request: boolean;
+  /** @nullable */
+  next_eligible_at: string | null;
+}
+
+export interface DsarRequestResult {
+  id: string;
+  status: string;
+  requester_type: string;
+  download_token: string;
+  expires_at: string;
+  package_size_bytes: number;
+}
+
+export interface DsarRateLimitResult {
+  error: string;
+  next_eligible_at: string;
+}
+
+export type ReportCategory = typeof ReportCategory[keyof typeof ReportCategory];
+
+
+export const ReportCategory = {
+  off_topic: 'off_topic',
+  abusive: 'abusive',
+  inappropriate: 'inappropriate',
+  fraud: 'fraud',
+} as const;
+
+export interface ReportInput {
+  message_id: string;
+  category: ReportCategory;
+  message_text?: string;
+  handle?: string;
+  locale?: string;
+  fan_id?: string;
+}
+
+export type OAuthPlatform = typeof OAuthPlatform[keyof typeof OAuthPlatform];
+
+
+export const OAuthPlatform = {
+  '17live': '17live',
+  line: 'line',
+  youtube: 'youtube',
+} as const;
+
+export interface OAuthStatusResult {
+  platform: OAuthPlatform;
+  connected: boolean;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  scope?: string | null;
+}
+
+export interface OAuthRevokeResult {
+  revoked: boolean;
+  platform: OAuthPlatform;
+}
+
+export type RefundStatus = typeof RefundStatus[keyof typeof RefundStatus];
+
+
+export const RefundStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  partially_approved: 'partially_approved',
+  denied: 'denied',
+  processing: 'processing',
+  done: 'done',
+  failed: 'failed',
+} as const;
+
+export type RefundReasonCategory = typeof RefundReasonCategory[keyof typeof RefundReasonCategory];
+
+
+export const RefundReasonCategory = {
+  goodwill_7day: 'goodwill_7day',
+  technical_failure: 'technical_failure',
+  creator_no_show: 'creator_no_show',
+  duplicate_charge: 'duplicate_charge',
+  other: 'other',
+} as const;
+
+export type RefundRequestInputCurrency = typeof RefundRequestInputCurrency[keyof typeof RefundRequestInputCurrency];
+
+
+export const RefundRequestInputCurrency = {
+  jpy: 'jpy',
+  twd: 'twd',
+  usd: 'usd',
+} as const;
+
+export interface RefundRequestInput {
+  creator_id?: string;
+  stripe_payment_intent_id: string;
+  amount_credits: number;
+  amount_cents: number;
+  currency: RefundRequestInputCurrency;
+  reason_category: RefundReasonCategory;
+  fan_notes?: string;
+  inbound_channel?: string;
+}
+
+export interface RefundRequest {
+  id: string;
+  fan_id: string;
+  creator_id: string;
+  stripe_payment_intent_id: string;
+  amount_credits: number;
+  amount_cents: number;
+  currency: string;
+  reason_category: string;
+  status: RefundStatus;
+  created_at: string;
+}
+
+export interface RefundRequestListResult {
+  data: RefundRequest[];
+}
+
+export type RefundRequestDetailCreditHistoryItem = { [key: string]: unknown };
+
+export type RefundRequestDetail = RefundRequest & {
+  creditHistory: RefundRequestDetailCreditHistoryItem[];
+};
+
+export type RefundDecisionInputDecision = typeof RefundDecisionInputDecision[keyof typeof RefundDecisionInputDecision];
+
+
+export const RefundDecisionInputDecision = {
+  approved: 'approved',
+  denied: 'denied',
+  partial: 'partial',
+} as const;
+
+export interface RefundDecisionInput {
+  decision: RefundDecisionInputDecision;
+  decision_reason_code: string;
+  decision_notes?: string;
+  partial_amount_credits?: number;
+}
+
+export interface DunningMetricsResult {
+  window: string;
+  total: number;
+  recovered: number;
+  cancelled: number;
+  recovery_rate: number;
+}
+
+export type UploadAssetsBody = {
+  files: Blob[];
+};
+
+export type DownloadDsarParams = {
+/**
+ * Download token returned by POST /dsar/request
+ */
 token: string;
 };
+
+export type DownloadDsar200 = { [key: string]: unknown };
+
+export type OauthCallbackParams = {
+code?: string;
+state?: string;
+error?: string;
+};
+
+export type ListAdminRefundRequestsParams = {
+status?: RefundStatus;
+sort?: ListAdminRefundRequestsSort;
+};
+
+export type ListAdminRefundRequestsSort = typeof ListAdminRefundRequestsSort[keyof typeof ListAdminRefundRequestsSort];
+
+
+export const ListAdminRefundRequestsSort = {
+  sla_asc: 'sla_asc',
+  created_desc: 'created_desc',
+} as const;
+
+export type GetDunningMetricsParams = {
+creator_id?: string;
+window?: GetDunningMetricsWindow;
+};
+
+export type GetDunningMetricsWindow = typeof GetDunningMetricsWindow[keyof typeof GetDunningMetricsWindow];
+
+
+export const GetDunningMetricsWindow = {
+  '7d': '7d',
+  '30d': '30d',
+  '90d': '90d',
+} as const;
 

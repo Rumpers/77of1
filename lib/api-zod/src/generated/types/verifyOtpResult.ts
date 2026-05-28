@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AuthSession {
-  userId: string;
+export interface VerifyOtpResult {
+  ok: boolean;
   /** @nullable */
   fanId?: string | null;
   /** @nullable */
   creatorId?: string | null;
-  sessionToken: string;
+  isNew?: boolean;
 }

@@ -6,12 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ReplitUser {
+export interface FailedJob {
   id: string;
-  name: string;
-  roles: string;
-  bio: string;
-  profileImage: string;
-  url: string;
-  teams: string;
+  modality: string;
+  /** @nullable */
+  error?: string | null;
+  created_at: Date;
+  fan_facing_status: string;
 }
