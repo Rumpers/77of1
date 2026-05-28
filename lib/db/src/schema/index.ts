@@ -3,6 +3,7 @@ import {
   pgEnum,
   uuid,
   text,
+  varchar,
   boolean,
   jsonb,
   integer,
@@ -83,6 +84,8 @@ export const creatorsTable = pgTable("creators", {
   replitUserId: text("replit_user_id").unique(),
   telegramUserId: text("telegram_user_id").unique(),
   killSwitchActive: boolean("kill_switch_active").notNull().default(false),
+  personaConfig: jsonb("persona_config"),
+  intensity: varchar("intensity", { length: 50 }),
   // Monetization target URL (D-02-10). Captured by the persona-wizard final step
   // (plan 02-07) — same value also lives in creators.config.platform_url for
   // platform-name lookup. NULL = creator hasn't completed onboarding yet.
@@ -405,3 +408,215 @@ export const insertCreatorTotpSchema = createInsertSchema(
 ).omit({ updatedAt: true });
 export type CreatorTotp = typeof creatorTotpTable.$inferSelect;
 export type InsertCreatorTotp = z.infer<typeof insertCreatorTotpSchema>;
+
+// ─── Table: fans ─────────────────────────────────────────────────────────────
+// Fan users who chat with AI twins. Authenticated via Supabase (magic-link OTP).
+// trial_count tracks free interactions before a credit pack is required.
+
+export const fansTable = pgTable("fans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  supabaseUid: uuid("supabase_uid").notNull().unique(),
+  email: text("email").notNull().unique(),
+  locale: text("locale").notNull().default("en"),
+  trialCount: integer("trial_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const insertFanSchema = createInsertSchema(fansTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type Fan = typeof fansTable.$inferSelect;
+export type InsertFan = z.infer<typeof insertFanSchema>;
+
+// ─── Table: sessions ─────────────────────────────────────────────────────────
+// Supabase JWT sessions for fans and creators. Exactly one of fan_id / creator_id
+// is non-null per row — the other is null.
+
+export const sessionsTable = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fanId: uuid("fan_id").references(() => fansTable.id, {
+      onDelete: "cascade",
+    }),
+    creatorId: uuid("creator_id").references(() => creatorsTable.id, {
+      onDelete: "cascade",
+    }),
+    supabaseAccessToken: text("supabase_access_token").notNull(),
+    supabaseRefreshToken: text("supabase_refresh_token").notNull(),
+    device: text("device"),
+    lastActive: timestamp("last_active", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => ({
+    fanIdx: index("sessions_fan_idx").on(t.fanId),
+    creatorIdx: index("sessions_creator_idx").on(t.creatorId),
+  })
+);
+
+export const insertSessionSchema = createInsertSchema(sessionsTable).omit({
+  id: true,
+});
+export type Session = typeof sessionsTable.$inferSelect;
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+
+// ─── Table: credit_packs ─────────────────────────────────────────────────────
+// Fan credit purchases. credits_remaining is decremented atomically per message
+// to enforce the credits invariant (never go negative).
+
+export const creditPacksTable = pgTable(
+  "credit_packs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fanId: uuid("fan_id")
+      .notNull()
+      .references(() => fansTable.id, { onDelete: "cascade" }),
+    packType: varchar("pack_type", { length: 50 }).notNull(),
+    creditsTotal: integer("credits_total").notNull(),
+    creditsRemaining: integer("credits_remaining").notNull(),
+    stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
+    purchasedAt: timestamp("purchased_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    fanIdx: index("credit_packs_fan_idx").on(t.fanId),
+  })
+);
+
+export const insertCreditPackSchema = createInsertSchema(
+  creditPacksTable
+).omit({ id: true });
+export type CreditPack = typeof creditPacksTable.$inferSelect;
+export type InsertCreditPack = z.infer<typeof insertCreditPackSchema>;
+
+// ─── Table: conversations ─────────────────────────────────────────────────────
+// Parent table linking a fan to a creator for a chat thread.
+
+export const conversationsTable = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fanId: uuid("fan_id")
+      .notNull()
+      .references(() => fansTable.id, { onDelete: "cascade" }),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creatorsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    fanCreatorIdx: index("conversations_fan_creator_idx").on(
+      t.fanId,
+      t.creatorId
+    ),
+  })
+);
+
+export const insertConversationSchema = createInsertSchema(
+  conversationsTable
+).omit({ id: true, createdAt: true });
+export type Conversation = typeof conversationsTable.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+
+// ─── Table: messages ─────────────────────────────────────────────────────────
+// Fan-facing chat messages with credit tracking and modality metadata.
+// credits_deducted is locked at write time; never modify after insert.
+
+export const messagesTable = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversationsTable.id, { onDelete: "cascade" }),
+    role: messageRoleEnum("role").notNull(),
+    content: text("content").notNull(),
+    locale: text("locale").notNull().default("en"),
+    creditsDeducted: integer("credits_deducted").notNull().default(0),
+    modality: text("modality").notNull().default("text"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    conversationIdx: index("messages_conversation_idx").on(t.conversationId),
+    conversationCreatedIdx: index("messages_conversation_created_idx").on(
+      t.conversationId,
+      t.createdAt
+    ),
+  })
+);
+
+export const insertMessageSchema = createInsertSchema(messagesTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type Message = typeof messagesTable.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// ─── Table: personas ─────────────────────────────────────────────────────────
+// Per-creator persona configuration: tone, language style, fan relationship terms.
+// One row per creator (unique constraint). bounds/traits are flexible JSONB blobs.
+
+export const personasTable = pgTable("personas", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  creatorId: uuid("creator_id")
+    .notNull()
+    .unique()
+    .references(() => creatorsTable.id, { onDelete: "cascade" }),
+  greetingStyle: text("greeting_style"),
+  fanTerms: text("fan_terms"),
+  emojiUsage: text("emoji_usage"),
+  bounds: jsonb("bounds"),
+  treatmentStyle: text("treatment_style"),
+  traits: jsonb("traits"),
+  messageStyle: text("message_style"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdateFn(() => new Date()),
+});
+
+export const insertPersonaSchema = createInsertSchema(personasTable).omit({
+  id: true,
+  updatedAt: true,
+});
+export type Persona = typeof personasTable.$inferSelect;
+export type InsertPersona = z.infer<typeof insertPersonaSchema>;
+
+// ─── Table: twin_configs ──────────────────────────────────────────────────────
+// Per-creator AI twin behaviour config: locale allowlist, response length cap,
+// enabled modalities, and outbound moderation flag.
+// One row per creator (unique constraint). outbound_mod_enabled defaults true
+// — moderation must be explicitly disabled, never silently off.
+
+export const twinConfigsTable = pgTable("twin_configs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  creatorId: uuid("creator_id")
+    .notNull()
+    .unique()
+    .references(() => creatorsTable.id, { onDelete: "cascade" }),
+  allowedLocales: text("allowed_locales").array().notNull().default(["en"]),
+  responseLength: varchar("response_length", { length: 50 })
+    .notNull()
+    .default("medium"),
+  modalities: text("modalities").array().notNull().default(["text"]),
+  outboundModEnabled: boolean("outbound_mod_enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const insertTwinConfigSchema = createInsertSchema(
+  twinConfigsTable
+).omit({ id: true, createdAt: true });
+export type TwinConfig = typeof twinConfigsTable.$inferSelect;
+export type InsertTwinConfig = z.infer<typeof insertTwinConfigSchema>;
