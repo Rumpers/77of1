@@ -14,6 +14,22 @@ export function signSessionToken(userId: string): string {
   return `${Buffer.from(payload).toString("base64url")}.${sig}`;
 }
 
+export function verifySessionToken(token: string): string | null {
+  const dot = token.lastIndexOf(".");
+  if (dot < 0) return null;
+  const encodedPayload = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expectedSig = crypto
+    .createHmac("sha256", getSessionSecret())
+    .update(Buffer.from(encodedPayload, "base64url").toString())
+    .digest("base64url");
+  if (sig !== expectedSig) return null;
+  const payload = Buffer.from(encodedPayload, "base64url").toString();
+  const colonIdx = payload.indexOf(":");
+  if (colonIdx < 0) return null;
+  return payload.slice(0, colonIdx);
+}
+
 export type ReplitUser = {
   id: string;
   name: string;

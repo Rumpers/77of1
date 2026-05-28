@@ -103,6 +103,18 @@ const creatorKycTable = {
   creatorId: { __col: "creatorId" },
   status: { __col: "status" },
 };
+const personasTable = {
+  __name: "personas",
+  id: { __col: "id" },
+  creatorId: { __col: "creatorId" },
+};
+const twinConfigsTable = {
+  __name: "twin_configs",
+  id: { __col: "id" },
+  creatorId: { __col: "creatorId" },
+  responseLength: { __col: "responseLength" },
+  outboundModEnabled: { __col: "outboundModEnabled" },
+};
 
 interface Predicate {
   __pred: "eq";
@@ -216,6 +228,9 @@ vi.mock("@workspace/db", () => {
     creatorConfigTable,
     conversationMessagesTable,
     creatorKycTable,
+    personasTable,
+    twinConfigsTable,
+    fansTable: { __name: "fans", id: { __col: "id" } },
   };
 });
 
@@ -226,6 +241,13 @@ vi.mock("drizzle-orm", () => ({
     value,
   }),
   desc: (col: unknown) => ({ __order: "desc", col }),
+  // Credit-deduction helpers — not triggered in tests (no auth cookie set),
+  // but must exist so the module loads without throwing.
+  and: (...args: unknown[]) => ({ __pred: "and", args }),
+  gt: (col: unknown, value: unknown) => ({ __pred: "gt", col, value }),
+  sql: Object.assign((strings: TemplateStringsArray, ...vals: unknown[]) => ({ __sql: strings, vals }), {
+    raw: (s: string) => ({ __sql_raw: s }),
+  }),
 }));
 
 // ─── Mock kyc isKycSigned to read from in-memory state ───────────────────────

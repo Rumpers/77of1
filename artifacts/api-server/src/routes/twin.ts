@@ -5,16 +5,20 @@
 //   1. HMAC conversation_id  — verifyConversationId middleware (global, app.ts)
 //   2. KYC gate              — kycGate('body') middleware (sets res.locals.creatorId)
 //   3. pause / kill-switch   — inline (reads creators.kill_switch_active + creator_config.paused)
+//   4. Fan auth / credits    — requireFanAccess (sets fanId + fanTrialCount)
 //
 // Post-gates pipeline:
+//   - credit gate: trial count check (anon) OR atomic DB deduction (authenticated)
 //   - detectLocale(req)
 //   - loadHistory(conversationId, 20)
 //   - load twin row (characterCard, twinId)
+//   - load persona + twin_config rows (graceful-degrade if absent)
 //   - readConstitution(creatorId)   (PERSONA-02 read side, never throws)
-//   - buildSystemPrompt(card, locale, constitution)
+//   - buildSystemPrompt(card, locale, constitution, persona)
 //   - persistTurn user row
 //   - getTextProvider().generateText({ ...history, new user })
 //   - persistTurn assistant row
+//   - queue async voice note stub (fire-and-forget when REDIS_URL set)
 //   - decide monetization_pivot
 //   - respond { text, disclosure_footer, monetization_pivot, conversation_id }
 //
@@ -23,12 +27,15 @@
 import crypto from "crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { kycGate } from "../middlewares/kyc-gate.js";
+import { requireFanAccess } from "../middlewares/require-fan-access.js";
 import { detectLocale } from "../lib/locale.js";
 import { loadHistory, persistTurn } from "../lib/conversation.js";
-import { buildSystemPrompt } from "../lib/system-prompt.js";
+import { buildSystemPrompt, type Persona } from "../lib/system-prompt.js";
 import { getDisclosureFooter } from "../lib/disclosure.js";
 import { readConstitution } from "../lib/constitution.js";
 import { runL1Moderation, runL3Moderation } from "../lib/moderation.js";
+import { atomicDeductCredit, TRIAL_LIMIT } from "../lib/credits.js";
+import { TRIAL_COOKIE } from "../lib/auth.js";
 import { getTextProvider } from "../providers/registry.js";
 import {
   ProviderError,
@@ -43,10 +50,19 @@ async function getDb() {
     creatorsTable,
     twinsTable,
     creatorConfigTable,
+    personasTable,
+    twinConfigsTable,
   } = await import("@workspace/db");
   const { eq } = await import("drizzle-orm");
-  return { db, creatorsTable, twinsTable, creatorConfigTable, eq };
+  return { db, creatorsTable, twinsTable, creatorConfigTable, personasTable, twinConfigsTable, eq };
 }
+
+// responseTokenLimit maps twin_configs.response_length → maxTokens for the LLM.
+const TOKEN_LIMITS: Record<string, number> = {
+  short: 256,
+  medium: 512,
+  long: 1024,
+};
 
 const router: IRouter = Router();
 
@@ -65,6 +81,7 @@ function hashFanId(conversationId: string): string {
 router.post(
   "/twin/chat",
   kycGate("body"),
+  requireFanAccess,
   async (req: Request, res: Response) => {
     const { message } = req.body as {
       message?: string;
@@ -96,7 +113,7 @@ router.post(
       res.status(503).json({ error: "Database not configured" });
       return;
     }
-    const { db, creatorsTable, twinsTable, creatorConfigTable, eq } = dbCtx;
+    const { db, creatorsTable, twinsTable, creatorConfigTable, personasTable, twinConfigsTable, eq } = dbCtx;
 
     const creator = await db
       .select({
@@ -133,6 +150,25 @@ router.post(
       return;
     }
 
+    // ── Credit gate (CHAT-02, D-02-10) ───────────────────────────────────────
+    // Authenticated fan (fanId set by requireFanAccess): atomic DB deduction.
+    // Anonymous fan (trial mode): check cookie counter; reject at TRIAL_LIMIT.
+    const fanId = res.locals.fanId as string | undefined;
+    if (fanId) {
+      const deduct = await atomicDeductCredit(fanId);
+      if (!deduct.allowed) {
+        res.status(402).json({ code: "credits_required", creditsRemaining: 0 });
+        return;
+      }
+    } else {
+      // Trial mode — fanTrialCount is set by requireFanAccess from the cookie.
+      const trialCount = (res.locals.fanTrialCount as number | undefined) ?? 0;
+      if (trialCount >= TRIAL_LIMIT) {
+        res.status(402).json({ code: "trial_exhausted", trialCount });
+        return;
+      }
+    }
+
     // ── Pipeline ─────────────────────────────────────────────────────────────
     const locale = detectLocale(req);
 
@@ -149,6 +185,34 @@ router.post(
       .then((r: Array<{ id: string; characterCard: unknown }>) => r[0] ?? null);
 
     const constitution = await readConstitution(creatorId);
+
+    // Load persona + twin_config rows (graceful-degrade: return null if absent
+    // or if DB throws — these tables are optional enrichment, not gate logic).
+    let persona: Persona | null = null;
+    let twinConfigResponseLength = "medium";
+    try {
+      const [personaRow, twinCfgRow] = await Promise.all([
+        db
+          .select()
+          .from(personasTable)
+          .where(eq(personasTable.creatorId, creatorId))
+          .limit(1)
+          .then((r: Persona[]) => r[0] ?? null),
+        db
+          .select({ responseLength: twinConfigsTable.responseLength })
+          .from(twinConfigsTable)
+          .where(eq(twinConfigsTable.creatorId, creatorId))
+          .limit(1)
+          .then((r: Array<{ responseLength: string }>) => r[0] ?? null),
+      ]);
+      persona = personaRow;
+      if (twinCfgRow?.responseLength) {
+        twinConfigResponseLength = twinCfgRow.responseLength;
+      }
+    } catch {
+      // Graceful degrade — persona/config absent, use defaults
+    }
+
     // Character card may live in the JSONB column as `null` for cold-start
     // creators. buildSystemPrompt accepts null and falls back to a safe
     // placeholder prompt.
@@ -156,7 +220,7 @@ router.post(
       twin?.characterCard
         ? (twin.characterCard as Parameters<typeof buildSystemPrompt>[0])
         : null;
-    const systemPrompt = buildSystemPrompt(card, locale, constitution);
+    const systemPrompt = buildSystemPrompt(card, locale, constitution, persona);
 
     const fanIdHash = hashFanId(conversationId);
 
@@ -212,7 +276,7 @@ router.post(
         fanId: fanIdHash,
         messages: [...history, { role: "user", content: message }],
         systemPrompt,
-        maxTokens: 512,
+        maxTokens: TOKEN_LIMITS[twinConfigResponseLength] ?? 512,
       });
       llmContent = llm.content;
     } catch (err) {
@@ -264,6 +328,54 @@ router.post(
       role: "assistant",
       content: safeReply,
     });
+
+    // ── Async voice note stub (VOICE-01) ─────────────────────────────────────
+    // Fire-and-forget: queue a voice generation job when REDIS_URL is set and
+    // the fan is authenticated (fanId required for job tracking). Errors are
+    // swallowed — voice note delivery is async and non-blocking for the HTTP
+    // response (per D-02 PATTERNS A8: async queue for generation).
+    if (fanId && process.env.REDIS_URL) {
+      const redisUrl = process.env.REDIS_URL;
+      Promise.resolve().then(async () => {
+        try {
+          const { createAllQueues } = await import("@workspace/queue");
+          const { QUEUE_NAMES } = await import("@workspace/queue");
+          const queues = createAllQueues(redisUrl);
+          await queues.voiceGeneration.add("voice-note", {
+            type: "voice-generation",
+            jobDbId: crypto.randomUUID(),
+            creatorId,
+            fanId,
+            consentGrantVersion: "1",
+            transcript: safeReply,
+            language: locale === "ja" ? "ja" : locale === "zh-TW" ? "zh-TW" : "en",
+          });
+          await queues.voiceGeneration.close();
+          logger.info(
+            { event: "twin.chat.voice_queued", creatorId, fanId },
+            "[twin/chat] voice note queued",
+          );
+        } catch (err) {
+          logger.warn(
+            { event: "twin.chat.voice_queue_error", err: (err as Error).message },
+            "[twin/chat] voice queue error (non-fatal)",
+          );
+        }
+      });
+    }
+
+    // ── Increment trial cookie for anonymous fans ─────────────────────────────
+    if (!fanId) {
+      const newCount =
+        ((res.locals.fanTrialCount as number | undefined) ?? 0) + 1;
+      res.cookie(TRIAL_COOKIE, String(newCount), {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+    }
 
     // Monetization-pivot heuristic (D-02-10): nudge on every 5th assistant
     // reply. Count assistant turns in history (excludes the one we just wrote)

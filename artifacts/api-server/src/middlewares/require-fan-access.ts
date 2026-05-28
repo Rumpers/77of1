@@ -1,18 +1,9 @@
-// PHASE-1 STUB — require-fan-access (T-03-02)
-//
-// Fan accounts, subscriptions, and dunning logic are scoped to Phase 2.
-// This stub passes all requests through so existing routes compile and
-// respond without a Supabase dependency.
-//
-// When Phase 2 ships, replace the body of requireFanAccess with:
-//   1. Replit or session-cookie identity check
-//   2. Drizzle lookup of fan_accounts + fan_subscriptions (if modelled)
-//   3. Dunning state gate (402/403 for paused/cancelled)
-//
-// The Global Locals declaration is preserved so other middleware files that
-// reference fanId/fanCreatorId continue to typecheck.
+// Fan auth middleware — validates signed session cookie and populates res.locals.fanId.
+// Anonymous fans (no cookie) are allowed through; downstream routes check fanId presence.
+// Trial cookie is parsed and exposed via res.locals.fanTrialCount.
 
 import type { Request, Response, NextFunction } from "express";
+import { COOKIE_ACCESS_TOKEN, TRIAL_COOKIE, parseTrialCookie, verifySessionToken } from "../lib/auth.js";
 
 declare global {
   namespace Express {
@@ -20,15 +11,51 @@ declare global {
       fanAuthUserId?: string;
       fanId?: string;
       fanCreatorId?: string;
+      fanTrialCount?: number;
     }
   }
 }
 
+async function getFanById(fanId: string) {
+  const { db, fansTable } = await import("@workspace/db");
+  const { eq } = await import("drizzle-orm");
+  return db
+    .select({ id: fansTable.id })
+    .from(fansTable)
+    .where(eq(fansTable.id, fanId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+}
+
 export async function requireFanAccess(
-  _req: Request,
-  _res: Response,
+  req: Request,
+  res: Response,
   next: NextFunction,
 ): Promise<void> {
-  // PHASE-1 STUB: pass-through — fan auth and dunning gate deferred to Phase 2
+  // Expose trial count for anonymous fans regardless of auth state
+  res.locals.fanTrialCount = parseTrialCookie(req.cookies?.[TRIAL_COOKIE]);
+
+  const token = req.cookies?.[COOKIE_ACCESS_TOKEN];
+  if (!token) {
+    next();
+    return;
+  }
+
+  const fanId = verifySessionToken(token);
+  if (!fanId) {
+    next();
+    return;
+  }
+
+  try {
+    const fan = await getFanById(fanId);
+    if (fan) {
+      res.locals.fanId = fan.id;
+      res.locals.fanAuthUserId = fan.id;
+    }
+  } catch {
+    // DB unavailable — pass through; downstream will gate if fanId is required
+  }
+
   next();
 }

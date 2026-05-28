@@ -415,7 +415,8 @@ export type InsertCreatorTotp = z.infer<typeof insertCreatorTotpSchema>;
 
 export const fansTable = pgTable("fans", {
   id: uuid("id").primaryKey().defaultRandom(),
-  supabaseUid: uuid("supabase_uid").notNull().unique(),
+  // nullable: custom OTP auth doesn't use Supabase; field preserved for future Supabase migration path
+  supabaseUid: uuid("supabase_uid").unique(),
   email: text("email").notNull().unique(),
   locale: text("locale").notNull().default("en"),
   trialCount: integer("trial_count").notNull().default(0),
@@ -430,6 +431,33 @@ export const insertFanSchema = createInsertSchema(fansTable).omit({
 });
 export type Fan = typeof fansTable.$inferSelect;
 export type InsertFan = z.infer<typeof insertFanSchema>;
+
+// ─── Table: fan_email_otps ────────────────────────────────────────────────────
+// Short-lived one-time passwords for email-based fan sign-in.
+// Row is soft-deleted by setting usedAt; hard GC via cron after 24h.
+
+export const fanEmailOtpsTable = pgTable(
+  "fan_email_otps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    otpCode: varchar("otp_code", { length: 6 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    emailIdx: index("fan_email_otps_email_idx").on(t.email),
+  })
+);
+
+export const insertFanEmailOtpSchema = createInsertSchema(
+  fanEmailOtpsTable
+).omit({ id: true, createdAt: true });
+export type FanEmailOtp = typeof fanEmailOtpsTable.$inferSelect;
+export type InsertFanEmailOtp = z.infer<typeof insertFanEmailOtpSchema>;
 
 // ─── Table: sessions ─────────────────────────────────────────────────────────
 // Supabase JWT sessions for fans and creators. Exactly one of fan_id / creator_id
