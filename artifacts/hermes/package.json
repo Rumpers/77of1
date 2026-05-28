@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
