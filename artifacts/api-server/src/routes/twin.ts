@@ -28,6 +28,7 @@ import { loadHistory, persistTurn } from "../lib/conversation.js";
 import { buildSystemPrompt } from "../lib/system-prompt.js";
 import { getDisclosureFooter } from "../lib/disclosure.js";
 import { readConstitution } from "../lib/constitution.js";
+import { runL1Moderation, runL3Moderation } from "../lib/moderation.js";
 import { getTextProvider } from "../providers/registry.js";
 import {
   ProviderError,
@@ -157,8 +158,12 @@ router.post(
         : null;
     const systemPrompt = buildSystemPrompt(card, locale, constitution);
 
-    // Persist the user turn BEFORE the LLM call so we still capture the input
-    // if the provider throws.
+    const fanIdHash = hashFanId(conversationId);
+
+    // ── L1 moderation (MOD-01) ───────────────────────────────────────────────
+    // Always persist the user turn (audit trail) — but if L1 flags, we
+    // short-circuit before the LLM call and persist a deflection assistant
+    // turn instead.
     await persistTurn({
       conversationId,
       creatorId,
@@ -167,11 +172,44 @@ router.post(
       content: message,
     });
 
+    const l1 = await runL1Moderation({
+      text: message,
+      locale,
+      creatorId,
+      fanIdHash,
+      sessionId: conversationId,
+    });
+    if (l1.flagged && l1.reply) {
+      await persistTurn({
+        conversationId,
+        creatorId,
+        twinId: twin?.id ?? null,
+        role: "assistant",
+        content: l1.reply,
+      });
+      logger.info(
+        {
+          event: "twin.chat.l1_blocked",
+          creatorId,
+          category: l1.primaryCategory,
+          severity: l1.severity,
+        },
+        "[twin/chat] L1 moderation blocked input",
+      );
+      res.json({
+        text: l1.reply,
+        disclosure_footer: getDisclosureFooter(locale, handle),
+        monetization_pivot: false,
+        conversation_id: conversationId,
+      });
+      return;
+    }
+
     let llmContent: string;
     try {
       const llm = await getTextProvider().generateText({
         creatorId,
-        fanId: hashFanId(conversationId),
+        fanId: fanIdHash,
         messages: [...history, { role: "user", content: message }],
         systemPrompt,
         maxTokens: 512,
@@ -197,23 +235,47 @@ router.post(
       throw err;
     }
 
+    // ── L3 moderation (MOD-03) ───────────────────────────────────────────────
+    // Check LLM output before delivery; replace with deflection if flagged.
+    const l3 = await runL3Moderation({
+      text: llmContent,
+      locale,
+      creatorId,
+      fanIdHash,
+      sessionId: conversationId,
+    });
+    const safeReply = l3.flagged && l3.reply ? l3.reply : llmContent;
+    if (l3.flagged) {
+      logger.info(
+        {
+          event: "twin.chat.l3_blocked",
+          creatorId,
+          category: l3.primaryCategory,
+          severity: l3.severity,
+        },
+        "[twin/chat] L3 moderation replaced output",
+      );
+    }
+
     await persistTurn({
       conversationId,
       creatorId,
       twinId: twin?.id ?? null,
       role: "assistant",
-      content: llmContent,
+      content: safeReply,
     });
 
     // Monetization-pivot heuristic (D-02-10): nudge on every 5th assistant
     // reply. Count assistant turns in history (excludes the one we just wrote)
-    // plus this reply.
+    // plus this reply. Suppressed when the reply is a moderation deflection
+    // (CHAT-05 + UI-SPEC: trial-style nudges are inappropriate next to a
+    // crisis/safety message).
     const assistantTurnCount =
       history.filter((t) => t.role === "assistant").length + 1;
-    const monetization_pivot = assistantTurnCount % 5 === 0;
+    const monetization_pivot = !l3.flagged && assistantTurnCount % 5 === 0;
 
     res.json({
-      text: llmContent,
+      text: safeReply,
       disclosure_footer: getDisclosureFooter(locale, handle),
       monetization_pivot,
       conversation_id: conversationId,
