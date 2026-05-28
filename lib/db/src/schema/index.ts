@@ -14,6 +14,14 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+// ─── Re-exports ──────────────────────────────────────────────────────────────
+// Character Card V2 Zod schema + type (PERSONA-01). Persona spec stored in
+// twins.character_card JSONB — see ./character-card.ts.
+export {
+  characterCardV2Schema,
+  type CharacterCardV2,
+} from "./character-card.js";
+
 // ─── Enums (must be defined BEFORE the pgTable that uses them) ───────────────
 
 export const kycStatusEnum = pgEnum("kyc_status", [
@@ -75,6 +83,10 @@ export const creatorsTable = pgTable("creators", {
   replitUserId: text("replit_user_id").unique(),
   telegramUserId: text("telegram_user_id").unique(),
   killSwitchActive: boolean("kill_switch_active").notNull().default(false),
+  // Monetization target URL (D-02-10). Captured by the persona-wizard final step
+  // (plan 02-07) — same value also lives in creators.config.platform_url for
+  // platform-name lookup. NULL = creator hasn't completed onboarding yet.
+  monetizationUrl: text("monetization_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -105,6 +117,10 @@ export const twinsTable = pgTable("twins", {
   status: text("status").notNull().default("inactive"),
   visibility: twinVisibilityEnum("visibility").notNull().default("private"),
   characterCard: jsonb("character_card"),
+  // Voice reference clip URL (D-02-02). Replit Object Storage key:
+  // creators/{creatorId}/voice_reference.wav — populated by the /voice wizard
+  // scene (plan 02-08). NULL until creator uploads a 6+ second voice note.
+  voiceReferenceUrl: text("voice_reference_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
