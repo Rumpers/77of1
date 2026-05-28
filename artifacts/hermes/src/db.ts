@@ -274,3 +274,86 @@ export async function writeMonetization(
     })
     .where(eq(creatorsTable.id, creatorId));
 }
+
+// ─── Voice-wizard writer (plan 02-08) ────────────────────────────────────────
+//
+// writeVoiceReferenceUrl: stores the Replit Object Storage URL of the creator's
+// voice reference clip onto twins.voice_reference_url. Called after a
+// successful uploadVoiceReference(...). If no twins row exists yet (creator
+// hasn't run /persona), the function is a no-op — the creator must complete
+// /persona first to create the twin row (PERSONA-01).
+//
+// Side note: in Phase 2 the persona wizard ALWAYS creates the twins row
+// (upsertTwinCharacterCard) before /voice is expected to be useful, so the
+// "no row" branch is defensive only. If observed in production logs, it
+// signals a creator running /voice before /persona — surface as a /voice
+// reply ("Please run /persona first").
+export async function writeVoiceReferenceUrl(
+  creatorId: string,
+  voiceReferenceUrl: string,
+): Promise<{ updated: boolean }> {
+  const result = await db
+    .update(twinsTable)
+    .set({ voiceReferenceUrl })
+    .where(eq(twinsTable.creatorId, creatorId))
+    .returning({ id: twinsTable.id });
+  return { updated: result.length > 0 };
+}
+
+// ─── Voice-revocation helpers (plan 02-08 — ONBOARD-03) ──────────────────────
+//
+// findActiveVoiceConsentGrant: look up the (creator, voice, granted=true,
+//   revokedAt IS NULL) consent_grants row that /revoke_voice should retire.
+//   Returns the row id or null when no active grant exists.
+// markVoiceConsentRevoked: stamp revokedAt + granted=false on the grant row.
+//   Returns the elapsed db-write ms so /revoke_voice can log/warn on >2s
+//   (mirrors setPaused SLA pattern).
+// clearVoiceReferenceUrl: NULL out twins.voice_reference_url AFTER revocation
+//   so the L2/L3 voice-synth path stops finding a reference clip.
+
+import { consentGrantsTable } from "@workspace/db";
+import { and, isNull } from "drizzle-orm";
+
+export async function findActiveVoiceConsentGrant(
+  creatorId: string,
+): Promise<{ id: string } | null> {
+  const rows = await db
+    .select({ id: consentGrantsTable.id })
+    .from(consentGrantsTable)
+    .where(
+      and(
+        eq(consentGrantsTable.creatorId, creatorId),
+        eq(consentGrantsTable.modality, "voice"),
+        eq(consentGrantsTable.granted, true),
+        isNull(consentGrantsTable.revokedAt),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markVoiceConsentRevoked(
+  consentGrantId: string,
+): Promise<{ elapsed: number }> {
+  const t0 = Date.now();
+  await db
+    .update(consentGrantsTable)
+    .set({ granted: false, revokedAt: new Date() })
+    .where(eq(consentGrantsTable.id, consentGrantId));
+  const elapsed = Date.now() - t0;
+  if (elapsed > 2000) {
+    console.error(
+      `[hermes] WARN consent revocation db write took ${elapsed}ms — approaching SLA`,
+    );
+  }
+  return { elapsed };
+}
+
+export async function clearVoiceReferenceUrl(
+  creatorId: string,
+): Promise<void> {
+  await db
+    .update(twinsTable)
+    .set({ voiceReferenceUrl: null })
+    .where(eq(twinsTable.creatorId, creatorId));
+}

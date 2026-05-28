@@ -86,11 +86,11 @@ export function createWorker(
   const worker = new Worker<ConsentRevocationPayload>(
     QUEUE_NAMES.consentRevocation,
     async (job) => {
-      const { creatorId, consentGrantId, killSwitch } = job.data;
+      const { creatorId, consentGrantId, killSwitch, modality } = job.data;
       const t0 = Date.now();
 
       console.log(
-        `[revocation] processing creator=${creatorId} killSwitch=${killSwitch} job=${job.id}`,
+        `[revocation] processing creator=${creatorId} modality=${modality ?? "*"} killSwitch=${killSwitch} job=${job.id}`,
       );
 
       // Query matching active jobs using Drizzle
@@ -129,8 +129,16 @@ export function createWorker(
       const matched: DbJob[] = await query;
 
       if (matched.length === 0) {
-        console.log(`[revocation] no active jobs creator=${creatorId}`);
-        await writeAuditLog(creatorId, consentGrantId ?? null, !!killSwitch, 0, 0, Date.now() - t0);
+        const earlySweepMs = Date.now() - t0;
+        console.log(
+          `[revocation] no active jobs creator=${creatorId} modality=${modality ?? "*"} sweepMs=${earlySweepMs}`,
+        );
+        await writeAuditLog(creatorId, consentGrantId ?? null, !!killSwitch, 0, 0, earlySweepMs);
+        if (earlySweepMs > 60000) {
+          console.error(
+            `[revocation] WARN sweep exceeded 60s SLA (no-op path) sweepMs=${earlySweepMs} creator=${creatorId}`,
+          );
+        }
         return;
       }
 
@@ -164,8 +172,17 @@ export function createWorker(
       );
 
       console.log(
-        `[revocation] cancelled=${jobIds.length} bullmqRemoved=${bullmqRemoved} sweepMs=${sweepMs} creator=${creatorId}`,
+        `[revocation] cancelled=${jobIds.length} bullmqRemoved=${bullmqRemoved} sweepMs=${sweepMs} creator=${creatorId} modality=${modality ?? "*"}`,
       );
+
+      // ONBOARD-03 SLA: sweep must complete within 60s of /revoke_voice (or
+      // /kill_switch / api kill-switch). Warn so the founder can investigate.
+      // Phase 4 wires a metric alert on this counter.
+      if (sweepMs > 60000) {
+        console.error(
+          `[revocation] WARN sweep exceeded 60s SLA sweepMs=${sweepMs} creator=${creatorId} cancelled=${jobIds.length}`,
+        );
+      }
     },
     { connection: { url: redisUrl }, concurrency: CONCURRENCY },
   );
