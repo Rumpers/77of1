@@ -46,6 +46,14 @@ import type {
   GetDunningMetricsParams,
   HealthStatus,
   KillSwitchResult,
+  KycIdentityInput,
+  KycInitiateSigningInput,
+  KycOkResponse,
+  KycSigningResponse,
+  KycStatusResponse,
+  KycTaxFormInput,
+  KycUploadUrlInput,
+  KycUploadUrlResponse,
   ListAdminRefundRequestsParams,
   OAuthPlatform,
   OAuthRevokeResult,
@@ -1938,6 +1946,375 @@ export const useDismissCreatorNotifications = <TError = ErrorType<ErrorResponse>
         TContext
       > => {
       return useMutation(getDismissCreatorNotificationsMutationOptions(options));
+    }
+
+export const getGetKycStatusUrl = () => {
+
+
+
+
+  return `/api/kyc/status`
+}
+
+/**
+ * Returns the current KYC gate status for the authenticated creator.
+ * @summary Get KYC status
+ */
+export const getKycStatus = async ( options?: RequestInit): Promise<KycStatusResponse> => {
+
+  return customFetch<KycStatusResponse>(getGetKycStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKycStatusQueryKey = () => {
+    return [
+    `/api/kyc/status`
+    ] as const;
+    }
+
+
+export const getGetKycStatusQueryOptions = <TData = Awaited<ReturnType<typeof getKycStatus>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKycStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKycStatus>>> = ({ signal }) => getKycStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKycStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getKycStatus>>>
+export type GetKycStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get KYC status
+ */
+
+export function useGetKycStatus<TData = Awaited<ReturnType<typeof getKycStatus>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKycStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetKycUploadUrlUrl = () => {
+
+
+
+
+  return `/api/kyc/upload-url`
+}
+
+/**
+ * Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket. Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form with the returned storagePath.
+
+ * @summary Get signed upload URL
+ */
+export const getKycUploadUrl = async (kycUploadUrlInput: KycUploadUrlInput, options?: RequestInit): Promise<KycUploadUrlResponse> => {
+
+  return customFetch<KycUploadUrlResponse>(getGetKycUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycUploadUrlInput,)
+  }
+);}
+
+
+
+
+export const getGetKycUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext> => {
+
+const mutationKey = ['getKycUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getKycUploadUrl>>, {data: BodyType<KycUploadUrlInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  getKycUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetKycUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof getKycUploadUrl>>>
+    export type GetKycUploadUrlMutationBody = BodyType<KycUploadUrlInput>
+    export type GetKycUploadUrlMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Get signed upload URL
+ */
+export const useGetKycUploadUrl = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getKycUploadUrl>>,
+        TError,
+        {data: BodyType<KycUploadUrlInput>},
+        TContext
+      > => {
+      return useMutation(getGetKycUploadUrlMutationOptions(options));
+    }
+
+export const getSubmitKycIdentityUrl = () => {
+
+
+
+
+  return `/api/kyc/identity`
+}
+
+/**
+ * Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url), then submits the storagePath here to advance to id_submitted status.
+
+ * @summary Submit identity document reference
+ */
+export const submitKycIdentity = async (kycIdentityInput: KycIdentityInput, options?: RequestInit): Promise<KycOkResponse> => {
+
+  return customFetch<KycOkResponse>(getSubmitKycIdentityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycIdentityInput,)
+  }
+);}
+
+
+
+
+export const getSubmitKycIdentityMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext> => {
+
+const mutationKey = ['submitKycIdentity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitKycIdentity>>, {data: BodyType<KycIdentityInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitKycIdentity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitKycIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof submitKycIdentity>>>
+    export type SubmitKycIdentityMutationBody = BodyType<KycIdentityInput>
+    export type SubmitKycIdentityMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit identity document reference
+ */
+export const useSubmitKycIdentity = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitKycIdentity>>,
+        TError,
+        {data: BodyType<KycIdentityInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitKycIdentityMutationOptions(options));
+    }
+
+export const getInitiateKycSigningUrl = () => {
+
+
+
+
+  return `/api/kyc/initiate-signing`
+}
+
+/**
+ * Creates a SignWell document for the creator to sign their personality-rights agreement.
+ * @summary Initiate personality-rights e-signature
+ */
+export const initiateKycSigning = async (kycInitiateSigningInput: KycInitiateSigningInput, options?: RequestInit): Promise<KycSigningResponse> => {
+
+  return customFetch<KycSigningResponse>(getInitiateKycSigningUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycInitiateSigningInput,)
+  }
+);}
+
+
+
+
+export const getInitiateKycSigningMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext> => {
+
+const mutationKey = ['initiateKycSigning'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initiateKycSigning>>, {data: BodyType<KycInitiateSigningInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  initiateKycSigning(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitiateKycSigningMutationResult = NonNullable<Awaited<ReturnType<typeof initiateKycSigning>>>
+    export type InitiateKycSigningMutationBody = BodyType<KycInitiateSigningInput>
+    export type InitiateKycSigningMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Initiate personality-rights e-signature
+ */
+export const useInitiateKycSigning = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initiateKycSigning>>,
+        TError,
+        {data: BodyType<KycInitiateSigningInput>},
+        TContext
+      > => {
+      return useMutation(getInitiateKycSigningMutationOptions(options));
+    }
+
+export const getSubmitKycTaxFormUrl = () => {
+
+
+
+
+  return `/api/kyc/tax-form`
+}
+
+/**
+ * Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath here to advance to tax_submitted status.
+
+ * @summary Submit tax form reference (HID-062)
+ */
+export const submitKycTaxForm = async (kycTaxFormInput: KycTaxFormInput, options?: RequestInit): Promise<KycOkResponse> => {
+
+  return customFetch<KycOkResponse>(getSubmitKycTaxFormUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycTaxFormInput,)
+  }
+);}
+
+
+
+
+export const getSubmitKycTaxFormMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext> => {
+
+const mutationKey = ['submitKycTaxForm'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitKycTaxForm>>, {data: BodyType<KycTaxFormInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitKycTaxForm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitKycTaxFormMutationResult = NonNullable<Awaited<ReturnType<typeof submitKycTaxForm>>>
+    export type SubmitKycTaxFormMutationBody = BodyType<KycTaxFormInput>
+    export type SubmitKycTaxFormMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit tax form reference (HID-062)
+ */
+export const useSubmitKycTaxForm = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitKycTaxForm>>,
+        TError,
+        {data: BodyType<KycTaxFormInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitKycTaxFormMutationOptions(options));
     }
 
 export const getRetrySubscriptionUrl = (id: string,) => {

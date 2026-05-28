@@ -22,6 +22,8 @@ tags:
     description: Creator onboarding operations
   - name: creator
     description: Creator management and consent operations
+  - name: kyc
+    description: Creator KYC and tax-form intake (OF-124, HID-062)
   - name: subscriptions
     description: Fan subscription operations
   - name: account
@@ -773,6 +775,182 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── KYC ───────────────────────────────────────────────────────────────────
+
+  /kyc/status:
+    get:
+      operationId: getKycStatus
+      tags: [kyc]
+      summary: Get KYC status
+      description: Returns the current KYC gate status for the authenticated creator.
+      responses:
+        "200":
+          description: KYC status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycStatusResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a creator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/upload-url:
+    post:
+      operationId: getKycUploadUrl
+      tags: [kyc]
+      summary: Get signed upload URL
+      description: >
+        Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket.
+        Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form
+        with the returned storagePath.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycUploadUrlInput"
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycUploadUrlResponse"
+        "400":
+          description: Invalid fileType or mimeType
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/identity:
+    post:
+      operationId: submitKycIdentity
+      tags: [kyc]
+      summary: Submit identity document reference
+      description: >
+        Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url),
+        then submits the storagePath here to advance to id_submitted status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycIdentityInput"
+      responses:
+        "200":
+          description: Identity doc recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycOkResponse"
+        "400":
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/initiate-signing:
+    post:
+      operationId: initiateKycSigning
+      tags: [kyc]
+      summary: Initiate personality-rights e-signature
+      description: Creates a SignWell document for the creator to sign their personality-rights agreement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycInitiateSigningInput"
+      responses:
+        "200":
+          description: Signing URL returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycSigningResponse"
+        "400":
+          description: Identity doc not yet submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Wrong status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/tax-form:
+    post:
+      operationId: submitKycTaxForm
+      tags: [kyc]
+      summary: Submit tax form reference (HID-062)
+      description: >
+        Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage
+        first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath
+        here to advance to tax_submitted status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycTaxFormInput"
+      responses:
+        "200":
+          description: Tax form recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycOkResponse"
+        "400":
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: KYC already complete or rejected
           content:
             application/json:
               schema:
@@ -2281,3 +2459,143 @@ components:
         - recovered
         - cancelled
         - recovery_rate
+
+    # ── KYC ──────────────────────────────────────────────────────────────────
+
+    KycStatus:
+      type: string
+      enum:
+        - pending
+        - id_submitted
+        - id_verified
+        - signing_initiated
+        - rights_signed
+        - tax_submitted
+        - ops_approved
+        - complete
+
+    KycStatusResponse:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/KycStatus"
+        creatorId:
+          type: string
+        idDocSubmittedAt:
+          type: ["string", "null"]
+        signwellStatus:
+          type: ["string", "null"]
+        personalityRightsSignedAt:
+          type: ["string", "null"]
+        taxFormSubmittedAt:
+          type: ["string", "null"]
+        opsReviewedAt:
+          type: ["string", "null"]
+      required:
+        - status
+        - creatorId
+
+    KycOkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/KycStatus"
+      required:
+        - ok
+        - status
+
+    KycUploadUrlInput:
+      type: object
+      properties:
+        fileType:
+          type: string
+          enum: [id_doc, tax_form]
+        mimeType:
+          type: string
+          enum:
+            - application/pdf
+            - image/jpeg
+            - image/png
+            - image/heic
+            - image/webp
+      required:
+        - fileType
+        - mimeType
+
+    KycUploadUrlResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        storagePath:
+          type: string
+        token:
+          type: string
+      required:
+        - uploadUrl
+        - storagePath
+        - token
+
+    KycIdentityInput:
+      type: object
+      properties:
+        docType:
+          type: string
+          enum: [passport, national_id, drivers_license]
+        region:
+          type: string
+          description: ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US)
+        storagePath:
+          type: string
+      required:
+        - docType
+        - region
+        - storagePath
+
+    KycInitiateSigningInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+      required:
+        - email
+        - displayName
+
+    KycSigningResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        signingUrl:
+          type: string
+        docId:
+          type: string
+      required:
+        - ok
+        - signingUrl
+        - docId
+
+    KycTaxFormType:
+      type: string
+      enum: [W9, W8BEN, W8BENE]
+      description: >
+        W9 — US persons and entities (Form W-9).
+        W8BEN — Non-US individuals (Form W-8BEN).
+        W8BENE — Non-US entities (Form W-8BEN-E).
+
+    KycTaxFormInput:
+      type: object
+      properties:
+        taxFormType:
+          $ref: "#/components/schemas/KycTaxFormType"
+        storagePath:
+          type: string
+          description: Supabase Storage path returned by /kyc/upload-url
+      required:
+        - taxFormType
+        - storagePath

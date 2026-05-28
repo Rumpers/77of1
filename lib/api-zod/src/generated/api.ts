@@ -376,6 +376,87 @@ export const DismissCreatorNotificationsResponse = zod.object({
 
 
 /**
+ * Returns the current KYC gate status for the authenticated creator.
+ * @summary Get KYC status
+ */
+export const GetKycStatusResponse = zod.object({
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete']),
+  "creatorId": zod.string(),
+  "idDocSubmittedAt": zod.string().nullish(),
+  "signwellStatus": zod.string().nullish(),
+  "personalityRightsSignedAt": zod.string().nullish(),
+  "taxFormSubmittedAt": zod.string().nullish(),
+  "opsReviewedAt": zod.string().nullish()
+})
+
+
+/**
+ * Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket. Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form with the returned storagePath.
+
+ * @summary Get signed upload URL
+ */
+export const GetKycUploadUrlBody = zod.object({
+  "fileType": zod.enum(['id_doc', 'tax_form']),
+  "mimeType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/webp'])
+})
+
+export const GetKycUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string(),
+  "storagePath": zod.string(),
+  "token": zod.string()
+})
+
+
+/**
+ * Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url), then submits the storagePath here to advance to id_submitted status.
+
+ * @summary Submit identity document reference
+ */
+export const SubmitKycIdentityBody = zod.object({
+  "docType": zod.enum(['passport', 'national_id', 'drivers_license']),
+  "region": zod.string().describe('ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US)'),
+  "storagePath": zod.string()
+})
+
+export const SubmitKycIdentityResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete'])
+})
+
+
+/**
+ * Creates a SignWell document for the creator to sign their personality-rights agreement.
+ * @summary Initiate personality-rights e-signature
+ */
+export const InitiateKycSigningBody = zod.object({
+  "email": zod.string().email(),
+  "displayName": zod.string()
+})
+
+export const InitiateKycSigningResponse = zod.object({
+  "ok": zod.boolean(),
+  "signingUrl": zod.string(),
+  "docId": zod.string()
+})
+
+
+/**
+ * Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath here to advance to tax_submitted status.
+
+ * @summary Submit tax form reference (HID-062)
+ */
+export const SubmitKycTaxFormBody = zod.object({
+  "taxFormType": zod.enum(['W9', 'W8BEN', 'W8BENE']).describe('W9 — US persons and entities (Form W-9). W8BEN — Non-US individuals (Form W-8BEN). W8BENE — Non-US entities (Form W-8BEN-E).\n'),
+  "storagePath": zod.string().describe('Supabase Storage path returned by \/kyc\/upload-url')
+})
+
+export const SubmitKycTaxFormResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete'])
+})
+
+
+/**
  * Enqueues an immediate dunning-retry job for a past-due subscription. Requires fan auth session.
 
  * @summary Fan-initiated subscription retry

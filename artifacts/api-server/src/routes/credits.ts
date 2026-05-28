@@ -26,6 +26,18 @@ router.post("/credits/deduct", async (req: Request, res: Response) => {
     res.status(503).json({ error: "Database not configured" });
     return;
   }
+  // Enforce fan block before any credit deduction (OF-131)
+  const { data: blockRow } = await supabase
+    .from("fan_blocks")
+    .select("fan_id")
+    .eq("creator_id", creatorId)
+    .eq("fan_id", fanId)
+    .maybeSingle();
+  if (blockRow) {
+    res.status(403).json({ error: "fan_blocked" });
+    return;
+  }
+
   const { data, error } = await supabase.rpc("deduct_credits", {
     p_fan_id: fanId,
     p_creator_id: creatorId,
