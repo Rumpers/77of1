@@ -803,6 +803,9 @@ importers:
       stripe:
         specifier: ^22.1.1
         version: 22.1.1(@types/node@25.6.2)
+      telegraf:
+        specifier: ^4.16.3
+        version: 4.16.3
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
