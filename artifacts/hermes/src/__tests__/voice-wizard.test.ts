@@ -162,7 +162,7 @@ describe("voice WizardScene", () => {
       url: "https://storage.replit.com/v1/buckets/lala-voice-samples/objects/creators/creator-uuid-1/voice_reference.ogg",
       key: "creators/creator-uuid-1/voice_reference.ogg",
     });
-    writeVoiceReferenceUrlMock.mockResolvedValueOnce(undefined);
+    writeVoiceReferenceUrlMock.mockResolvedValueOnce({ updated: true });
 
     vi.stubGlobal(
       "fetch",
@@ -193,7 +193,7 @@ describe("voice WizardScene", () => {
 
     // Success reply + leave
     const replies = ctx.reply.mock.calls.map((c) => c[0] as string);
-    expect(replies.some((t) => /voice sample stored|saved|/i.test(t))).toBe(true);
+    expect(replies.some((t) => /voice sample stored/i.test(t))).toBe(true);
     expect(ctx.scene.leave).toHaveBeenCalled();
   });
 

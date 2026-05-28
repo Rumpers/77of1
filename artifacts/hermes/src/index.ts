@@ -18,6 +18,7 @@ import {
 import { sessionMiddleware } from "./session.js";
 import { consentWizard } from "./scenes/consent.scene.js";
 import { personaWizard } from "./scenes/persona.scene.js";
+import { voiceWizard } from "./scenes/voice.scene.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
@@ -32,7 +33,7 @@ const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
 // command handler that calls ctx.scene.enter(...). Order matters:
 //   1. sessionMiddleware (@telegraf/session/pg) — provides ctx.session
 //   2. stage.middleware() — provides ctx.scene with wizard-context support
-const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard]);
+const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard, voiceWizard]);
 bot.use(sessionMiddleware);
 bot.use(stage.middleware());
 
@@ -216,6 +217,25 @@ bot.command("persona", async (ctx) => {
     currentIndex: 0,
     answers: {},
   });
+});
+
+// /voice — onboarding voice-sample component (D-02-02, ONBOARD-01).
+// Enters voice-wizard scene; creator sends a 6+ second voice note, scene
+// downloads from Telegram and uploads to Replit Object Storage at
+// `creators/{creatorId}/voice_reference.{ogg|wav}`; URL written to
+// twins.voice_reference_url. Graceful-degrade reply when bucket env unset.
+bot.command("voice", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  console.log(`[hermes] /voice started creator_id=${creator.id} (scene)`);
+  await ctx.scene.enter("voice-wizard", { creatorId: creator.id });
 });
 
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
