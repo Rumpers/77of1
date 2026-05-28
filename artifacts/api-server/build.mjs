@@ -62,7 +62,9 @@ async function buildAll() {
       "@swc/*",
       "@aws-sdk/*",
       "@azure/*",
-      "@opentelemetry/*",
+      // "@opentelemetry/*" removed — @sentry/node v8 transitively requires many
+      // @opentelemetry/instrumentation-* packages; externalizing all forces cascade
+      // peer-dep installs. Bundling inline is simpler and the size cost is acceptable.
       "@google-cloud/*",
       "@google/*",
       "googleapis",
