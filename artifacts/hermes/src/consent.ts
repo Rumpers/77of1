@@ -4,18 +4,20 @@
 // TODO Slice 2: move to Redis for multi-replica support.
 
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
-
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key);
-}
+import { db } from "@workspace/db";
+import { consentGrantsTable } from "@workspace/db";
 
 export const CONSENT_VERSION = 'v1.0';
 
 export type ConsentGrantType =
+  | 'persona_text'
+  | 'voice'
+  | 'image'
+  | 'talking_video'
+  | 'fullbody_video';
+
+// Type alias matching consentGrantModalityEnum literal values from @workspace/db schema
+type ConsentGrantModality =
   | 'persona_text'
   | 'voice'
   | 'image'
@@ -227,37 +229,27 @@ export async function commitConsent(
   answers: ConsentAnswers,
   ipHash: string,
 ): Promise<void> {
-  const db = getDb();
-  const confirmedAt = new Date().toISOString();
-
-  const rows = CONSENT_ITEMS.map((item) => ({
-    creator_id: creatorId,
-    grant_type: item.grantType,
-    granted: answers[item.grantType] ?? false,
-    granted_at: confirmedAt,
-    consent_version: CONSENT_VERSION,
-    channel: 'telegram',
-    ip_hash: ipHash,
-    confirmed_at: confirmedAt,
-  }));
-
-  const { error: insertError } = await db.from('consent_grants').insert(rows);
-  if (insertError) throw new Error(`consent_grants insert: ${insertError.message}`);
+  // Insert one row per consent item into consent_grants via Drizzle (D-14: retentionCategory='operational')
+  await db.insert(consentGrantsTable).values(
+    CONSENT_ITEMS.map((item) => ({
+      creatorId,
+      modality: item.grantType as ConsentGrantModality,
+      granted: answers[item.grantType] ?? false,
+      grantedAt: new Date(),
+      consentVersion: CONSENT_VERSION,
+      channel: 'telegram',
+      ipHash,
+      retentionCategory: "operational" as const,
+    }))
+  );
 
   if (hasPersonaTextGrant(answers)) {
-    const { error: assetError } = await db
-      .from('creator_assets')
-      .update({ consent_state: 'released' })
-      .eq('creator_id', creatorId)
-      .eq('consent_state', 'pending_consent');
-    if (assetError) throw new Error(`creator_assets update: ${assetError.message}`);
+    // PHASE-1 STUB: creator_assets write deferred to Phase 2 — table not in current Drizzle schema
+    console.log('[hermes] STUB: creator_assets write deferred to Phase 2 — out of Phase 1 schema scope');
   }
 
-  const { error: onboardError } = await db
-    .from('creator_onboarding')
-    .update({ status: 'STEP_3_COMPLETE', updated_at: confirmedAt })
-    .eq('creator_id', creatorId);
-  if (onboardError) throw new Error(`creator_onboarding update: ${onboardError.message}`);
+  // PHASE-1 STUB: creator_onboarding write deferred to Phase 2 — table not in current Drizzle schema
+  console.log('[hermes] STUB: creator_onboarding write deferred to Phase 2 — out of Phase 1 schema scope');
 
   // Slice 1 stub: real signal wired when Twin endpoint ships (OF-92 TODO)
   console.log(
