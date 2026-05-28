@@ -730,26 +730,30 @@ The Phase 1 plan must include a task to update the SignWell template body (non-c
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Authentication strategy after Supabase JWT removal**
    - What we know: `require-creator-auth.ts` uses `getUserFromToken()` (Supabase JWT). `kyc.ts` routes use `getReplitUser()` (Replit identity headers). These are two different auth systems coexisting.
    - What's unclear: What replaces Supabase JWT auth for creator routes in Phase 1? Is the intent to use Replit auth headers exclusively?
    - Recommendation: Phase 1 should stub `requireCreatorAuth` middleware to use `getReplitUser()` exclusively (matching the pattern in `kyc.ts`). This removes the Supabase JWT dependency without requiring a new auth library. Document the stub clearly for Phase 2 hardening.
+   - **RESOLUTION (2026-05-27):** Adopted as planned in Plan 01-02 Task 3 — `require-creator-auth.ts` rewritten to use `getReplitUser()` + Drizzle creator lookup by `replit_user_id`; `require-fan-access.ts` stubbed to `next()` for Phase 1 (fan_accounts/fan_subscriptions out of Phase 1 schema). Hardened JWT path deferred to Phase 2.
 
 2. **`creator_totp` table existence and structure**
    - What we know: hermes/db.ts has 4 functions querying `creator_totp`. The table is not in `schema_v1.sql`.
    - What's unclear: Which migration file creates this table?
    - Recommendation: Planner should add a task: `grep -r "creator_totp" supabase/migrations/` and include the table in the Drizzle schema based on the result.
+   - **RESOLUTION (2026-05-27):** Table is included in Plan 01-01 Task 1 with column set inferred from `artifacts/hermes/src/db.ts` lines 84–132 (totpSecret, totpEnabled, recoveryCodes text[], enabledAt, updatedAt). Documented in PATTERNS.md "Supplemental: creator_totp Table". Risk: if the live DB has a pre-existing `creator_totp` row with extra columns, drizzle-kit push will surface the diff in its interactive prompt (Plan 01-01 Task 4 forbids auto-accepting renames).
 
 3. **pgvector availability on Replit PG**
    - What we know: `creator_content_embeddings` (in existing hermes code) uses a vector column. If pgvector is not available, embedding storage will fail.
    - What's unclear: Does Replit PG expose the `vector` extension?
    - Recommendation: Add a Day 1 verification task: `SELECT * FROM pg_extension WHERE extname = 'vector';`. If unavailable, defer embedding to a future phase (already deferred from Phase 1 scope).
+   - **RESOLUTION (2026-05-27):** Verification recorded as Plan 01-01 Task 2 (informational only, not blocking). Result written to `.planning/phases/01-baseline-repair/notes/pgvector-check.txt`. Embedding storage (creator_content_embeddings) is out of Phase 1 scope per CONTEXT.md deferred list — absence of pgvector is acceptable.
 
 4. **Existing Replit PG schema state**
    - What we know: The project is running on this branch (`rio-de-janeiro`) with untracked files suggesting active development. The Replit PG database may or may not have tables already (from Supabase migration history or fresh).
    - Recommendation: Plan task should run `drizzle-kit push --dry-run` first to show what DDL will be executed before committing.
+   - **RESOLUTION (2026-05-27):** Handled by Plan 01-01 Task 3 — a blocking founder checkpoint runs `psql` probes against `creator_kyc` BEFORE `drizzle-kit push` (Task 4). If the table doesn't exist, push is a clean slate (`approved (fresh-db)`). If it exists with legacy status values, founder runs the documented `UPDATE` statements to collapse to the 3-value enum before push (`approved (backfilled)`). Task 4 itself aborts on unanswered drizzle-kit interactive prompts (no auto-accept).
 
 ---
 
