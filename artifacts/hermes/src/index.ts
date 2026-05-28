@@ -19,6 +19,7 @@ import { sessionMiddleware } from "./session.js";
 import { consentWizard } from "./scenes/consent.scene.js";
 import { personaWizard } from "./scenes/persona.scene.js";
 import { voiceWizard } from "./scenes/voice.scene.js";
+import { revokeVoice } from "./revoke-voice.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
@@ -236,6 +237,34 @@ bot.command("voice", async (ctx) => {
 
   console.log(`[hermes] /voice started creator_id=${creator.id} (scene)`);
   await ctx.scene.enter("voice-wizard", { creatorId: creator.id });
+});
+
+// /revoke_voice — ONBOARD-03. Revoke voice consent; cancel in-flight voice
+// generations via the consent-revocation worker within ≤60s SLA. The DB write
+// (consent_grants.granted=false + revokedAt) is the legal-source-of-truth and
+// runs synchronously; the BullMQ job sweeps generation_jobs WHERE
+// consent_grant_id matches AND status IN ('queued','processing').
+bot.command("revoke_voice", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Your Telegram account isn't linked. Use /start to connect.");
+    return;
+  }
+
+  const result = await revokeVoice(creator.id);
+
+  if (!result.ok && result.reason === "no_active_grant") {
+    await ctx.reply("Voice consent is not currently active — nothing to revoke.");
+    return;
+  }
+
+  const queuedNote = result.queued
+    ? "In-flight voice generations are being cancelled now."
+    : "DB grant updated. (Queue worker offline — manual sweep may be needed.)";
+  await ctx.reply(`Voice consent revoked. ${queuedNote}`);
 });
 
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
