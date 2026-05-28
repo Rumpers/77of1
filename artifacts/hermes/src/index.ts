@@ -1,11 +1,12 @@
 // Hermes — single @7of1_bot creator management agent
 // One bot, multi-tenant by creator_id. Webhook-based for production.
-import { Telegraf } from "telegraf";
+import { Telegraf, Scenes } from "telegraf";
 import { createHash } from "crypto";
 import {
   findCreatorByTelegramId,
   getCreatorStats,
   setPaused,
+  getKycRow,
 } from "./db.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
 import {
@@ -14,19 +15,9 @@ import {
   writeAssetModerationAudit,
   insertApprovedAsset,
 } from "./asset-moderator.js";
-import {
-  startConsentSession,
-  getConsentSession,
-  clearConsentSession,
-  buildIntro,
-  buildCurrentPrompt,
-  buildSummary,
-  processConsentMessage,
-  commitConsent,
-  telegramIpHash,
-  hasPersonaTextGrant,
-  CONSENT_ITEMS,
-} from "./consent.js";
+import { sessionMiddleware } from "./session.js";
+import { consentWizard } from "./scenes/consent.scene.js";
+import { personaWizard } from "./scenes/persona.scene.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
 if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
@@ -35,7 +26,15 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://7of1.app";
 
-const bot = new Telegraf(BOT_TOKEN);
+const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
+
+// Persistent session backing + Scenes.Stage wiring. Must be mounted BEFORE any
+// command handler that calls ctx.scene.enter(...). Order matters:
+//   1. sessionMiddleware (@telegraf/session/pg) — provides ctx.session
+//   2. stage.middleware() — provides ctx.scene with wizard-context support
+const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard]);
+bot.use(sessionMiddleware);
+bot.use(stage.middleware());
 
 // /start — send Replit Auth deep-link to link Telegram identity to creator account
 bot.start(async (ctx) => {
@@ -114,12 +113,31 @@ bot.command("status", async (ctx) => {
 
   const stats = await getCreatorStats(creator.id);
   const twinState = stats.paused ? "⏸ Paused" : "▶️ Active";
+
+  // KYC-03: surface creator's KYC status (and pending signing URL when present).
+  const kyc = await getKycRow(creator.id);
+  let kycLine: string;
+  if (!kyc) {
+    kycLine = "KYC: ⏳ not-yet-started";
+  } else if (kyc.status === "signed") {
+    kycLine = "KYC: ✓ signed";
+  } else if (kyc.status === "pending") {
+    kycLine = kyc.signingUrl
+      ? `KYC: ⏳ pending — sign here: ${kyc.signingUrl}`
+      : "KYC: ⏳ pending";
+  } else if (kyc.status === "rejected") {
+    kycLine = "KYC: ✗ rejected — contact support";
+  } else {
+    kycLine = `KYC: ${kyc.status}`;
+  }
+
   const msg = [
     `*${creator.display_name} — Status*`,
     ``,
     `Twin: ${twinState}`,
     `Active fans: ${stats.activeFanCount}`,
     `Credit balance: coming in Slice 2`,
+    kycLine,
   ].join("\n");
 
   await ctx.reply(msg, { parse_mode: "Markdown" });
@@ -160,7 +178,8 @@ bot.command("persona_complete", async (ctx) => {
 });
 
 // /consent — onboarding Step 3: collect consent grants for each AI modality.
-// Multi-turn conversation: presents each item individually, then CONFIRM.
+// Backed by Telegraf WizardScene + @telegraf/session/pg (D-02 carried-over).
+// Scene state survives Replit restart; sending /consent mid-flow re-enters cleanly.
 bot.command("consent", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
@@ -171,16 +190,16 @@ bot.command("consent", async (ctx) => {
     return;
   }
 
-  startConsentSession(tgUserId, creator.id);
-  const session = getConsentSession(tgUserId)!;
-
-  console.log(`[hermes] /consent started creator_id=${creator.id}`);
-  await ctx.reply(buildIntro());
-  await ctx.reply(buildCurrentPrompt(session));
+  console.log(`[hermes] /consent started creator_id=${creator.id} (scene)`);
+  await ctx.scene.enter("consent-wizard", { creatorId: creator.id, currentIndex: 0, answers: {} });
 });
 
-// /consent_status — show current consent state (resume after drop-off)
-bot.command("consent_status", async (ctx) => {
+// /persona — onboarding Step 2 (NEW in 02-07): Character Card V2 wizard.
+// Captures 6 persona fields + platform_name + platform_url; writes to
+// twins.character_card JSONB; mirrors platform_url into creators.monetizationUrl
+// (D-02-10 — CHAT-05 soft CTA data source); writes constitution.md stub to
+// Replit Object Storage (D-02-13 — PERSONA-02).
+bot.command("persona", async (ctx) => {
   const tgUserId = ctx.from?.id;
   if (!tgUserId) return;
 
@@ -190,24 +209,13 @@ bot.command("consent_status", async (ctx) => {
     return;
   }
 
-  const session = getConsentSession(tgUserId);
-  if (!session) {
-    await ctx.reply(
-      "No active consent session. Send /consent to start or resume Step 3."
-    );
-    return;
-  }
-
-  if (session.state === 'confirming') {
-    await ctx.reply(buildSummary(session.answers));
-    return;
-  }
-
-  const answered = Object.keys(session.answers).length;
-  await ctx.reply(
-    `Consent in progress: ${answered}/${CONSENT_ITEMS.length} items answered.\n\n` +
-    buildCurrentPrompt(session)
-  );
+  console.log(`[hermes] /persona started creator_id=${creator.id} (scene)`);
+  await ctx.scene.enter("persona-wizard", {
+    creatorId: creator.id,
+    creatorName: creator.display_name,
+    currentIndex: 0,
+    answers: {},
+  });
 });
 
 // /revenue — GMV summary. Stub data in Slice 1; real ledger in Slice 2.
@@ -483,43 +491,9 @@ bot.on("document", async (ctx) => {
   await ctx.reply(`✅ File received and approved.`);
 });
 
-// General text handler — routes YES/NO/CONFIRM/BACK to active consent session.
-// All other messages are ignored (no free-form LLM in Slice 1).
-bot.on("text", async (ctx) => {
-  const tgUserId = ctx.from?.id;
-  if (!tgUserId) return;
-
-  const session = getConsentSession(tgUserId);
-  if (!session) return;
-
-  const reply = processConsentMessage(session, tgUserId, ctx.message.text);
-
-  if (reply === null) {
-    await ctx.reply("Please reply YES or NO.");
-    return;
-  }
-
-  // CONFIRM sentinel — run DB write then reply
-  if (reply === '__CONFIRM__') {
-    try {
-      const answers = { ...session.answers };
-      const creatorId = session.creatorId;
-      await commitConsent(creatorId, answers, telegramIpHash(tgUserId));
-      clearConsentSession(tgUserId);
-      const msg = hasPersonaTextGrant(answers)
-        ? "🎉 Consent recorded. Your twin production is starting now.\nI'll message you when it's ready."
-        : "✅ Consent recorded.\n\nNote: Persona / Text was not granted, so your AI twin won't start yet. You can grant it anytime via /consent.";
-      console.log(`[hermes] consent confirmed creator_id=${creatorId}`);
-      await ctx.reply(msg);
-    } catch (err) {
-      console.error(`[hermes] consent commit failed creator_id=${session.creatorId}`, err);
-      await ctx.reply("Something went wrong saving your consent. Please try again or send /consent to restart.");
-    }
-    return;
-  }
-
-  await ctx.reply(reply);
-});
+// Note: free-form text is now consumed by the active Scenes.Stage (consent or
+// persona wizard). When no scene is active, text messages are ignored — there
+// is no free-form LLM on Hermes (creators talk to fans via the fan-twin bot).
 
 // Launch — webhook in production, long-poll in dev
 if (WEBHOOK_URL) {

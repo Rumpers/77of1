@@ -3,9 +3,11 @@ import { db } from "@workspace/db";
 import {
   creatorsTable,
   creatorConfigTable,
+  creatorKycTable,
   creatorTotpTable,
+  twinsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // ─── Creator lookup ───────────────────────────────────────────────────────────
 
@@ -196,4 +198,79 @@ export async function setHermesLanguage(
       target: creatorConfigTable.creatorId,
       set: { hermesLanguage: language, updatedAt: new Date() },
     });
+}
+
+// ─── KYC lookup (KYC-03 — /status command surfaces this) ─────────────────────
+//
+// Returns null when no creator_kyc row exists (creator hasn't been routed
+// through the signing flow yet). status is one of the kycStatusEnum literals:
+// 'pending' | 'signed' | 'rejected' per lib/db/src/schema/index.ts.
+
+export interface KycRow {
+  status: string;
+  signingUrl: string | null;
+}
+
+export async function getKycRow(creatorId: string): Promise<KycRow | null> {
+  const rows = await db
+    .select({
+      status: creatorKycTable.status,
+      signingUrl: creatorKycTable.signwellSigningUrl,
+    })
+    .from(creatorKycTable)
+    .where(eq(creatorKycTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// ─── Persona-wizard writers (plan 02-07) ─────────────────────────────────────
+//
+// writeCharacterCard: replace the row's character_card JSONB. PERSONA-01.
+// upsertTwinCharacterCard: same but creates the twins row if absent (first
+//   /persona run for a brand-new creator).
+// writeMonetization: merge platform fields into creators.config JSONB AND
+//   mirror platform_url into creators.monetizationUrl (D-02-10 sync). Both
+//   writes share a transaction so the two never drift.
+
+import type { CharacterCardV2 } from "@workspace/db";
+
+export async function upsertTwinCharacterCard(
+  creatorId: string,
+  characterCard: CharacterCardV2,
+  handle: string,
+): Promise<void> {
+  // Try update first; if no row, insert. twinsTable.handle is unique so we
+  // generate a fallback handle from the creator's display handle.
+  const updated = await db
+    .update(twinsTable)
+    .set({ characterCard })
+    .where(eq(twinsTable.creatorId, creatorId))
+    .returning({ id: twinsTable.id });
+  if (updated.length === 0) {
+    await db.insert(twinsTable).values({
+      creatorId,
+      handle,
+      characterCard,
+    });
+  }
+}
+
+export async function writeMonetization(
+  creatorId: string,
+  platformName: string,
+  platformUrl: string,
+): Promise<void> {
+  // Merge platform_name + platform_url into existing config JSONB (preserves
+  // any keys downstream plans may have written). Postgres jsonb concat (||).
+  await db
+    .update(creatorsTable)
+    .set({
+      config: sql`COALESCE(${creatorsTable.config}, '{}'::jsonb) || ${JSON.stringify({
+        platform_name: platformName,
+        platform_url: platformUrl,
+      })}::jsonb`,
+      monetizationUrl: platformUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(creatorsTable.id, creatorId));
 }
