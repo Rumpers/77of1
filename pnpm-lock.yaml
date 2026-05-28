@@ -221,6 +221,9 @@ importers:
       '@bull-board/express':
         specifier: ^7.1.5
         version: 7.1.5
+      '@opentelemetry/api':
+        specifier: ^1.9.1
+        version: 1.9.1
       '@sentry/node':
         specifier: ^8
         version: 8.55.2
