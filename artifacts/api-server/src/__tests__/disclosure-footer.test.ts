@@ -1,16 +1,37 @@
-// RED test for COMPLY-01 — will GREEN when plan 02-03 ships getDisclosureFooter(locale, handle).
-// SB 243 mandate: every AI twin message must include AI disclosure footer.
-// Unit: pure function — no DB or fetch mocks needed.
-import { describe, it } from "vitest";
+// COMPLY-01 — SB 243 AI disclosure footer (unit).
+// Source of truth: artifacts/api-server/src/lib/disclosure.ts.
+// Pure function — no DB, no fetch, no env mocks needed.
+import { describe, it, expect } from "vitest";
+import { getDisclosureFooter } from "../lib/disclosure.js";
 
 describe("COMPLY-01: SB 243 AI disclosure footer", () => {
-  it.todo(
-    "GREENs in plan 02-03: returns 'AI twin · @{handle}_ai' for locale='en'",
-  );
-  it.todo(
-    "GREENs in plan 02-03: returns locale-localized footer for ja / zh-TW (e.g. 'AI ツイン · @{handle}_ai')",
-  );
-  it.todo(
-    "GREENs in plan 02-03: footer is appended to every assistant reply in /api/twin/chat (twin-chat.e2e.test.ts covers integration)",
-  );
+  it("returns 'AI twin · @{handle}_ai' for locale='en'", () => {
+    expect(getDisclosureFooter("en", "sakura")).toBe("AI twin · @sakura_ai");
+  });
+
+  it("returns localized prefix for ja (AIツイン)", () => {
+    expect(getDisclosureFooter("ja", "sakura")).toBe("AIツイン · @sakura_ai");
+  });
+
+  it("returns localized prefix for zh-TW (AI分身)", () => {
+    expect(getDisclosureFooter("zh-TW", "sakura")).toBe("AI分身 · @sakura_ai");
+  });
+
+  it("sanitises non-[a-zA-Z0-9_] handle characters", () => {
+    // Crafted handles with separators / unicode must not be able to break the
+    // disclosure string contract.
+    expect(getDisclosureFooter("en", "sakura·foo")).toBe(
+      "AI twin · @sakurafoo_ai",
+    );
+    expect(getDisclosureFooter("en", "sak@ura")).toBe("AI twin · @sakura_ai");
+  });
+
+  it("handles empty / null-ish handle safely (no crash, empty after sanitisation)", () => {
+    expect(getDisclosureFooter("en", "")).toBe("AI twin · @_ai");
+    // Cast to string for the test boundary — runtime callers should pass real
+    // strings, but the helper coerces defensively.
+    expect(getDisclosureFooter("en", undefined as unknown as string)).toBe(
+      "AI twin · @_ai",
+    );
+  });
 });
