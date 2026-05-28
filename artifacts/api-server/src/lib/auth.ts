@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import type { Request } from "express";
+import type { Request, CookieOptions } from "express";
 
 function getSessionSecret(): string {
   return process.env.SESSION_SECRET ?? "dev-only-secret-change-before-deploy";
@@ -35,6 +35,22 @@ export function getReplitUser(req: Request): ReplitUser | null {
     profileImage: (req.headers["x-replit-user-profile-image"] as string) ?? "",
     url: (req.headers["x-replit-user-url"] as string) ?? "",
     teams: (req.headers["x-replit-user-teams"] as string) ?? "",
+  };
+}
+
+// ── Cookie/session helpers (relocated from deleted supabase.ts) ─────────────────
+// COOKIE_ACCESS_TOKEN value stays "sb-access-token" for Phase 1 backwards-compat.
+// Rename deferred to Phase 2 per PATTERNS.md.
+export const COOKIE_ACCESS_TOKEN = "sb-access-token";
+export const COOKIE_REFRESH_TOKEN = "sb-refresh-token";
+
+export function sessionCookieOptions(maxAge: number): CookieOptions {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge,
   };
 }
 

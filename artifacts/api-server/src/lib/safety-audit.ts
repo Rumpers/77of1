@@ -1,9 +1,10 @@
 // Safety audit log writer + Slack alert webhook (OF-161 / OF-132 crisis intervention).
 // All writes are async fire-and-forget — never slows down the response path.
-// No raw text or fan PII stored; hashes only.
+// No raw text or fan PII stored; hashes only (COMPLY-03, D-02).
 
 import { createHash } from "crypto";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db } from "@workspace/db";
+import { safetyAuditLogTable } from "@workspace/db";
 
 export type CrisisLevel = "none" | "low" | "medium" | "high";
 
@@ -61,10 +62,7 @@ async function fireSlackAlert(entry: SafetyAuditEntry): Promise<void> {
   }
 }
 
-export function writeSafetyAuditLog(
-  supabase: SupabaseClient,
-  entry: SafetyAuditEntry,
-): void {
+export function writeSafetyAuditLog(entry: SafetyAuditEntry): void {
   // Intentionally fire-and-forget — caller must not await this.
   void (async () => {
     const fanIdHash = sha256(entry.fanId);
@@ -76,22 +74,23 @@ export function writeSafetyAuditLog(
       alerted = true;
     }
 
-    const { error } = await supabase.from("safety_audit_log").insert({
-      creator_id: entry.creatorId,
-      fan_id_hash: fanIdHash,
-      session_id: entry.sessionId,
-      message_hash: messageHash,
-      crisis_level: entry.crisisLevel,
-      crisis_type: entry.crisisType ?? null,
-      locale: entry.locale,
-      confidence: entry.confidence ?? null,
-      response_sent: entry.responseSent,
-      twin_paused: entry.twinPaused,
-      alerted,
-    });
-
-    if (error) {
-      console.error(`[safety-audit] DB write failed session=${entry.sessionId}: ${error.message}`);
+    try {
+      await db.insert(safetyAuditLogTable).values({
+        creatorId: entry.creatorId,
+        fanIdHash,
+        sessionId: entry.sessionId,
+        messageHash,
+        crisisLevel: entry.crisisLevel,
+        crisisType: entry.crisisType ?? null,
+        locale: entry.locale,
+        confidence: entry.confidence ?? null,
+        responseSent: entry.responseSent,
+        twinPaused: entry.twinPaused,
+        alerted,
+        retentionCategory: "audit",
+      });
+    } catch (err) {
+      console.error(`[safety-audit] DB write failed session=${entry.sessionId}: ${(err as Error).message}`);
     }
   })();
 }
