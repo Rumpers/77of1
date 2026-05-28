@@ -22,3 +22,11 @@ Pre-existing TypeScript errors in `artifacts/web` (discovered while running
 All errors pre-date this plan. None of the files touched by 02-04
 (`components/fan/*`, `lib/i18n.ts fan namespace`, `lib/api.ts`,
 `pages/fan-page.tsx`, `index.css .dark block`) introduce new diagnostics.
+
+**Vite build break (pre-existing):**
+`pnpm --filter @workspace/web run build` fails with
+`[vite]: Rollup failed to resolve import "posthog-js" from src/lib/cookie-consent.ts`.
+Same root cause as the `posthog-js` typecheck error above — the package is
+not listed in `artifacts/web/package.json` deps. Either install `posthog-js`
+or stub it out in `cookie-consent.ts`. Out of scope for 02-04 (the fan-page
+refactor); flag for a near-term hygiene plan.
