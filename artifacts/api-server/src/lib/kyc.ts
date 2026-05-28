@@ -1,73 +1,59 @@
 import crypto from "crypto";
-import { getSupabase } from "./supabase.js";
+import { db } from "@workspace/db";
+import { creatorKycTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import type { CreatorKyc } from "@workspace/db";
 
-export type KycStatus =
-  | "pending"
-  | "id_submitted"
-  | "id_verified"
-  | "signing_initiated"
-  | "rights_signed"
-  | "tax_submitted"
-  | "ops_approved"
-  | "complete"
-  | "rejected";
+// ─── Status enum (collapsed from 9-state to 3-state per D-05) ────────────────
+// 'signed'   — creator has signed the personality-rights agreement (incl. voice synthesis scope)
+// 'pending'  — awaiting signature or under ops review
+// 'rejected' — ops rejected; twin permanently blocked for this creator
+export type KycStatus = "pending" | "signed" | "rejected";
 
-export type KycRow = {
-  id: string;
-  creator_id: string;
-  status: KycStatus;
-  id_doc_type: string | null;
-  id_doc_region: string | null;
-  id_doc_storage_path: string | null;
-  id_doc_submitted_at: string | null;
-  signwell_doc_id: string | null;
-  signwell_signing_url: string | null;
-  signwell_status: string | null;
-  personality_rights_signed_at: string | null;
-  personality_rights_ip_hash: string | null;
-  tax_form_type: string | null;
-  tax_form_storage_path: string | null;
-  tax_form_submitted_at: string | null;
-  ops_notes: string | null;
-  ops_reviewed_by: string | null;
-  ops_reviewed_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+// Re-export the Drizzle row type as KycRow for callers
+export type KycRow = CreatorKyc;
 
-export async function getKycRow(creatorId: string): Promise<KycRow | null> {
-  const sb = getSupabase();
-  const { data, error } = await sb
-    .from("creator_kyc")
-    .select("*")
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-  if (error) throw error;
-  return data as KycRow | null;
-}
-
+// ─── ensureKycRow ─────────────────────────────────────────────────────────────
+// Creates a KYC row if one does not exist. Returns the row.
 export async function ensureKycRow(creatorId: string): Promise<KycRow> {
-  const sb = getSupabase();
-  const { data, error } = await sb
-    .from("creator_kyc")
-    .upsert({ creator_id: creatorId, status: "pending" }, { onConflict: "creator_id", ignoreDuplicates: true })
-    .select("*")
-    .maybeSingle();
-  if (error) throw error;
-  if (data) return data as KycRow;
-  // Row already existed — re-fetch
-  const existing = await getKycRow(creatorId);
-  if (!existing) throw new Error("creator_kyc row missing after upsert");
-  return existing;
-}
+  await db
+    .insert(creatorKycTable)
+    .values({ creatorId, status: "pending" })
+    .onConflictDoNothing();
 
-/** Twin production gate: returns true only when the creator is fully KYC-cleared. */
-export async function isKycComplete(creatorId: string): Promise<boolean> {
   const row = await getKycRow(creatorId);
-  return row?.status === "complete";
+  if (!row) throw new Error("creator_kyc row missing after ensure");
+  return row;
 }
 
-/** Initiate a SignWell personality-rights signing request for a creator. */
+// ─── getKycRow ────────────────────────────────────────────────────────────────
+// Returns the full KYC row for a creator, or null if none exists.
+export async function getKycRow(creatorId: string): Promise<KycRow | null> {
+  return db
+    .select()
+    .from(creatorKycTable)
+    .where(eq(creatorKycTable.creatorId, creatorId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+}
+
+// ─── isKycSigned ─────────────────────────────────────────────────────────────
+// Twin production gate: returns true ONLY when status === 'signed'.
+// Strict positive assertion per D-05: null / missing row / pending / rejected all return false.
+export async function isKycSigned(creatorId: string): Promise<boolean> {
+  const row = await db
+    .select({ status: creatorKycTable.status })
+    .from(creatorKycTable)
+    .where(eq(creatorKycTable.creatorId, creatorId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+  // ONLY 'signed' passes. null/pending/rejected all block (Pitfall #4 — KYC null bypass).
+  return row?.status === "signed";
+}
+
+// ─── initiateSignwellSigning ──────────────────────────────────────────────────
+// Creates a SignWell personality-rights signing request for a creator.
+// Keeps the SignWell fetch logic intact; replaces the final Supabase .update() with Drizzle.
 export async function initiateSignwellSigning(
   creatorId: string,
   creatorEmail: string,
@@ -119,20 +105,22 @@ export async function initiateSignwellSigning(
   const signingUrl = json.signing_links?.[0]?.signing_url;
   if (!signingUrl) throw new Error("SignWell returned no signing URL");
 
-  const sb = getSupabase();
-  await sb
-    .from("creator_kyc")
-    .update({
-      signwell_doc_id: json.id,
-      signwell_signing_url: signingUrl,
-      signwell_status: "pending",
-      status: "signing_initiated",
+  // Update the KYC row via Drizzle — status stays 'pending' until webhook fires 'signed'
+  await db
+    .update(creatorKycTable)
+    .set({
+      signwellDocId: json.id,
+      signwellSigningUrl: signingUrl,
+      status: "pending",
+      updatedAt: new Date(),
     })
-    .eq("creator_id", creatorId);
+    .where(eq(creatorKycTable.creatorId, creatorId));
 
   return { signingUrl, docId: json.id };
 }
 
+// ─── hashIpForKyc / extractIp ─────────────────────────────────────────────────
+// No Supabase dependency — preserved verbatim.
 export function hashIpForKyc(ip: string): string {
   return crypto.createHash("sha256").update(ip.trim()).digest("hex");
 }

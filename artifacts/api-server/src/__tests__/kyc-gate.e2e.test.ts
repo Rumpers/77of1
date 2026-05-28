@@ -20,11 +20,16 @@ import type { IncomingMessage } from "node:http";
 // These imports will throw at module load time if DATABASE_URL is not set,
 // which is handled via the skip guard in beforeAll.
 
-let db: import("@workspace/db").NodePgDatabase<Record<string, never>>;
-let creatorsTable: typeof import("@workspace/db").creatorsTable;
-let creatorKycTable: typeof import("@workspace/db").creatorKycTable;
-let inArray: typeof import("drizzle-orm").inArray;
-let eq: typeof import("drizzle-orm").eq;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let db: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let creatorsTable: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let creatorKycTable: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let inArray: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let eq: any;
 
 // ─── App import ──────────────────────────────────────────────────────────────
 // NOTE: importing app after DB so DATABASE_URL guard fires first
