@@ -28,8 +28,8 @@ import {
   CONSENT_ITEMS,
 } from "./consent.js";
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not set");
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
+if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
