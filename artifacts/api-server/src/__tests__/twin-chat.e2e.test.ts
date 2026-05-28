@@ -16,6 +16,10 @@ process.env.HMAC_CONVERSATION_SECRET =
   process.env.HMAC_CONVERSATION_SECRET ||
   "test-secret-min-32-chars-aaaaaaaaaaaaaaa";
 process.env.TEXT_PROVIDER = "mock";
+// Plan 02-05: avoid unintentional outbound OpenAI calls from the moderation
+// pipeline that routes/twin.ts now invokes. MockModeratorProvider always
+// returns flagged=false so the existing pipeline assertions still hold.
+process.env.MODERATOR_PROVIDER = "mock";
 
 // ─── In-memory DB state for mocks ────────────────────────────────────────────
 interface CreatorRow {

@@ -83,6 +83,24 @@ export interface IVideoProvider {
   getJobStatus(providerJobId: string): Promise<VideoJobStatus>;
 }
 
+// ── Moderation provider (Phase 2 — OpenAI omni-moderation-latest) ────────────
+// Per PATTERNS A7: text-input moderation surface used for L1 (fan input) and
+// L3 (LLM output) safety checks in routes/twin.ts. OpenAI is the only provider
+// allowed for LLM-adjacent moderation per CLAUDE.md mandate — GMI does text
+// generation; OpenAI does moderation only.
+
+export interface ModerationResult {
+  flagged: boolean;
+  categories: string[];           // category names whose `categories[<name>]` is true
+  scores: Record<string, number>; // raw OpenAI category_scores map
+  primaryCategory: string | null; // highest-scoring flagged category, or null
+}
+
+export interface IModeratorProvider {
+  readonly modelId: string;
+  moderate(text: string): Promise<ModerationResult>;
+}
+
 // Non-retryable — 4xx from provider (bad request, invalid model, auth failure)
 export class ProviderError extends Error {
   constructor(
