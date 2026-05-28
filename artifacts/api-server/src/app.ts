@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
+import { verifyConversationId } from "./middlewares/verify-conversation-id.js";
 
 const app: Express = express();
 
@@ -35,6 +36,12 @@ app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// CHAT-03 (per D-02-14 + PATTERNS A4): mint or verify HMAC conversation_id
+// cookie on every request BEFORE routes mount, so any handler can read
+// res.locals.conversationId. We do NOT install i18next-http-middleware
+// (D-02-14) — routes call detectLocale(req) inline.
+app.use(verifyConversationId);
 
 app.use("/api", router);
 
