@@ -1,0 +1,2 @@
+pgvector check: DATABASE_URL not available in local development environment. Run psql "$DATABASE_URL" -c "SELECT extname FROM pg_extension WHERE extname = 'vector';" in Replit environment to verify.
+Status: informational-only — pgvector absence does not block Phase 1 (embeddings out of scope per CONTEXT.md deferred list).
