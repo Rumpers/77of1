@@ -4,15 +4,11 @@
 //
 // Note: embedding + RAG helpers are inlined here since packages/ai-providers
 // and packages/rag do not have source in the new Replit workspace layout yet.
-
-import { createClient } from "@supabase/supabase-js";
-
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key);
-}
+//
+// PHASE-1 STUB: creator_personas and creator_content_embeddings are not in
+// the Phase 1 @workspace/db schema. All DB calls in this file that reference
+// those tables are replaced with logged stubs. Wire in Phase 2 when the schema
+// is extended.
 
 // ── Embedding provider ─────────────────────────────────────────────────────
 
@@ -104,20 +100,14 @@ async function ingestCreatorContent(
   input: { creatorId: string; content: string; sourceType: string },
   embeddingProvider: IEmbeddingProvider
 ): Promise<IngestResult> {
-  const db = getDb();
   const chunks = chunkText(input.content, input.sourceType);
   let ingested = 0;
   for (const chunk of chunks) {
-    const { embedding, tokensUsed } = await embeddingProvider.embed(chunk.text);
-    const { error } = await db.from("creator_content_embeddings").insert({
-      creator_id: input.creatorId,
-      chunk_text: chunk.text,
-      embedding: `[${embedding.join(",")}]`,
-      source_type: chunk.sourceType,
-    });
-    if (error) throw new Error(`Failed to insert embedding chunk ${chunk.index} for creator ${input.creatorId}: ${error.message}`);
-    ingested++;
+    const { tokensUsed } = await embeddingProvider.embed(chunk.text);
+    // PHASE-1 STUB: creator_content_embeddings not in @workspace/db — out of Phase 1 schema scope
+    console.log(`[hermes] STUB: creator_content_embeddings insert deferred to Phase 2 — out of Phase 1 schema scope`);
     console.log(`[rag:ingest] creator=${input.creatorId} chunk=${chunk.index} tokens=${tokensUsed} provider=${embeddingProvider.provider}`);
+    ingested++;
   }
   return { creatorId: input.creatorId, chunksIngested: ingested, provider: embeddingProvider.provider, sourceType: input.sourceType };
 }
@@ -152,28 +142,17 @@ export interface OnboardingIngestResult {
 export async function triggerPersonaRagIngest(
   creatorId: string
 ): Promise<OnboardingIngestResult> {
-  const db = getDb();
+  // PHASE-1 STUB: creator_personas not in @workspace/db — out of Phase 1 schema scope
+  console.log(`[hermes] STUB: creator_personas select deferred to Phase 2 — out of Phase 1 schema scope`);
 
-  const { data: persona, error } = await db
-    .from("creator_personas")
-    .select("greeting_style, fan_endearment, treatment_style, personality_traits, message_style, bounds")
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-
-  if (error) throw new Error(`Persona load failed: ${error.message}`);
-  if (!persona) throw new Error(`No persona found for creator ${creatorId}`);
-
+  // Use empty persona fields for the stub — embeddings will also be stubbed
   const personaFields: Record<string, string> = {
-    greeting_style: (persona as Record<string, unknown>).greeting_style as string ?? "",
-    fan_endearment: (persona as Record<string, unknown>).fan_endearment as string ?? "",
-    treatment_style: (persona as Record<string, unknown>).treatment_style as string ?? "",
-    personality_traits: Array.isArray((persona as Record<string, unknown>).personality_traits)
-      ? ((persona as Record<string, unknown>).personality_traits as string[]).join(". ")
-      : "",
-    message_style: (persona as Record<string, unknown>).message_style as string ?? "",
-    bounds: Array.isArray((persona as Record<string, unknown>).bounds)
-      ? ((persona as Record<string, unknown>).bounds as string[]).join(". ")
-      : "",
+    greeting_style: "",
+    fan_endearment: "",
+    treatment_style: "",
+    personality_traits: "",
+    message_style: "",
+    bounds: "",
   };
 
   const embeddingProvider = createEmbeddingProvider();
