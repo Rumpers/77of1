@@ -224,9 +224,6 @@ importers:
       '@sentry/node':
         specifier: ^8
         version: 8.55.2
-      '@supabase/supabase-js':
-        specifier: ^2.106.1
-        version: 2.106.1
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod

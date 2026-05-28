@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@sentry/node": "^8",
-    "@supabase/supabase-js": "^2.106.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
