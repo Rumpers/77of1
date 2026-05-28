@@ -7,16 +7,25 @@
     "dev": "tsx watch src/index.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
+    "@telegraf/session": "2.0.0-beta.7",
+    "@workspace/db": "workspace:*",
+    "@workspace/queue": "workspace:*",
+    "bullmq": "^5.56.1",
+    "drizzle-orm": "catalog:",
+    "kysely": "^0.27.6",
+    "pg": "^8.20.0",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.11.10",
     "esbuild": "0.27.3",
     "tsx": "catalog:",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.3"
   }
 }

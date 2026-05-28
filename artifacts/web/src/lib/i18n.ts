@@ -83,6 +83,12 @@ type Messages = {
     report_submit: string;
     report_cancel: string;
     report_success: string;
+    // Phase 2 additions (UI-SPEC Copywriting Contract)
+    empty_state: string;
+    error_connection: string;
+    error_paused: string;
+    error_kyc: string;
+    monetization_cta: string;
   };
   dsar: {
     page_title: string;
@@ -243,6 +249,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "Submit report",
       report_cancel: "Cancel",
       report_success: "Report submitted. Thank you.",
+      empty_state: "Say hi to {handle} ✨",
+      error_connection: "Connection issue. Please try again.",
+      error_paused: "{handle} is taking a short break. Check back soon.",
+      error_kyc: "This twin isn't quite ready yet. Try again later.",
+      monetization_cta: "Want more? Find me on {platform_name} →",
     },
     dsar: {
       page_title: "Your Data Rights",
@@ -446,6 +457,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "報告を送信",
       report_cancel: "キャンセル",
       report_success: "報告を送信しました。ありがとうございます。",
+      empty_state: "{handle}にあいさつしよう ✨",
+      error_connection: "接続エラーが発生しました。もう一度お試しください。",
+      error_paused: "{handle}は少し休憩中です。またあとで来てね。",
+      error_kyc: "このツインはまだ準備中です。あとでまた来てね。",
+      monetization_cta: "もっと話したい？{platform_name}で会えるよ →",
     },
     dsar: {
       page_title: "データに関する権利",
@@ -649,6 +665,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "送出檢舉",
       report_cancel: "取消",
       report_success: "檢舉已送出，謝謝您。",
+      empty_state: "跟 {handle} 打個招呼 ✨",
+      error_connection: "連線出問題了，請再試一次。",
+      error_paused: "{handle} 暫時休息中，稍後再來看看。",
+      error_kyc: "這個分身還沒準備好，請晚點再來。",
+      monetization_cta: "想聊更多嗎？來 {platform_name} 找我 →",
     },
     dsar: {
       page_title: "您的資料權利",

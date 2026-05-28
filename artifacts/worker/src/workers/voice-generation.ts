@@ -1,59 +1,54 @@
 // Voice-generation worker — async voice note synthesis.
 // Lifecycle: queued → processing → complete | failed.
-// IVoiceProvider is wired via ProviderRegistry.voice (ElevenLabs / GMI).
+// IVoiceProvider is wired via ProviderRegistry.voice (GMI XTTS).
+//
+// Per D-13: worker body is a STUB in Phase 1.
+// Phase 3: wire GMI XTTS endpoint once URL confirmed with GMI support.
 
 import { Worker } from "bullmq";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import type { ProviderRegistry, VoiceGenerationPayload } from "@workspace/queue";
 import { QUEUE_NAMES } from "@workspace/queue";
 
 const CONCURRENCY = 5;
 
 export function createWorker(
-  registry: ProviderRegistry,
+  _registry: ProviderRegistry,
   redisUrl: string,
-  supabase: SupabaseClient,
 ): Worker<VoiceGenerationPayload> {
   const worker = new Worker<VoiceGenerationPayload>(
     QUEUE_NAMES.voiceGeneration,
     async (job) => {
-      const { jobDbId, creatorId, fanId, transcript, language, consentGrantVersion } = job.data;
+      const { jobDbId, creatorId, fanId, language } = job.data;
 
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "processing",
-          bullmq_job_id: job.id,
-          attempt_count: job.attemptsMade + 1,
-          consent_grant_version: consentGrantVersion,
+          bullmqJobId: job.id,
+          attemptCount: job.attemptsMade + 1,
         })
-        .eq("id", jobDbId);
+        .where(eq(generationJobsTable.id, jobDbId));
 
       console.log(
         `[voice-gen] processing job=${jobDbId} creator=${creatorId} fan=${fanId}` +
           ` lang=${language} attempt=${job.attemptsMade + 1}`,
       );
 
-      if (!registry.voice) {
-        throw new Error("voice provider not registered");
-      }
+      // STUB: GMI XTTS voice provider wired in Phase 3 once endpoint URL confirmed.
+      console.log(`[voice-gen] STUB: voice generation body filled in Phase 3`);
 
-      const result = await registry.voice.generate(transcript, creatorId, language);
-
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "complete",
-          output: result.audioUrl,
-          completed_at: new Date().toISOString(),
-          error_message: null,
+          completedAt: new Date(),
+          errorMessage: null,
         })
-        .eq("id", jobDbId);
+        .where(eq(generationJobsTable.id, jobDbId));
 
-      console.log(
-        `[voice-gen] done job=${jobDbId} duration=${result.durationSeconds}s` +
-          ` latency=${result.latencyMs}ms`,
-      );
+      console.log(`[voice-gen] done (stub) job=${jobDbId}`);
     },
     { connection: { url: redisUrl }, concurrency: CONCURRENCY },
   );
@@ -62,19 +57,19 @@ export function createWorker(
     if (!job) return;
     const isFinal = job.attemptsMade >= (job.opts.attempts ?? 1);
     if (isFinal) {
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "failed",
-          error_message: err.message,
-          completed_at: new Date().toISOString(),
+          errorMessage: err.message,
+          completedAt: new Date(),
         })
-        .eq("id", job.data.jobDbId);
+        .where(eq(generationJobsTable.id, job.data.jobDbId));
     } else {
-      await supabase
-        .from("generation_jobs")
-        .update({ attempt_count: job.attemptsMade })
-        .eq("id", job.data.jobDbId);
+      await db
+        .update(generationJobsTable)
+        .set({ attemptCount: job.attemptsMade })
+        .where(eq(generationJobsTable.id, job.data.jobDbId));
     }
     console.error(`[voice-gen] failed job=${job.id} attempt=${job.attemptsMade} error=${err.message}`);
   });

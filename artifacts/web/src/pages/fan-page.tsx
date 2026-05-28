@@ -1,810 +1,261 @@
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "wouter";
-import { getCreatorConfig } from "@/lib/creator-fixtures";
-import { getMessages, isValidLocale, DEFAULT_LOCALE } from "@/lib/i18n";
-import { sendFanOtp, verifyFanOtp } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { DEFAULT_LOCALE, getMessages, isValidLocale } from "@/lib/i18n";
+import { ApiError, fetchTwinProfile, sendTwinMessage } from "@/lib/api";
+import { MessageBubble, type BubbleRole } from "@/components/fan/MessageBubble";
+import { MessageInput } from "@/components/fan/MessageInput";
+import { DisclosureBanner } from "@/components/fan/DisclosureBanner";
+import { DisclosureFooter } from "@/components/fan/DisclosureFooter";
+import { TypingIndicator } from "@/components/fan/TypingIndicator";
+import { LocaleSwitcher } from "@/components/fan/LocaleSwitcher";
+import { ReportDialog, type ReportCategory } from "@/components/fan/ReportDialog";
+import { PaywallDrawer } from "@/components/fan/PaywallDrawer";
+import { CrisisHelplineBubble } from "@/components/fan/CrisisHelplineBubble";
+import { MonetizationCTA } from "@/components/fan/MonetizationCTA";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+const MAX_TRIAL = 3;
+const CJK_FONT =
+  '"Hiragino Kaku Gothic Pro", "Noto Sans CJK JP", "Microsoft JhengHei", system-ui, sans-serif';
 
-function isWebview(): boolean {
-  const ua = navigator.userAgent;
-  return /Instagram|ByteDance|TikTok|FBAN|FBAV/i.test(ua);
-}
+// Crisis helpline detection (COMPLY-02 — see api-server lib/helplines.ts).
+// When the AI reply text contains a locked helpline phone number, treat the
+// first "\n\n"-separated segment as the CrisisHelplineBubble and the rest as
+// the standard deflection bubble. Trial counter is NOT decremented on these
+// turns (UI-SPEC State Inventory — "Crisis injection" row).
+const HELPLINE_NUMBER_REGEX = /(988|0120-279-338|1925|2389 2222)/;
 
-function trialKey(handle: string): string {
-  return `7of1_trial_${handle}`;
-}
-
-function getTrialCount(handle: string): number {
-  try {
-    return parseInt(sessionStorage.getItem(trialKey(handle)) ?? "0", 10) || 0;
-  } catch {
-    return 0;
+function splitCrisisReply(text: string): {
+  isCrisis: boolean;
+  helplineSegment: string | null;
+  deflectionSegment: string;
+} {
+  if (!HELPLINE_NUMBER_REGEX.test(text)) {
+    return { isCrisis: false, helplineSegment: null, deflectionSegment: text };
   }
-}
-
-function setTrialCount(handle: string, n: number): void {
-  try {
-    sessionStorage.setItem(trialKey(handle), String(n));
-  } catch {
-    // sessionStorage unavailable (private browsing, webview sandbox)
+  const idx = text.indexOf("\n\n");
+  if (idx === -1) {
+    // Single block containing the helpline — render the entire thing as crisis,
+    // empty deflection. Defensive: server should always return "\n\n" but we
+    // don't crash if it doesn't.
+    return { isCrisis: true, helplineSegment: text, deflectionSegment: "" };
   }
-}
-
-function interpolate(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? `{${key}}`));
-}
-
-type LocaleKey = "en" | "ja" | "zh-TW";
-
-function disclosureFooter(locale: string, handle: string): string {
-  const map: Record<LocaleKey, string> = {
-    en: `AI twin · @${handle}_ai`,
-    ja: `AIツイン · @${handle}_ai`,
-    "zh-TW": `AI分身 · @${handle}_ai`,
+  return {
+    isCrisis: true,
+    helplineSegment: text.slice(0, idx),
+    deflectionSegment: text.slice(idx + 2),
   };
-  return map[(locale as LocaleKey)] ?? map.en;
 }
 
-// ── types ─────────────────────────────────────────────────────────────────────
-
-type ReportCategory = "off_topic" | "abusive" | "inappropriate" | "fraud";
-const REPORT_CATEGORIES: ReportCategory[] = ["off_topic", "abusive", "inappropriate", "fraud"];
+const trialKey = (h: string) => `7of1_trial_${h}`;
+function readTrial(handle: string): number {
+  try { return parseInt(sessionStorage.getItem(trialKey(handle)) ?? "0", 10) || 0; } catch { return 0; }
+}
+function writeTrial(handle: string, n: number): void {
+  try { sessionStorage.setItem(trialKey(handle), String(n)); } catch { /* private mode */ }
+}
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
+}
 
 type ChatMessage = {
   id: string;
-  role: "fan" | "ai";
+  role: BubbleRole;
   text: string;
   pending?: boolean;
   reported?: boolean;
+  footerText?: string;
+  /** COMPLY-02 crisis flag — set when text starts with a helpline phrase. */
+  isCrisis?: boolean;
+  helplineSegment?: string | null;
+  /** CHAT-05 monetization pivot from server. */
+  showCta?: boolean;
 };
-
-// ── component ─────────────────────────────────────────────────────────────────
 
 export default function FanPage() {
   const params = useParams<{ locale: string; handle: string }>();
   const locale = isValidLocale(params.locale) ? params.locale : DEFAULT_LOCALE;
   const handle = params.handle ?? "";
-
-  const config = getCreatorConfig(handle);
   const t = getMessages(locale).fan;
 
-  // CSS vars for brand colour
+  // Creator profile from API (CHAT-05 — no more fixture lookup)
+  const { data: profile } = useQuery({
+    queryKey: ["twin-profile", handle],
+    queryFn: () => fetchTwinProfile(handle),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+  });
+  const brandColor = profile?.brand_color ?? "#7c3aed";
+
   useLayoutEffect(() => {
     const style = document.createElement("style");
     style.id = "creator-css-vars";
-    style.textContent = `:root{--brand:${config.brand_color};--brand-font-weight:${config.font_weight};}`;
+    style.textContent = `:root{--brand:${brandColor};}`;
     document.head.appendChild(style);
     return () => style.remove();
-  }, [config.brand_color, config.font_weight]);
+  }, [brandColor]);
 
-  // AI disclosure banner (auto-dismiss after 3s)
-  const [bannerVisible, setBannerVisible] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => setBannerVisible(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
-  const [trialCount, setTrialCountState] = useState(() => getTrialCount(handle));
+  const [trialCount, setTrialCountState] = useState(() => readTrial(handle));
   const [showPaywall, setShowPaywall] = useState(false);
-  const MAX_TRIAL = 3;
-
-  // OTP auth state (shown inside paywall after trial exhausted)
-  type OtpStep = "email" | "code" | "done";
-  const [otpStep, setOtpStep] = useState<OtpStep>("email");
-  const [otpEmail, setOtpEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpBusy, setOtpBusy] = useState(false);
-  const [otpError, setOtpError] = useState("");
   const [fanAuthenticated, setFanAuthenticated] = useState(false);
-
-  // Report modal state
-  const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
-  const [reportCategory, setReportCategory] = useState<ReportCategory | null>(null);
-  const [reportDone, setReportDone] = useState(false);
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function openReport(msg: ChatMessage) {
-    setReportTarget(msg);
-    setReportCategory(null);
-    setReportDone(false);
+  const trialExhausted = !fanAuthenticated && trialCount >= MAX_TRIAL;
+  const remaining = MAX_TRIAL - trialCount;
+  const fontFamily = locale === "en" ? "system-ui, -apple-system, sans-serif" : CJK_FONT;
+  const coverUrl = `https://placehold.co/800x300/${brandColor.replace("#", "")}/ffffff?text=${encodeURIComponent(handle)}`;
+
+  function openReport(messageId: string) {
+    setReportTargetId(messageId);
+    setReportOpen(true);
   }
 
-  function closeReport() {
-    setReportTarget(null);
-    setReportCategory(null);
-    setReportDone(false);
-    setReportSubmitting(false);
-  }
-
-  async function submitReport() {
-    if (!reportTarget || !reportCategory || reportSubmitting) return;
-    setReportSubmitting(true);
-    // Fire and forget — API responds <2s, no UX block
+  async function submitReport(messageId: string, category: ReportCategory) {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg) return;
     fetch("/api/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message_id: reportTarget.id,
-        category: reportCategory,
-        message_text: reportTarget.text,
-        handle,
-        locale,
-      }),
-    }).catch(() => {/* silently ignore */});
-
-    // Mark message as reported in local state
-    setMessages((prev) =>
-      prev.map((m) => (m.id === reportTarget.id ? { ...m, reported: true } : m))
-    );
-    setReportDone(true);
-    setReportSubmitting(false);
-    setTimeout(closeReport, 1500);
+      body: JSON.stringify({ message_id: messageId, category, message_text: msg.text, handle, locale }),
+    }).catch(() => {/* fire-and-forget */});
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reported: true } : m)));
   }
 
   async function sendMessage() {
     const text = inputValue.trim();
     if (!text || sending) return;
+    if (trialCount >= MAX_TRIAL && !fanAuthenticated) { setShowPaywall(true); return; }
 
-    // Block if trial exhausted
-    if (trialCount >= MAX_TRIAL) {
-      setShowPaywall(true);
-      return;
-    }
-
-    const fanMsg: ChatMessage = {
-      id: `fan-${Date.now()}`,
-      role: "fan",
-      text,
-    };
-    const pendingMsg: ChatMessage = {
-      id: `ai-pending-${Date.now()}`,
-      role: "ai",
-      text: "…",
-      pending: true,
-    };
-
+    const fanMsg: ChatMessage = { id: `fan-${Date.now()}`, role: "fan", text };
+    const pendingMsg: ChatMessage = { id: `ai-pending-${Date.now()}`, role: "ai", text: "", pending: true };
     setMessages((prev) => [...prev, fanMsg, pendingMsg]);
     setInputValue("");
     setSending(true);
 
     try {
-      const res = await fetch("/api/twin/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, handle, locale }),
-      });
-
-      let aiText = "";
-      if (res.ok) {
-        const data = await res.json();
-        aiText = data.text ?? "…";
-      } else {
-        aiText = "Sorry, I couldn't respond right now. Try again soon!";
+      const data = await sendTwinMessage({ handle, message: text, locale });
+      const split = splitCrisisReply(data.text);
+      // Trial counter: do NOT decrement on crisis turns (UI-SPEC).
+      const newCount = split.isCrisis ? trialCount : trialCount + 1;
+      if (!split.isCrisis) {
+        writeTrial(handle, newCount);
+        setTrialCountState(newCount);
       }
-
-      const newCount = trialCount + 1;
-      setTrialCount(handle, newCount);
-      setTrialCountState(newCount);
-
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: "ai",
-        text: aiText,
+        text: split.deflectionSegment,
+        footerText: data.disclosure_footer,
+        isCrisis: split.isCrisis,
+        helplineSegment: split.helplineSegment,
+        showCta: data.monetization_pivot === true,
       };
-
       setMessages((prev) => prev.filter((m) => !m.pending).concat(aiMsg));
-
-      // Show paywall after 3rd AI response
-      if (newCount >= MAX_TRIAL) {
-        setTimeout(() => setShowPaywall(true), 600);
+      if (newCount >= MAX_TRIAL && !fanAuthenticated) setTimeout(() => setShowPaywall(true), 600);
+    } catch (err) {
+      let errorText = t.error_connection;
+      if (err instanceof ApiError) {
+        if (err.status === 423) errorText = t.error_kyc;
+        else if (err.status === 503) errorText = interpolate(t.error_paused, { handle });
       }
-    } catch {
-      setMessages((prev) =>
-        prev
-          .filter((m) => !m.pending)
-          .concat({
-            id: `ai-err-${Date.now()}`,
-            role: "ai",
-            text: "Connection issue. Please try again.",
-          })
-      );
+      setMessages((prev) => prev.filter((m) => !m.pending).concat({ id: `ai-err-${Date.now()}`, role: "system", text: errorText }));
     } finally {
       setSending(false);
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  async function handleOtpSend() {
-    if (!otpEmail.includes("@") || otpBusy) return;
-    setOtpBusy(true);
-    setOtpError("");
-    const { error } = await sendFanOtp(otpEmail);
-    setOtpBusy(false);
-    if (error) { setOtpError(error); return; }
-    setOtpStep("code");
-  }
-
-  async function handleOtpVerify() {
-    if (otpCode.length < 6 || otpBusy) return;
-    setOtpBusy(true);
-    setOtpError("");
-    const { fanId, error } = await verifyFanOtp(otpEmail, otpCode, handle);
-    setOtpBusy(false);
-    if (error) { setOtpError(t.otp_error_invalid); return; }
-    if (fanId) {
-      setOtpStep("done");
-      setFanAuthenticated(true);
-      setTimeout(() => setShowPaywall(false), 800);
-    }
-  }
-
-  const remaining = MAX_TRIAL - trialCount;
-  // Authenticated fans bypass the trial gate.
-  const trialExhausted = !fanAuthenticated && trialCount >= MAX_TRIAL;
-
-  const CJK_FONT = `"Hiragino Kaku Gothic Pro", "Noto Sans CJK JP", "Microsoft JhengHei", system-ui, sans-serif`;
-  const fontFamily = locale === "en" ? "system-ui, -apple-system, sans-serif" : CJK_FONT;
-
   return (
-    <main
-      style={{
-        maxWidth: "480px",
-        margin: "0 auto",
-        fontFamily,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100dvh",
-        background: "#0f0f0f",
-        color: "#f0f0f0",
-        position: "relative",
-      }}
-    >
-      {/* AI Disclosure Banner */}
-      {bannerVisible && (
-        <div
-          onClick={() => setBannerVisible(false)}
-          style={{
-            background: "#1a1a2e",
-            color: "#e0e0ff",
-            fontSize: "0.8125rem",
-            textAlign: "center",
-            padding: "0.5rem 1rem",
-            cursor: "pointer",
-            userSelect: "none",
-            borderBottom: "1px solid #2a2a4a",
-            zIndex: 20,
-          }}
-        >
-          {t.disclosure_banner}
-        </div>
-      )}
+    <main className="mx-auto flex flex-col min-h-[100dvh] bg-[#0f0f0f] text-[#f0f0f0] relative max-w-[480px]" style={{ fontFamily }}>
+      <DisclosureBanner locale={locale} />
 
-      {/* Cover image + hero */}
-      <div style={{ flexShrink: 0 }}>
-        <img
-          src={config.cover_image_url}
-          alt={handle}
-          style={{ width: "100%", display: "block", maxHeight: "200px", objectFit: "cover" }}
-          loading="eager"
-        />
-        <div style={{ padding: "1rem 1.25rem 0.75rem" }}>
-          <h1
-            style={{
-              color: config.brand_color,
-              fontWeight: config.font_weight,
-              margin: "0 0 0.25rem",
-              fontSize: "1.375rem",
-            }}
-          >
-            @{handle}
-          </h1>
-          <p style={{ margin: 0, color: "#aaa", fontSize: "0.875rem" }}>
-            Chat with @{handle}'s AI twin — available 24/7
-          </p>
+      <div className="shrink-0 relative">
+        <LocaleSwitcher currentLocale={locale} handle={handle} />
+        <img src={coverUrl} alt={handle} loading="eager" className="w-full block max-h-[200px] object-cover" />
+        <div className="px-5 pt-4 pb-3">
+          <h1 className="m-0 mb-1 text-[1.375rem] font-semibold" style={{ color: brandColor }}>@{handle}</h1>
+          <p className="m-0 text-[#aaa] text-[0.875rem]">Chat with @{handle}'s AI twin — available 24/7</p>
         </div>
       </div>
 
-      {/* Chat thread */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "1rem 1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.875rem",
-        }}
-      >
+      <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3.5">
         {messages.length === 0 && (
-          <p
-            style={{
-              textAlign: "center",
-              color: "#555",
-              fontSize: "0.8125rem",
-              marginTop: "2rem",
-            }}
-          >
-            {interpolate(t.chat_placeholder, { handle })}
-          </p>
+          <p className="text-center text-[#555] text-[0.8125rem] mt-8">{interpolate(t.empty_state, { handle })}</p>
         )}
-
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: msg.role === "fan" ? "flex-end" : "flex-start",
-            }}
-          >
-            <div
-              style={{
-                maxWidth: "80%",
-                padding: "0.625rem 0.875rem",
-                borderRadius: msg.role === "fan" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                background: msg.role === "fan" ? config.brand_color : "#2a2a2a",
-                color: msg.role === "fan" ? "#fff" : "#e8e8e8",
-                fontSize: "0.9375rem",
-                lineHeight: 1.45,
-                opacity: msg.pending ? 0.6 : 1,
-              }}
-            >
-              {msg.text}
-            </div>
-            {msg.role === "ai" && !msg.pending && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  marginTop: "0.25rem",
-                  paddingLeft: "0.25rem",
-                }}
-              >
-                <span style={{ fontSize: "0.6875rem", color: "#555" }}>
-                  {disclosureFooter(locale, handle)}
-                </span>
-                {!msg.reported ? (
-                  <button
-                    onClick={() => openReport(msg)}
-                    aria-label={t.report_button}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: "0 0.1rem",
-                      cursor: "pointer",
-                      fontSize: "0.6875rem",
-                      color: "#444",
-                      lineHeight: 1,
-                      opacity: 0.6,
-                    }}
-                  >
-                    ⚑
-                  </button>
-                ) : (
-                  <span style={{ fontSize: "0.6875rem", color: "#555", opacity: 0.5 }}>✓</span>
-                )}
-              </div>
+          <div key={msg.id} className="flex flex-col">
+            {msg.isCrisis && msg.helplineSegment && (
+              <CrisisHelplineBubble helplineText={msg.helplineSegment} locale={locale} />
             )}
+            <MessageBubble role={msg.role} text={msg.text} pending={msg.pending} brandColor={brandColor}>
+              {msg.pending && msg.role === "ai" && <TypingIndicator label={t.loading} />}
+              {msg.role === "ai" && !msg.pending && (
+                <>
+                  <DisclosureFooter handle={handle} locale={locale} footerText={msg.footerText}>
+                    {!msg.reported ? (
+                      <button type="button" onClick={() => openReport(msg.id)} aria-label={t.report_button} className="bg-transparent border-0 cursor-pointer text-[0.6875rem] text-[#444] leading-none opacity-60 px-0.5">⚑</button>
+                    ) : (
+                      <span className="text-[0.6875rem] text-[#555] opacity-50">✓</span>
+                    )}
+                  </DisclosureFooter>
+                  {msg.showCta && profile?.monetization_url && (
+                    <MonetizationCTA
+                      platformName={profile.platform_name || "my page"}
+                      monetizationUrl={profile.monetization_url}
+                      locale={locale}
+                      ctaTemplate={t.monetization_cta}
+                      brandColor={brandColor}
+                    />
+                  )}
+                </>
+              )}
+            </MessageBubble>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Trial counter */}
       {!trialExhausted && messages.length > 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: "0.75rem",
-            color: "#666",
-            padding: "0.25rem 0",
-          }}
-        >
-          {interpolate(t.trial_remaining, { n: remaining })}
-        </div>
+        <div className="text-center text-xs text-[#666] py-1">{interpolate(t.trial_remaining, { n: remaining })}</div>
       )}
       {trialExhausted && !showPaywall && (
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: "0.75rem",
-            color: "#888",
-            padding: "0.25rem 0",
-            cursor: "pointer",
-          }}
-          onClick={() => setShowPaywall(true)}
-        >
+        <button type="button" onClick={() => setShowPaywall(true)} className="text-center text-xs text-[#888] py-1 cursor-pointer bg-transparent border-0">
           {t.trial_exhausted} · {t.paywall_title}
-        </div>
-      )}
-
-      {/* Message input */}
-      <div
-        style={{
-          padding: "0.75rem 1rem",
-          borderTop: "1px solid #222",
-          display: "flex",
-          gap: "0.5rem",
-          alignItems: "flex-end",
-          background: "#0f0f0f",
-          flexShrink: 0,
-        }}
-      >
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={interpolate(t.chat_placeholder, { handle })}
-          disabled={sending || trialExhausted}
-          rows={1}
-          style={{
-            flex: 1,
-            background: "#1a1a1a",
-            border: "1px solid #333",
-            borderRadius: "10px",
-            color: "#f0f0f0",
-            padding: "0.625rem 0.75rem",
-            fontSize: "0.9375rem",
-            fontFamily,
-            resize: "none",
-            outline: "none",
-            lineHeight: 1.4,
-            maxHeight: "6rem",
-            overflowY: "auto",
-          }}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={sending || !inputValue.trim() || trialExhausted}
-          style={{
-            background: config.brand_color,
-            color: "#fff",
-            border: "none",
-            borderRadius: "10px",
-            padding: "0.625rem 1rem",
-            fontSize: "0.9375rem",
-            fontWeight: 600,
-            cursor: sending || !inputValue.trim() || trialExhausted ? "not-allowed" : "pointer",
-            opacity: sending || !inputValue.trim() || trialExhausted ? 0.5 : 1,
-            flexShrink: 0,
-          }}
-        >
-          {t.send}
         </button>
-      </div>
-
-      {/* Report modal */}
-      {reportTarget && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 60,
-            padding: "1rem",
-          }}
-          onClick={closeReport}
-        >
-          <div
-            style={{
-              background: "#1a1a1a",
-              borderRadius: "16px",
-              padding: "1.5rem",
-              width: "100%",
-              maxWidth: "360px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.875rem",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {reportDone ? (
-              <p style={{ margin: 0, textAlign: "center", color: "#4ade80", fontWeight: 600 }}>
-                {t.report_success}
-              </p>
-            ) : (
-              <>
-                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#f0f0f0" }}>
-                  {t.report_title}
-                </h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {REPORT_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setReportCategory(cat)}
-                      style={{
-                        padding: "0.625rem 0.875rem",
-                        borderRadius: "10px",
-                        border: `2px solid ${reportCategory === cat ? "#7C3AED" : "#333"}`,
-                        background: reportCategory === cat ? "#2d1e4e" : "#111",
-                        color: reportCategory === cat ? "#c4b5fd" : "#aaa",
-                        fontSize: "0.9rem",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontWeight: reportCategory === cat ? 600 : 400,
-                      }}
-                    >
-                      {t.report_categories[cat]}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button
-                    onClick={closeReport}
-                    style={{
-                      flex: 1,
-                      padding: "0.625rem",
-                      borderRadius: "10px",
-                      border: "1px solid #333",
-                      background: "transparent",
-                      color: "#888",
-                      fontSize: "0.9rem",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t.report_cancel}
-                  </button>
-                  <button
-                    onClick={submitReport}
-                    disabled={!reportCategory || reportSubmitting}
-                    style={{
-                      flex: 1,
-                      padding: "0.625rem",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: reportCategory ? "#7C3AED" : "#333",
-                      color: reportCategory ? "#fff" : "#666",
-                      fontSize: "0.9rem",
-                      fontWeight: 600,
-                      cursor: reportCategory ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    {t.report_submit}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       )}
 
-      {/* Paywall modal */}
-      {showPaywall && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
-        >
-          <div
-            style={{
-              background: "#161616",
-              borderRadius: "20px 20px 0 0",
-              padding: "2rem 1.5rem 2.5rem",
-              width: "100%",
-              maxWidth: "480px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.875rem",
-            }}
-          >
-            {/* Handle bar */}
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                background: "#444",
-                borderRadius: "2px",
-                alignSelf: "center",
-                marginBottom: "0.5rem",
-              }}
-            />
+      <MessageInput
+        value={inputValue}
+        onChange={setInputValue}
+        onSubmit={sendMessage}
+        disabled={sending || trialExhausted}
+        placeholder={interpolate(t.chat_placeholder, { handle })}
+        sendLabel={t.send}
+        brandColor={brandColor}
+      />
 
-            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#f0f0f0" }}>
-              {t.paywall_title}
-            </h2>
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} messageId={reportTargetId} locale={locale} onSubmit={submitReport} />
 
-            <p style={{ margin: 0, fontSize: "0.875rem", color: "#888" }}>
-              {t.trial_exhausted}
-            </p>
+      <PaywallDrawer
+        open={showPaywall}
+        onOpenChange={setShowPaywall}
+        locale={locale}
+        handle={handle}
+        brandColor={brandColor}
+        monetizationUrl={profile?.monetization_url ?? null}
+        onAuthenticated={() => setFanAuthenticated(true)}
+      />
 
-            {/* Subscribe button */}
-            <a
-              href="#subscribe"
-              style={{
-                display: "block",
-                background: config.brand_color,
-                color: "#fff",
-                padding: "0.875rem 1rem",
-                borderRadius: "12px",
-                textDecoration: "none",
-                textAlign: "center",
-                fontWeight: 700,
-                fontSize: "1rem",
-              }}
-            >
-              {t.paywall_subscribe}
-            </a>
-
-            {/* Buy credits button */}
-            <a
-              href="#credits"
-              style={{
-                display: "block",
-                background: "transparent",
-                color: config.brand_color,
-                border: `2px solid ${config.brand_color}`,
-                padding: "0.75rem 1rem",
-                borderRadius: "12px",
-                textDecoration: "none",
-                textAlign: "center",
-                fontWeight: 600,
-                fontSize: "1rem",
-              }}
-            >
-              {t.paywall_credits}
-            </a>
-
-            {/* Open in browser escape */}
-            <a
-              href={window.location.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "block",
-                textAlign: "center",
-                fontSize: "0.875rem",
-                color: "#666",
-                textDecoration: "none",
-                padding: "0.25rem 0",
-              }}
-            >
-              {isWebview() ? t.paywall_escape : t.paywall_escape}
-            </a>
-
-            {/* Supabase email OTP — webview-safe, no OAuth popup */}
-            <div style={{ borderTop: "1px solid #2a2a2a", paddingTop: "0.875rem", marginTop: "0.25rem" }}>
-              {otpStep === "done" ? (
-                <p style={{ textAlign: "center", color: "#4ade80", fontSize: "0.9rem", margin: 0 }}>
-                  ✓ {t.paywall_signup_cta}
-                </p>
-              ) : otpStep === "email" ? (
-                <>
-                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
-                    {t.otp_title}
-                  </p>
-                  <p style={{ margin: "0 0 0.75rem", fontSize: "0.75rem", color: "#666", textAlign: "center" }}>
-                    {t.otp_subtitle}
-                  </p>
-                  <input
-                    type="email"
-                    value={otpEmail}
-                    onChange={(e) => setOtpEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleOtpSend()}
-                    placeholder={t.otp_email_placeholder}
-                    autoComplete="email"
-                    inputMode="email"
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      background: "#1a1a1a", border: "1px solid #333",
-                      borderRadius: "10px", color: "#f0f0f0",
-                      padding: "0.625rem 0.75rem", fontSize: "0.9375rem",
-                      marginBottom: "0.5rem", outline: "none",
-                    }}
-                  />
-                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
-                  <button
-                    onClick={handleOtpSend}
-                    disabled={otpBusy || !otpEmail.includes("@")}
-                    style={{
-                      width: "100%", background: config.brand_color, color: "#fff",
-                      border: "none", borderRadius: "10px", padding: "0.75rem",
-                      fontSize: "0.9375rem", fontWeight: 600,
-                      cursor: otpBusy || !otpEmail.includes("@") ? "not-allowed" : "pointer",
-                      opacity: otpBusy || !otpEmail.includes("@") ? 0.5 : 1,
-                    }}
-                  >
-                    {otpBusy ? t.otp_sending : t.otp_send_button}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p style={{ margin: "0 0 0.625rem", fontSize: "0.8125rem", color: "#888", textAlign: "center" }}>
-                    {t.otp_check_email}
-                  </p>
-                  <input
-                    type="text"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    onKeyDown={(e) => e.key === "Enter" && handleOtpVerify()}
-                    placeholder={t.otp_code_placeholder}
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    style={{
-                      width: "100%", boxSizing: "border-box",
-                      background: "#1a1a1a", border: "1px solid #333",
-                      borderRadius: "10px", color: "#f0f0f0",
-                      padding: "0.625rem 0.75rem", fontSize: "1.25rem",
-                      letterSpacing: "0.25em", textAlign: "center",
-                      marginBottom: "0.5rem", outline: "none",
-                    }}
-                  />
-                  {otpError && <p style={{ color: "#f87171", fontSize: "0.75rem", margin: "0 0 0.5rem", textAlign: "center" }}>{otpError}</p>}
-                  <button
-                    onClick={handleOtpVerify}
-                    disabled={otpBusy || otpCode.length < 6}
-                    style={{
-                      width: "100%", background: config.brand_color, color: "#fff",
-                      border: "none", borderRadius: "10px", padding: "0.75rem",
-                      fontSize: "0.9375rem", fontWeight: 600,
-                      cursor: otpBusy || otpCode.length < 6 ? "not-allowed" : "pointer",
-                      opacity: otpBusy || otpCode.length < 6 ? 0.5 : 1,
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    {otpBusy ? t.otp_verifying : t.otp_verify_button}
-                  </button>
-                  <button
-                    onClick={() => { setOtpStep("email"); setOtpCode(""); setOtpError(""); }}
-                    style={{
-                      background: "transparent", border: "none", color: "#666",
-                      fontSize: "0.8125rem", cursor: "pointer",
-                      padding: "0.25rem 0", width: "100%", textAlign: "center",
-                    }}
-                  >
-                    {t.otp_back}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Privacy footer — §16 DSAR link */}
-      <div
-        style={{
-          textAlign: "center",
-          padding: "0.75rem 0 0.5rem",
-          borderTop: "1px solid #1e1e1e",
-          marginTop: "0.5rem",
-        }}
-      >
-        <a
-          href={`/${locale}/account/data-request`}
-          style={{
-            fontSize: "0.6875rem",
-            color: "#444",
-            textDecoration: "none",
-          }}
-        >
+      <div className="text-center py-3 border-t border-[#1e1e1e] mt-2">
+        <a href={`/${locale}/account/data-request`} className="text-[0.6875rem] text-[#444] no-underline">
           {locale === "ja" ? "データに関する権利" : locale === "zh-TW" ? "您的資料權利" : "Your data rights"}
         </a>
       </div>

@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { getSupabase } from "../lib/supabase.js";
+import { db } from "@workspace/db";
+import { generationJobsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireCreatorAuth } from "../middlewares/require-creator-auth.js";
 
 const router: IRouter = Router();
@@ -23,36 +25,33 @@ function toFanFacingError(rawError: string | null): string {
 
 // GET /api/creator/jobs/failed
 // Returns generation_jobs with status='dlq' for the authenticated creator.
+// Uses Drizzle — generationJobsTable is Phase 1.
 router.get("/creator/jobs/failed", requireCreatorAuth, async (req: Request, res: Response) => {
   const creatorId = res.locals.creatorId as string;
 
-  let supabase: ReturnType<typeof getSupabase>;
-  try {
-    supabase = getSupabase();
-  } catch {
-    res.status(503).json({ error: "Database not configured" });
-    return;
-  }
-
-  const { data: jobs, error: jobsErr } = await supabase
-    .from("generation_jobs")
-    .select("id, modality, error_message, created_at, status")
-    .eq("creator_id", creatorId)
-    .eq("status", "dlq")
-    .order("created_at", { ascending: false })
+  const jobs = await db
+    .select({
+      id: generationJobsTable.id,
+      jobType: generationJobsTable.jobType,
+      errorMessage: generationJobsTable.errorMessage,
+      createdAt: generationJobsTable.createdAt,
+      status: generationJobsTable.status,
+    })
+    .from(generationJobsTable)
+    .where(
+      and(
+        eq(generationJobsTable.creatorId, creatorId),
+        eq(generationJobsTable.status, "dlq"),
+      ),
+    )
+    .orderBy(generationJobsTable.createdAt)
     .limit(50);
 
-  if (jobsErr) {
-    console.error(`[creator/jobs/failed] query error: ${jobsErr.message}`);
-    res.status(500).json({ error: "Failed to fetch failed jobs" });
-    return;
-  }
-
-  const result = (jobs ?? []).map((j) => ({
-    id: j.id as string,
-    modality: j.modality as string,
-    error: toFanFacingError(j.error_message as string | null),
-    created_at: j.created_at as string,
+  const result = jobs.map((j) => ({
+    id: j.id,
+    modality: j.jobType,
+    error: toFanFacingError(j.errorMessage),
+    created_at: j.createdAt?.toISOString() ?? null,
     fan_facing_status: "Failed",
   }));
 
@@ -60,68 +59,23 @@ router.get("/creator/jobs/failed", requireCreatorAuth, async (req: Request, res:
 });
 
 // GET /api/creator/notifications
-// Lightweight poll for DLQ alert flag.
-router.get("/creator/notifications", requireCreatorAuth, async (req: Request, res: Response) => {
-  const creatorId = res.locals.creatorId as string;
-
-  let supabase: ReturnType<typeof getSupabase>;
-  try {
-    supabase = getSupabase();
-  } catch {
-    res.status(503).json({ error: "Database not configured" });
-    return;
-  }
-
-  const { data: notif, error: notifErr } = await supabase
-    .from("creator_notifications")
-    .select("has_dlq_jobs, last_dlq_at")
-    .eq("creator_id", creatorId)
-    .maybeSingle();
-
-  if (notifErr) {
-    console.error(`[creator/notifications] query error: ${notifErr.message}`);
-    res.status(500).json({ error: "Failed to fetch notifications" });
-    return;
-  }
-
+// PHASE-1 STUB: creator_notifications not in @workspace/db — restored in Phase 2
+router.get("/creator/notifications", requireCreatorAuth, async (_req: Request, res: Response) => {
+  // PHASE-1 STUB: creator_notifications table not in Phase 1 schema
+  // Return a sensible default (no DLQ alerts) so callers don't error.
   res.json({
-    has_dlq_jobs: notif?.has_dlq_jobs ?? false,
-    last_dlq_at: notif?.last_dlq_at ?? null,
+    has_dlq_jobs: false,
+    last_dlq_at: null,
   });
 });
 
 // POST /api/creator/notifications/dismiss
+// PHASE-1 STUB: creator_notifications not in @workspace/db — restored in Phase 2
 router.post(
   "/creator/notifications/dismiss",
   requireCreatorAuth,
-  async (req: Request, res: Response) => {
-    const creatorId = res.locals.creatorId as string;
-
-    let supabase: ReturnType<typeof getSupabase>;
-    try {
-      supabase = getSupabase();
-    } catch {
-      res.status(503).json({ error: "Database not configured" });
-      return;
-    }
-
-    const { error: updateErr } = await supabase
-      .from("creator_notifications")
-      .upsert(
-        {
-          creator_id: creatorId,
-          has_dlq_jobs: false,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "creator_id" },
-      );
-
-    if (updateErr) {
-      console.error(`[creator/notifications/dismiss] update error: ${updateErr.message}`);
-      res.status(500).json({ error: "Failed to dismiss notification" });
-      return;
-    }
-
+  async (_req: Request, res: Response) => {
+    // PHASE-1 STUB: creator_notifications table not in Phase 1 schema
     res.json({ dismissed: true });
   },
 );

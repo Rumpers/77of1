@@ -1,21 +1,26 @@
-// Step 3 — Consent collection state machine for Hermes.
-// In-memory session map keyed by Telegram user ID.
-// Slice 1: sessions not persisted across restarts.
-// TODO Slice 2: move to Redis for multi-replica support.
+// Consent grant catalogue, audit-log writer, and helpers for Hermes.
+//
+// Plan 02-07 (D-02 carried-over from Phase 1) deleted the in-memory `Map<>`
+// session state machine that previously lived here. The multi-turn YES/NO/CONFIRM
+// flow now lives in artifacts/hermes/src/scenes/consent.scene.ts (Telegraf
+// WizardScene backed by @telegraf/session/pg). This file keeps only the
+// stateless pieces that the scene + commitConsent path need.
 
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
-
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key);
-}
+import { db } from "@workspace/db";
+import { consentGrantsTable } from "@workspace/db";
 
 export const CONSENT_VERSION = 'v1.0';
 
 export type ConsentGrantType =
+  | 'persona_text'
+  | 'voice'
+  | 'image'
+  | 'talking_video'
+  | 'fullbody_video';
+
+// Type alias matching consentGrantModalityEnum literal values from @workspace/db schema
+type ConsentGrantModality =
   | 'persona_text'
   | 'voice'
   | 'image'
@@ -76,33 +81,6 @@ export const CONSENT_ITEMS: ConsentItem[] = [
 
 export type ConsentAnswers = Partial<Record<ConsentGrantType, boolean>>;
 
-interface ConsentSession {
-  creatorId: string;
-  state: 'collecting' | 'confirming';
-  currentIndex: number;
-  answers: ConsentAnswers;
-}
-
-// Keyed by Telegram user ID
-const sessions = new Map<number, ConsentSession>();
-
-export function startConsentSession(tgUserId: number, creatorId: string): void {
-  sessions.set(tgUserId, {
-    creatorId,
-    state: 'collecting',
-    currentIndex: 0,
-    answers: {},
-  });
-}
-
-export function getConsentSession(tgUserId: number): ConsentSession | undefined {
-  return sessions.get(tgUserId);
-}
-
-export function clearConsentSession(tgUserId: number): void {
-  sessions.delete(tgUserId);
-}
-
 export function buildIntro(): string {
   return (
     'Now for the important part — your consent.\n' +
@@ -111,16 +89,6 @@ export function buildIntro(): string {
     'You can change these later at any time.\n\n' +
     'Take your time.'
   );
-}
-
-export function buildCurrentPrompt(session: ConsentSession): string {
-  const item = CONSENT_ITEMS[session.currentIndex];
-  return `${item.emoji} ${item.label}\n${item.prompt}`;
-}
-
-export function buildConfirmCheck(item: ConsentItem, granted: boolean): string {
-  const icon = granted ? '✅' : '❌';
-  return `${icon} ${item.label} — ${granted ? 'granted' : 'not granted'}.`;
 }
 
 export function buildSummary(answers: ConsentAnswers): string {
@@ -134,13 +102,7 @@ export function buildSummary(answers: ConsentAnswers): string {
     ...lines,
     '',
     'You can change any of these anytime via Hermes or your dashboard.',
-    '',
-    'Reply CONFIRM to lock these in, or BACK to review any item.',
   ].join('\n');
-}
-
-export function allItemsAnswered(answers: ConsentAnswers): boolean {
-  return CONSENT_ITEMS.every((item) => item.grantType in answers);
 }
 
 export function hasPersonaTextGrant(answers: ConsentAnswers): boolean {
@@ -153,111 +115,24 @@ export function telegramIpHash(tgUserId: number): string {
   return crypto.createHash('sha256').update(String(tgUserId)).digest('hex');
 }
 
-// Process a YES/NO/CONFIRM/BACK message from the creator during their consent session.
-// Returns the reply text, or null if the input was unrecognised.
-// Mutates session state in place.
-export function processConsentMessage(
-  session: ConsentSession,
-  tgUserId: number,
-  text: string,
-): string | null {
-  const upper = text.trim().toUpperCase();
-
-  // ── Confirming state ──────────────────────────────────────────────────────
-  if (session.state === 'confirming') {
-    if (upper === 'CONFIRM') {
-      return '__CONFIRM__';
-    }
-    if (upper === 'BACK') {
-      session.state = 'collecting';
-      session.currentIndex = 0;
-      session.answers = {};
-      return buildCurrentPrompt(session);
-    }
-    return 'Reply CONFIRM to lock in your choices, or BACK to review any item.';
-  }
-
-  // ── Collecting state ──────────────────────────────────────────────────────
-  if (upper !== 'YES' && upper !== 'NO') return null;
-
-  const granted = upper === 'YES';
-  const item = CONSENT_ITEMS[session.currentIndex];
-
-  // Re-ask state: persona_text was withheld (false), waiting for YES/NO
-  if (item.grantType === 'persona_text' && session.answers['persona_text'] === false) {
-    if (!granted) {
-      // Creator still declines — offer to pause
-      clearConsentSession(tgUserId);
-      return (
-        "No problem — your account is saved. When you're ready, send /consent to continue."
-      );
-    }
-    // Grant persona_text and continue
-    session.answers['persona_text'] = true;
-    session.currentIndex = 1;
-    return '✅ PERSONA / TEXT TWIN — granted.\n\n—\n\n' + buildCurrentPrompt(session);
-  }
-
-  // Normal item answer
-  session.answers[item.grantType] = granted;
-
-  // Hard block: persona_text withheld for the first time
-  if (item.grantType === 'persona_text' && !granted) {
-    return (
-      'Your AI twin needs the Persona / Text permission to work.\n' +
-      "Without it, I can't create a twin for you.\n\n" +
-      'Want to grant it? Or would you like to pause for now?'
-    );
-  }
-
-  const checkLine = buildConfirmCheck(item, granted);
-  session.currentIndex += 1;
-
-  if (session.currentIndex >= CONSENT_ITEMS.length) {
-    session.state = 'confirming';
-    return checkLine + '\n\n—\n\n' + buildSummary(session.answers);
-  }
-
-  return checkLine + '\n\n—\n\n' + buildCurrentPrompt(session);
-}
-
-// Write consent_grants rows, transition assets, update onboarding status on CONFIRM.
+// Write consent_grants rows on confirm. Same audit-writing semantics as Phase 1.
 export async function commitConsent(
   creatorId: string,
   answers: ConsentAnswers,
   ipHash: string,
 ): Promise<void> {
-  const db = getDb();
-  const confirmedAt = new Date().toISOString();
-
-  const rows = CONSENT_ITEMS.map((item) => ({
-    creator_id: creatorId,
-    grant_type: item.grantType,
-    granted: answers[item.grantType] ?? false,
-    granted_at: confirmedAt,
-    consent_version: CONSENT_VERSION,
-    channel: 'telegram',
-    ip_hash: ipHash,
-    confirmed_at: confirmedAt,
-  }));
-
-  const { error: insertError } = await db.from('consent_grants').insert(rows);
-  if (insertError) throw new Error(`consent_grants insert: ${insertError.message}`);
-
-  if (hasPersonaTextGrant(answers)) {
-    const { error: assetError } = await db
-      .from('creator_assets')
-      .update({ consent_state: 'released' })
-      .eq('creator_id', creatorId)
-      .eq('consent_state', 'pending_consent');
-    if (assetError) throw new Error(`creator_assets update: ${assetError.message}`);
-  }
-
-  const { error: onboardError } = await db
-    .from('creator_onboarding')
-    .update({ status: 'STEP_3_COMPLETE', updated_at: confirmedAt })
-    .eq('creator_id', creatorId);
-  if (onboardError) throw new Error(`creator_onboarding update: ${onboardError.message}`);
+  await db.insert(consentGrantsTable).values(
+    CONSENT_ITEMS.map((item) => ({
+      creatorId,
+      modality: item.grantType as ConsentGrantModality,
+      granted: answers[item.grantType] ?? false,
+      grantedAt: new Date(),
+      consentVersion: CONSENT_VERSION,
+      channel: 'telegram',
+      ipHash,
+      retentionCategory: "operational" as const,
+    }))
+  );
 
   // Slice 1 stub: real signal wired when Twin endpoint ships (OF-92 TODO)
   console.log(

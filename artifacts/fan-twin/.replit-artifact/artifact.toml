@@ -1,0 +1,27 @@
+kind = "api"
+title = "Fan Twin Bot"
+version = "1.0.0"
+id = "artifacts/fan-twin"
+
+[[services]]
+localPort = 3002
+name = "FanTwin"
+paths = ["/fan-twin"]
+
+[services.development]
+run = "pnpm --filter @workspace/fan-twin run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/fan-twin", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/fan-twin/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "3002"
+NODE_ENV = "production"

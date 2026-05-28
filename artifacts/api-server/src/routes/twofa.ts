@@ -1,10 +1,14 @@
 // 2FA status + web setup + payout enable gate (OF-119)
 // TOTP implemented using Node.js built-in crypto (RFC 6238 / RFC 4226).
 // No external dependencies — QR is generated client-side from otpauth URI.
+// PHASE-1 STUB: /payments/payout/enable is a Phase-1 check-only stub (Stripe Connect deferred).
+// Core TOTP routes are fully migrated to Drizzle (creatorsTable, creatorTotpTable in Phase 1).
 import { Router, type IRouter, type Request, type Response } from "express";
 import crypto from "crypto";
 import { getReplitUser } from "../lib/auth.js";
-import { getSupabase } from "../lib/supabase.js";
+import { db } from "@workspace/db";
+import { creatorsTable, creatorTotpTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -99,25 +103,30 @@ router.get("/auth/2fa/status", async (req: Request, res: Response) => {
   const user = getReplitUser(req);
   if (!user) { res.status(401).json({ error: "Replit Auth required" }); return; }
 
-  let db: ReturnType<typeof getSupabase>;
-  try { db = getSupabase(); } catch {
-    res.status(503).json({ error: "Database not configured" }); return;
-  }
+  // Drizzle — creatorsTable is Phase 1
+  const [creator] = await db
+    .select({ id: creatorsTable.id })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators").select("id").eq("replit_user_id", user.id).maybeSingle();
-  if (creatorErr || !creator) { res.status(404).json({ error: "Creator not found" }); return; }
+  if (!creator) { res.status(404).json({ error: "Creator not found" }); return; }
 
-  const { data: totp } = await db
-    .from("creator_totp")
-    .select("totp_enabled, recovery_codes, enabled_at")
-    .eq("creator_id", creator.id)
-    .maybeSingle();
+  // Drizzle — creatorTotpTable is Phase 1
+  const [totp] = await db
+    .select({
+      totpEnabled: creatorTotpTable.totpEnabled,
+      recoveryCodes: creatorTotpTable.recoveryCodes,
+      enabledAt: creatorTotpTable.enabledAt,
+    })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creator.id))
+    .limit(1);
 
   res.json({
-    enabled: totp?.totp_enabled ?? false,
-    recoveryCodesRemaining: (totp?.recovery_codes ?? []).length,
-    enabledAt: totp?.enabled_at ?? null,
+    enabled: totp?.totpEnabled ?? false,
+    recoveryCodesRemaining: (totp?.recoveryCodes ?? []).length,
+    enabledAt: totp?.enabledAt ?? null,
   });
 });
 
@@ -126,31 +135,44 @@ router.post("/auth/2fa/setup/begin", async (req: Request, res: Response) => {
   const user = getReplitUser(req);
   if (!user) { res.status(401).json({ error: "Replit Auth required" }); return; }
 
-  let db: ReturnType<typeof getSupabase>;
-  try { db = getSupabase(); } catch {
-    res.status(503).json({ error: "Database not configured" }); return;
-  }
+  // Drizzle — creatorsTable is Phase 1
+  const [creator] = await db
+    .select({ id: creatorsTable.id, displayName: creatorsTable.displayName })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators").select("id, display_name").eq("replit_user_id", user.id).maybeSingle();
-  if (creatorErr || !creator) { res.status(404).json({ error: "Creator not found" }); return; }
+  if (!creator) { res.status(404).json({ error: "Creator not found" }); return; }
 
-  const { data: existing } = await db
-    .from("creator_totp").select("totp_enabled").eq("creator_id", creator.id).maybeSingle();
-  if (existing?.totp_enabled) { res.status(409).json({ error: "2FA is already enabled" }); return; }
+  // Drizzle — creatorTotpTable is Phase 1
+  const [existing] = await db
+    .select({ totpEnabled: creatorTotpTable.totpEnabled })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creator.id))
+    .limit(1);
+
+  if (existing?.totpEnabled) { res.status(409).json({ error: "2FA is already enabled" }); return; }
 
   const secret = generateTotpSecret();
-  const otpauthUri = buildOtpAuthUri(secret, creator.display_name);
+  const otpauthUri = buildOtpAuthUri(secret, creator.displayName);
 
-  // Store pending secret (totp_enabled=false until verify confirms it)
-  const { error: upsertErr } = await db.from("creator_totp").upsert({
-    creator_id: creator.id,
-    totp_secret: secret,
-    totp_enabled: false,
-    recovery_codes: [],
-    updated_at: new Date().toISOString(),
-  });
-  if (upsertErr) { res.status(500).json({ error: "Failed to store setup state" }); return; }
+  // Store pending secret (totp_enabled=false until verify confirms it) — upsert pattern
+  await db
+    .insert(creatorTotpTable)
+    .values({
+      creatorId: creator.id,
+      totpSecret: secret,
+      totpEnabled: false,
+      recoveryCodes: [],
+    })
+    .onConflictDoUpdate({
+      target: creatorTotpTable.creatorId,
+      set: {
+        totpSecret: secret,
+        totpEnabled: false,
+        recoveryCodes: [],
+      },
+    });
 
   res.json({ secretKey: secret, otpauthUri });
 });
@@ -165,36 +187,42 @@ router.post("/auth/2fa/setup/verify", async (req: Request, res: Response) => {
     res.status(400).json({ error: "6-digit code required" }); return;
   }
 
-  let db: ReturnType<typeof getSupabase>;
-  try { db = getSupabase(); } catch {
-    res.status(503).json({ error: "Database not configured" }); return;
-  }
+  // Drizzle — creatorsTable is Phase 1
+  const [creator] = await db
+    .select({ id: creatorsTable.id })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators").select("id").eq("replit_user_id", user.id).maybeSingle();
-  if (creatorErr || !creator) { res.status(404).json({ error: "Creator not found" }); return; }
+  if (!creator) { res.status(404).json({ error: "Creator not found" }); return; }
 
-  const { data: totp } = await db
-    .from("creator_totp").select("totp_secret, totp_enabled").eq("creator_id", creator.id).maybeSingle();
-  if (!totp?.totp_secret) {
+  // Drizzle — creatorTotpTable is Phase 1
+  const [totp] = await db
+    .select({ totpSecret: creatorTotpTable.totpSecret, totpEnabled: creatorTotpTable.totpEnabled })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creator.id))
+    .limit(1);
+
+  if (!totp?.totpSecret) {
     res.status(400).json({ error: "No pending 2FA setup. Call /setup/begin first." }); return;
   }
-  if (totp.totp_enabled) { res.status(409).json({ error: "2FA is already enabled" }); return; }
+  if (totp.totpEnabled) { res.status(409).json({ error: "2FA is already enabled" }); return; }
 
-  if (!verifyTotpCode(totp.totp_secret, code)) {
+  if (!verifyTotpCode(totp.totpSecret, code)) {
     res.status(422).json({ error: "Invalid code. Check your authenticator and try again." }); return;
   }
 
   const rawCodes = generateRecoveryCodes();
   const hashedCodes = rawCodes.map(hashRecoveryCode);
 
-  const { error: updateErr } = await db.from("creator_totp").update({
-    totp_enabled: true,
-    recovery_codes: hashedCodes,
-    enabled_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }).eq("creator_id", creator.id);
-  if (updateErr) { res.status(500).json({ error: "Failed to enable 2FA" }); return; }
+  await db
+    .update(creatorTotpTable)
+    .set({
+      totpEnabled: true,
+      recoveryCodes: hashedCodes,
+      enabledAt: new Date(),
+    })
+    .where(eq(creatorTotpTable.creatorId, creator.id));
 
   console.log(`[api] 2FA enabled via dashboard creator_id=${creator.id}`);
   res.json({ ok: true, recoveryCodes: rawCodes });
@@ -208,30 +236,36 @@ router.post("/auth/2fa/disable", async (req: Request, res: Response) => {
   const { code } = req.body as { code?: string };
   if (!code) { res.status(400).json({ error: "code required" }); return; }
 
-  let db: ReturnType<typeof getSupabase>;
-  try { db = getSupabase(); } catch {
-    res.status(503).json({ error: "Database not configured" }); return;
-  }
+  // Drizzle — creatorsTable is Phase 1
+  const [creator] = await db
+    .select({ id: creatorsTable.id })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators").select("id").eq("replit_user_id", user.id).maybeSingle();
-  if (creatorErr || !creator) { res.status(404).json({ error: "Creator not found" }); return; }
+  if (!creator) { res.status(404).json({ error: "Creator not found" }); return; }
 
-  const { data: totp } = await db
-    .from("creator_totp")
-    .select("totp_secret, totp_enabled, recovery_codes")
-    .eq("creator_id", creator.id)
-    .maybeSingle();
-  if (!totp?.totp_enabled) { res.status(400).json({ error: "2FA is not enabled" }); return; }
+  // Drizzle — creatorTotpTable is Phase 1
+  const [totp] = await db
+    .select({
+      totpSecret: creatorTotpTable.totpSecret,
+      totpEnabled: creatorTotpTable.totpEnabled,
+      recoveryCodes: creatorTotpTable.recoveryCodes,
+    })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creator.id))
+    .limit(1);
+
+  if (!totp?.totpEnabled) { res.status(400).json({ error: "2FA is not enabled" }); return; }
 
   const normalized = code.replace(/\s/g, "");
-  let valid = verifyTotpCode(totp.totp_secret, normalized);
+  let valid = verifyTotpCode(totp.totpSecret, normalized);
   let updatedCodes: string[] | undefined;
 
   if (!valid) {
     // Try as recovery code (strip dashes, uppercase)
     const hash = hashRecoveryCode(normalized.replace(/-/g, ""));
-    const codes = totp.recovery_codes as string[];
+    const codes = totp.recoveryCodes;
     const idx = codes.indexOf(hash);
     if (idx !== -1) {
       valid = true;
@@ -243,12 +277,13 @@ router.post("/auth/2fa/disable", async (req: Request, res: Response) => {
 
   if (!valid) { res.status(422).json({ error: "Invalid code" }); return; }
 
-  const { error: updateErr } = await db.from("creator_totp").update({
-    totp_enabled: false,
-    recovery_codes: updatedCodes ?? [],
-    updated_at: new Date().toISOString(),
-  }).eq("creator_id", creator.id);
-  if (updateErr) { res.status(500).json({ error: "Failed to disable 2FA" }); return; }
+  await db
+    .update(creatorTotpTable)
+    .set({
+      totpEnabled: false,
+      recoveryCodes: updatedCodes ?? [],
+    })
+    .where(eq(creatorTotpTable.creatorId, creator.id));
 
   console.log(`[api] 2FA disabled via dashboard creator_id=${creator.id}`);
   res.json({ ok: true });
@@ -259,19 +294,23 @@ router.post("/payments/payout/enable", async (req: Request, res: Response) => {
   const user = getReplitUser(req);
   if (!user) { res.status(401).json({ error: "Replit Auth required" }); return; }
 
-  let db: ReturnType<typeof getSupabase>;
-  try { db = getSupabase(); } catch {
-    res.status(503).json({ error: "Database not configured" }); return;
-  }
+  // Drizzle — creatorsTable is Phase 1
+  const [creator] = await db
+    .select({ id: creatorsTable.id, displayName: creatorsTable.displayName })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators").select("id, display_name").eq("replit_user_id", user.id).maybeSingle();
-  if (creatorErr || !creator) { res.status(404).json({ error: "Creator not found" }); return; }
+  if (!creator) { res.status(404).json({ error: "Creator not found" }); return; }
 
-  const { data: totp } = await db
-    .from("creator_totp").select("totp_enabled").eq("creator_id", creator.id).maybeSingle();
+  // Drizzle — creatorTotpTable is Phase 1
+  const [totp] = await db
+    .select({ totpEnabled: creatorTotpTable.totpEnabled })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creator.id))
+    .limit(1);
 
-  if (!totp?.totp_enabled) {
+  if (!totp?.totpEnabled) {
     res.status(403).json({
       error: "2FA required",
       message:

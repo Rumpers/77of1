@@ -1,8 +1,12 @@
 // Consent-revocation worker — OF-103
 // Cancels all in-flight generation jobs within ≤60s SLA (PRD §8/§16).
 // Highest priority (priority: 1) — picks up within ≤10s of enqueue.
+//
+// Phase 1: generation_jobs status updates use Drizzle (@workspace/db).
+// audit_log writes are stubbed (table not in Phase 1 schema; wired in Phase 2).
 import { Worker } from "bullmq";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq, inArray, and } from "drizzle-orm";
 import type { ProviderRegistry, ConsentRevocationPayload } from "@workspace/queue";
 import { QUEUE_NAMES } from "@workspace/queue";
 
@@ -10,7 +14,7 @@ const CONCURRENCY = 10;
 
 interface DbJob {
   id: string;
-  bullmq_job_id: string | null;
+  bullmqJobId: string | null;
   status: string;
 }
 
@@ -58,7 +62,6 @@ async function cancelBullMQJobs(
 }
 
 async function writeAuditLog(
-  supabase: SupabaseClient,
   creatorId: string,
   consentGrantId: string | null,
   killSwitch: boolean,
@@ -66,86 +69,100 @@ async function writeAuditLog(
   bullmqRemoved: number,
   sweepMs: number,
 ): Promise<void> {
-  const { error } = await supabase.from("audit_log").insert({
-    creator_id: creatorId,
-    event_type: killSwitch ? "kill_switch" : "consent_revoke",
-    payload: {
-      consent_grant_id: consentGrantId,
-      jobs_cancelled: jobsCancelled,
-      bullmq_removed: bullmqRemoved,
-      sweep_ms: sweepMs,
-    },
-  });
-
-  if (error) {
-    console.error(`[revocation] audit log error: ${error.message}`);
-  }
+  // STUB: audit_log table is out-of-scope in Phase 1 schema.
+  // Phase 2: replace with db.insert(auditLogTable).values({...})
+  console.log(
+    `[revocation] STUB: audit_log write deferred to Phase 2` +
+      ` creator=${creatorId} consentGrantId=${consentGrantId ?? "null"}` +
+      ` killSwitch=${killSwitch} jobsCancelled=${jobsCancelled}` +
+      ` bullmqRemoved=${bullmqRemoved} sweepMs=${sweepMs}`
+  );
 }
 
 export function createWorker(
   _registry: ProviderRegistry,
   redisUrl: string,
-  supabase: SupabaseClient,
 ): Worker<ConsentRevocationPayload> {
   const worker = new Worker<ConsentRevocationPayload>(
     QUEUE_NAMES.consentRevocation,
     async (job) => {
-      const { creatorId, consentGrantId, killSwitch } = job.data;
+      const { creatorId, consentGrantId, killSwitch, modality } = job.data;
       const t0 = Date.now();
 
       console.log(
-        `[revocation] processing creator=${creatorId} killSwitch=${killSwitch} job=${job.id}`,
+        `[revocation] processing creator=${creatorId} modality=${modality ?? "*"} killSwitch=${killSwitch} job=${job.id}`,
       );
 
-      // Query matching active jobs
-      let query = supabase
-        .from("generation_jobs")
-        .select("id, bullmq_job_id, status")
-        .eq("creator_id", creatorId)
-        .in("status", ["queued", "processing"]);
+      // Query matching active jobs using Drizzle
+      let query = db
+        .select({
+          id: generationJobsTable.id,
+          bullmqJobId: generationJobsTable.bullmqJobId,
+          status: generationJobsTable.status,
+        })
+        .from(generationJobsTable)
+        .where(
+          and(
+            eq(generationJobsTable.creatorId, creatorId),
+            inArray(generationJobsTable.status, ["queued", "processing"])
+          )
+        );
 
+      // For non-kill-switch: scope to the specific consent grant
       if (!killSwitch && consentGrantId) {
-        query = query.eq("consent_grant_id", consentGrantId);
+        query = db
+          .select({
+            id: generationJobsTable.id,
+            bullmqJobId: generationJobsTable.bullmqJobId,
+            status: generationJobsTable.status,
+          })
+          .from(generationJobsTable)
+          .where(
+            and(
+              eq(generationJobsTable.creatorId, creatorId),
+              eq(generationJobsTable.consentGrantId, consentGrantId),
+              inArray(generationJobsTable.status, ["queued", "processing"])
+            )
+          );
       }
 
-      const { data: jobs, error: queryErr } = await query;
-
-      if (queryErr) {
-        throw new Error(`[revocation] job query failed: ${queryErr.message}`);
-      }
-
-      const matched = (jobs ?? []) as DbJob[];
+      const matched: DbJob[] = await query;
 
       if (matched.length === 0) {
-        console.log(`[revocation] no active jobs creator=${creatorId}`);
-        await writeAuditLog(supabase, creatorId, consentGrantId ?? null, !!killSwitch, 0, 0, Date.now() - t0);
+        const earlySweepMs = Date.now() - t0;
+        console.log(
+          `[revocation] no active jobs creator=${creatorId} modality=${modality ?? "*"} sweepMs=${earlySweepMs}`,
+        );
+        await writeAuditLog(creatorId, consentGrantId ?? null, !!killSwitch, 0, 0, earlySweepMs);
+        if (earlySweepMs > 60000) {
+          console.error(
+            `[revocation] WARN sweep exceeded 60s SLA (no-op path) sweepMs=${earlySweepMs} creator=${creatorId}`,
+          );
+        }
         return;
       }
 
       const jobIds = matched.map((j) => j.id);
-      const bullmqIds = matched.filter((j) => j.bullmq_job_id).map((j) => j.bullmq_job_id as string);
+      const bullmqIds = matched
+        .filter((j) => j.bullmqJobId)
+        .map((j) => j.bullmqJobId as string);
 
       // Cancel BullMQ jobs (best-effort)
       const bullmqRemoved = await cancelBullMQJobs(bullmqIds, redisUrl);
 
       // Authoritative: mark all matched jobs cancelled in DB
-      const { error: updateErr } = await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "cancelled",
-          error_message: killSwitch ? "kill_switch" : "consent_revoked",
-          completed_at: new Date().toISOString(),
+          errorMessage: killSwitch ? "kill_switch" : "consent_revoked",
+          completedAt: new Date(),
         })
-        .in("id", jobIds);
-
-      if (updateErr) {
-        throw new Error(`[revocation] db update failed: ${updateErr.message}`);
-      }
+        .where(inArray(generationJobsTable.id, jobIds));
 
       const sweepMs = Date.now() - t0;
 
       await writeAuditLog(
-        supabase,
         creatorId,
         consentGrantId ?? null,
         !!killSwitch,
@@ -155,8 +172,17 @@ export function createWorker(
       );
 
       console.log(
-        `[revocation] cancelled=${jobIds.length} bullmqRemoved=${bullmqRemoved} sweepMs=${sweepMs} creator=${creatorId}`,
+        `[revocation] cancelled=${jobIds.length} bullmqRemoved=${bullmqRemoved} sweepMs=${sweepMs} creator=${creatorId} modality=${modality ?? "*"}`,
       );
+
+      // ONBOARD-03 SLA: sweep must complete within 60s of /revoke_voice (or
+      // /kill_switch / api kill-switch). Warn so the founder can investigate.
+      // Phase 4 wires a metric alert on this counter.
+      if (sweepMs > 60000) {
+        console.error(
+          `[revocation] WARN sweep exceeded 60s SLA sweepMs=${sweepMs} creator=${creatorId} cancelled=${jobIds.length}`,
+        );
+      }
     },
     { connection: { url: redisUrl }, concurrency: CONCURRENCY },
   );

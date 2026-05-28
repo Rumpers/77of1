@@ -86,6 +86,9 @@ importers:
       '@7of1/admin-sdk':
         specifier: workspace:*
         version: link:../../lib/admin-sdk
+      '@supabase/supabase-js':
+        specifier: ^2.106.1
+        version: 2.106.1
       next:
         specifier: ^14.2.30
         version: 14.2.35(@opentelemetry/api@1.9.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -135,12 +138,12 @@ importers:
       '@bull-board/express':
         specifier: ^7.1.5
         version: 7.1.5
+      '@opentelemetry/api':
+        specifier: ^1.9.1
+        version: 1.9.1
       '@sentry/node':
         specifier: ^8
         version: 8.55.2
-      '@supabase/supabase-js':
-        specifier: ^2.106.1
-        version: 2.106.1
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -150,6 +153,9 @@ importers:
       '@workspace/queue':
         specifier: workspace:*
         version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
       bullmq:
         specifier: ^5.56.1
         version: 5.77.2
@@ -161,7 +167,7 @@ importers:
         version: 2.8.6
       drizzle-orm:
         specifier: 'catalog:'
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -218,11 +224,29 @@ importers:
         specifier: ^3.2.3
         version: 3.2.4(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
 
-  artifacts/hermes:
+  artifacts/fan-twin:
     dependencies:
-      '@supabase/supabase-js':
-        specifier: ^2.106.1
-        version: 2.106.1
+      '@telegraf/session':
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)(telegraf@4.16.3)
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../lib/db
+      '@workspace/queue':
+        specifier: workspace:*
+        version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
+      bullmq:
+        specifier: ^5.56.1
+        version: 5.77.2
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       telegraf:
         specifier: ^4.16.3
         version: 4.16.3
@@ -230,6 +254,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
       esbuild:
         specifier: 0.27.3
         version: 0.27.3
@@ -239,6 +266,55 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.3
+        version: 3.2.4(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
+
+  artifacts/hermes:
+    dependencies:
+      '@telegraf/session':
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)(telegraf@4.16.3)
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../lib/db
+      '@workspace/queue':
+        specifier: workspace:*
+        version: link:../../lib/queue
+      bullmq:
+        specifier: ^5.56.1
+        version: 5.77.2
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
+      kysely:
+        specifier: ^0.27.6
+        version: 0.27.6
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
+      telegraf:
+        specifier: ^4.16.3
+        version: 4.16.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+      esbuild:
+        specifier: 0.27.3
+        version: 0.27.3
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.3
+        version: 3.2.4(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
 
   artifacts/mockup-sandbox:
     devDependencies:
@@ -623,24 +699,33 @@ importers:
       '@sentry/node':
         specifier: ^8
         version: 8.55.2
-      '@supabase/supabase-js':
-        specifier: ^2.106.1
-        version: 2.106.1
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../lib/db
       '@workspace/providers':
         specifier: workspace:*
         version: link:../../lib/providers
       '@workspace/queue':
         specifier: workspace:*
         version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
       bullmq:
         specifier: ^5.0.0
         version: 5.77.2
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
       ioredis:
         specifier: ^5.3.0
         version: 5.10.1
       stripe:
         specifier: ^22.1.1
         version: 22.1.1(@types/node@25.6.2)
+      telegraf:
+        specifier: ^4.16.3
+        version: 4.16.3
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -705,10 +790,10 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: 'catalog:'
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0)
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
       drizzle-zod:
         specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0))(zod@3.25.76)
+        version: 0.8.3(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0))(zod@3.25.76)
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -744,6 +829,34 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
+  lib/twin-runtime:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
+      pino:
+        specifier: ^9.14.0
+        version: 9.14.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -3078,6 +3191,36 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
+  '@telegraf/session@2.0.0-beta.7':
+    resolution: {integrity: sha512-467OC/VLHDC9hRqTetvXp3pBOSdgxDzYjSuWFXY9v64m453HRxE4tYCnLLFVktOvLWDm+he7Hhv/+e+lmz8atQ==}
+    peerDependencies:
+      '@types/better-sqlite3': ^7.6.9
+      '@types/pg': ^8.11.0
+      better-sqlite3: ^9.3.0
+      kysely: 0.27.2 <1
+      mongodb: ^6.3.0
+      mysql2: ^3.9.0
+      pg: ^8.11.3
+      redis: ^4.6.12
+      telegraf: '>=4.12.0'
+    peerDependenciesMeta:
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      better-sqlite3:
+        optional: true
+      kysely:
+        optional: true
+      mongodb:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      redis:
+        optional: true
+
   '@telegraf/types@7.1.0':
     resolution: {integrity: sha512-kGevOIbpMcIlCDeorKGpwZmdH7kHbqlk/Yj6dEpJMKEQw5lk0KVQY0OLXaCswy8GqlIVLd5625OB+rAntP9xVw==}
 
@@ -4172,6 +4315,10 @@ packages:
   jsonpointer@5.0.1:
     resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
     engines: {node: '>=0.10.0'}
+
+  kysely@0.27.6:
+    resolution: {integrity: sha512-FIyV/64EkKhJmjgC0g2hygpBv5RNWVPyNCqSAD7eTCv6eFWNIi4PN1UvdSJGicN/o35bnevgis4Y0UDC0qi8jQ==}
+    engines: {node: '>=14.0.0'}
 
   leven@4.1.0:
     resolution: {integrity: sha512-KZ9W9nWDT7rF7Dazg8xyLHGLrmpgq2nVNFUckhqdW3szVP6YhCpp/RAnpmVExA9JvrMynjwSLVrEj3AepHR6ew==}
@@ -7668,6 +7815,14 @@ snapshots:
       '@tanstack/query-core': 5.100.9
       react: 19.1.0
 
+  '@telegraf/session@2.0.0-beta.7(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)(telegraf@4.16.3)':
+    dependencies:
+      telegraf: 4.16.3
+    optionalDependencies:
+      '@types/pg': 8.20.0
+      kysely: 0.27.6
+      pg: 8.20.0
+
   '@telegraf/types@7.1.0': {}
 
   '@types/babel__core@7.20.5':
@@ -8230,15 +8385,16 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.21.0
 
-  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0):
+  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0):
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/pg': 8.20.0
+      kysely: 0.27.6
       pg: 8.20.0
 
-  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0))(zod@3.25.76):
+  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0))(zod@3.25.76):
     dependencies:
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0)
+      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
       zod: 3.25.76
 
   dunder-proto@1.0.1:
@@ -8754,6 +8910,8 @@ snapshots:
       graceful-fs: 4.2.11
 
   jsonpointer@5.0.1: {}
+
+  kysely@0.27.6: {}
 
   leven@4.1.0: {}
 

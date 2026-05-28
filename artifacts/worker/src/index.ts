@@ -11,7 +11,8 @@
 
 import "./instrument.js"; // must be first — Sentry instruments modules on load
 import { Worker, QueueEvents } from "bullmq";
-import { createClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import Redis from "ioredis";
 import { handleDlqEvent } from "./dlq-handler.js";
 import { startSlaAlertCron } from "./crons/sla-alert.js";
@@ -19,16 +20,6 @@ import { startSlaAlertCron } from "./crons/sla-alert.js";
 const QUEUE_NAME = "generation-jobs";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("[worker] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required");
-  process.exit(1);
-}
-
-// Service-role client bypasses RLS — required so all creator jobs are accessible.
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // ── Retry + DLQ configuration ──────────────────────────────────────────────
 // 3 total attempts with exponential backoff starting at BACKOFF_DELAY_MS.
@@ -63,20 +54,24 @@ const worker = new Worker<GenerationJobPayload>(
     );
 
     // Mark as processing
-    await supabase
-      .from("generation_jobs")
-      .update({ status: "processing", attempt_count: job.attemptsMade + 1 })
-      .eq("id", jobId);
+    await db
+      .update(generationJobsTable)
+      .set({ status: "processing", attemptCount: job.attemptsMade + 1 })
+      .where(eq(generationJobsTable.id, jobId));
 
     // Dispatch to job-type handler
-    // Text generation handler is ported from .migration-backup (OF-62).
-    // Voice/video handlers will be wired in Slice 3.
+    // Per D-13: all job bodies are STUBS in Phase 1 — production fills come in Phase 2/3.
     if (jobType === "text") {
       await processTextJob(job.data);
       return;
     }
 
-    throw new Error(`generation not yet implemented for jobType=${jobType}`);
+    // STUB: voice/video generation wired in Phase 2/3 when GMI XTTS endpoint confirmed
+    console.log(`[worker] STUB: ${jobType} generation body filled in Phase 2/3`);
+    await db
+      .update(generationJobsTable)
+      .set({ status: "complete", completedAt: new Date() })
+      .where(eq(generationJobsTable.id, jobId));
   },
   {
     connection: { url: REDIS_URL },
@@ -84,13 +79,19 @@ const worker = new Worker<GenerationJobPayload>(
   }
 );
 
+// ── QueueEvents (kept for observability / DLQ detection) ────────────────────
+const queueEvents = new QueueEvents(QUEUE_NAME, {
+  connection: { url: REDIS_URL },
+});
+void queueEvents; // lifecycle reference — close on shutdown
+
 // ── Job completion ──────────────────────────────────────────────────────────
 worker.on("completed", async (job) => {
-  const completedAt = new Date().toISOString();
-  await supabase
-    .from("generation_jobs")
-    .update({ status: "done", completed_at: completedAt })
-    .eq("id", job.data.jobId);
+  const completedAt = new Date();
+  await db
+    .update(generationJobsTable)
+    .set({ status: "complete", completedAt })
+    .where(eq(generationJobsTable.id, job.data.jobId));
 
   // Structured completion metric — GCP Logging compatible (stdout JSON)
   const latencyMs =
@@ -104,7 +105,7 @@ worker.on("completed", async (job) => {
       creator_id: job.data.creatorId,
       latencyMs,
       provider: process.env.TEXT_PROVIDER ?? "mock",
-      cost_usd: null, // populated once real AI provider is wired (Slice 3)
+      cost_usd: null, // populated once real AI provider is wired (Phase 2/3)
     }) + "\n"
   );
 });
@@ -127,7 +128,7 @@ worker.on("failed", async (job, err) => {
       `[worker] DLQ job=${job.id} creator=${creatorId}` +
         ` attempts=${job.attemptsMade} error="${err.message}"`
     );
-    await handleDlqEvent(supabase, {
+    await handleDlqEvent({
       jobId,
       bullmqJobId: job.id,
       creatorId,
@@ -137,13 +138,13 @@ worker.on("failed", async (job, err) => {
     });
   } else {
     // Retryable failure — stamp status=failed temporarily (will flip to processing on retry)
-    await supabase
-      .from("generation_jobs")
-      .update({
+    await db
+      .update(generationJobsTable)
+      .set({
         status: "failed",
-        error_message: err.message,
+        errorMessage: err.message,
       })
-      .eq("id", jobId);
+      .where(eq(generationJobsTable.id, jobId));
 
     console.warn(
       `[worker] retrying job=${job.id} creator=${creatorId}` +
@@ -154,7 +155,7 @@ worker.on("failed", async (job, err) => {
 
 // ── SLA alert cron ─────────────────────────────────────────────────────────
 const alertRedis = new Redis(REDIS_URL, { lazyConnect: false, maxRetriesPerRequest: null });
-const slaAlertTimer = startSlaAlertCron(supabase, alertRedis);
+const slaAlertTimer = startSlaAlertCron(alertRedis);
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown() {
@@ -162,6 +163,7 @@ async function shutdown() {
   clearInterval(slaAlertTimer);
   await alertRedis.quit();
   await worker.close();
+  await queueEvents.close();
   process.exit(0);
 }
 
@@ -174,22 +176,22 @@ console.log(
 );
 
 // ── Text generation stub ────────────────────────────────────────────────────
-// Full pipeline (persona builder → RAG → GMI text → hard-stop) lives in
-// .migration-backup/apps/worker/src/text-dispatch.ts pending port to this artifact.
+// Per D-13: full pipeline (persona builder → RAG → GMI text → hard-stop)
+// filled in Phase 2 when AI provider is wired.
 async function processTextJob(data: GenerationJobPayload): Promise<void> {
   const { jobId, creatorId } = data;
 
-  // Placeholder: the full persona/RAG/GMI pipeline will be ported here.
-  // For now the job succeeds immediately so DLQ mechanics can be verified
+  // STUB: the full persona/RAG/GMI pipeline will be ported in Phase 2.
+  // Job succeeds immediately so DLQ mechanics can be verified
   // independently of AI provider availability.
-  await supabase
-    .from("generation_jobs")
-    .update({
-      status: "done",
-      completed_at: new Date().toISOString(),
-      error_message: null,
+  await db
+    .update(generationJobsTable)
+    .set({
+      status: "complete",
+      completedAt: new Date(),
+      errorMessage: null,
     })
-    .eq("id", jobId);
+    .where(eq(generationJobsTable.id, jobId));
 
   console.log(`[worker] text job done (stub) job=${jobId} creator=${creatorId}`);
 }

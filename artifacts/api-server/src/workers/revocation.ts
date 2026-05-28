@@ -4,7 +4,8 @@
 // Two execution paths:
 //   1. BullMQ path: API enqueues to "consent-revocation" queue; worker (artifacts/worker) processes it.
 //   2. DB fallback: if Redis is unavailable, API calls runRevocationSweep() inline.
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq, inArray, and } from "drizzle-orm";
 import type { Logger } from "pino";
 import type { ConsentRevocationPayload } from "@workspace/queue";
 import { QUEUE_NAMES } from "@workspace/queue";
@@ -12,16 +13,13 @@ import { QUEUE_NAMES } from "@workspace/queue";
 // Re-export the shared payload type under a shorter alias for internal use.
 export type RevocationPayload = ConsentRevocationPayload;
 
+// Type alias for the Drizzle db instance.
+type DrizzleDb = typeof db;
+
 interface SweepOptions {
   creatorId: string;
   consentGrantId: string | null;
   killSwitch: boolean;
-}
-
-interface DbJob {
-  id: string;
-  bullmq_job_id: string | null;
-  status: string;
 }
 
 // Attempts to cancel BullMQ jobs. Returns count removed from queue.
@@ -66,99 +64,110 @@ async function cancelBullMQJobs(
 // criteria, cancels them in BullMQ and marks them cancelled in the DB.
 // Returns the number of jobs cancelled.
 export async function runRevocationSweep(
-  db: SupabaseClient,
+  drizzleDb: DrizzleDb,
   opts: SweepOptions,
   log: Logger,
 ): Promise<number> {
   const t0 = Date.now();
 
-  // Build query — kill-switch cancels ALL active jobs for the creator.
-  let query = db
-    .from("generation_jobs")
-    .select("id, bullmq_job_id, status")
-    .eq("creator_id", opts.creatorId)
-    .in("status", ["queued", "processing"]);
+  try {
+    // Build query conditions — kill-switch cancels ALL active jobs for the creator;
+    // normal consent revocation filters by the specific consentGrantId.
+    const conditions =
+      opts.killSwitch || !opts.consentGrantId
+        ? and(
+            eq(generationJobsTable.creatorId, opts.creatorId),
+            inArray(generationJobsTable.status, ["queued", "processing"]),
+          )
+        : and(
+            eq(generationJobsTable.creatorId, opts.creatorId),
+            eq(generationJobsTable.consentGrantId, opts.consentGrantId),
+            inArray(generationJobsTable.status, ["queued", "processing"]),
+          );
 
-  if (!opts.killSwitch && opts.consentGrantId) {
-    query = query.eq("consent_grant_id", opts.consentGrantId);
-  }
+    const jobs = await drizzleDb
+      .select({
+        id: generationJobsTable.id,
+        bullmqJobId: generationJobsTable.bullmqJobId,
+        status: generationJobsTable.status,
+      })
+      .from(generationJobsTable)
+      .where(conditions);
 
-  const { data: jobs, error: queryErr } = await query;
+    if (jobs.length === 0) {
+      log.info(
+        { creatorId: opts.creatorId, killSwitch: opts.killSwitch },
+        "[revocation] no active jobs",
+      );
+      writeAuditEntry(opts, 0, 0, t0, log);
+      return 0;
+    }
 
-  if (queryErr) {
-    log.error({ err: queryErr.message, creatorId: opts.creatorId }, "[revocation] job query error");
+    const jobIds = jobs.map((j) => j.id);
+    const bullmqIds = jobs
+      .filter((j) => j.bullmqJobId)
+      .map((j) => j.bullmqJobId as string);
+
+    // Cancel BullMQ jobs (best-effort; DB update is authoritative)
+    const redisUrl = process.env.REDIS_URL;
+    const bullmqRemoved = redisUrl
+      ? await cancelBullMQJobs(bullmqIds, redisUrl, log)
+      : 0;
+
+    // Mark all matched jobs as cancelled in DB (authoritative state)
+    await drizzleDb
+      .update(generationJobsTable)
+      .set({
+        status: "cancelled",
+        errorMessage: opts.killSwitch ? "kill_switch" : "consent_revoked",
+        completedAt: new Date(),
+      })
+      .where(inArray(generationJobsTable.id, jobIds));
+
+    writeAuditEntry(opts, jobIds.length, bullmqRemoved, t0, log);
+
+    log.info(
+      {
+        creatorId: opts.creatorId,
+        killSwitch: opts.killSwitch,
+        jobsCancelled: jobIds.length,
+        bullmqRemoved,
+        sweepMs: Date.now() - t0,
+      },
+      "[revocation] sweep complete",
+    );
+
+    return jobIds.length;
+  } catch (e) {
+    log.error(
+      { err: (e as Error).message, creatorId: opts.creatorId },
+      "[revocation] sweep error",
+    );
     return 0;
   }
-
-  const matched = (jobs ?? []) as DbJob[];
-
-  if (matched.length === 0) {
-    log.info({ creatorId: opts.creatorId, killSwitch: opts.killSwitch }, "[revocation] no active jobs");
-    await writeAuditLog(db, opts, 0, 0, t0, log);
-    return 0;
-  }
-
-  const jobIds = matched.map((j) => j.id);
-  const bullmqIds = matched.filter((j) => j.bullmq_job_id).map((j) => j.bullmq_job_id as string);
-
-  // Cancel BullMQ jobs (best-effort; DB update is authoritative)
-  const redisUrl = process.env.REDIS_URL;
-  const bullmqRemoved = redisUrl
-    ? await cancelBullMQJobs(bullmqIds, redisUrl, log)
-    : 0;
-
-  // Mark all matched jobs as cancelled in DB (authoritative state)
-  const { error: updateErr } = await db
-    .from("generation_jobs")
-    .update({
-      status: "cancelled",
-      error_message: opts.killSwitch ? "kill_switch" : "consent_revoked",
-      completed_at: new Date().toISOString(),
-    })
-    .in("id", jobIds);
-
-  if (updateErr) {
-    log.error({ err: updateErr.message }, "[revocation] db update error");
-  }
-
-  await writeAuditLog(db, opts, jobIds.length, bullmqRemoved, t0, log);
-
-  log.info(
-    {
-      creatorId: opts.creatorId,
-      killSwitch: opts.killSwitch,
-      jobsCancelled: jobIds.length,
-      bullmqRemoved,
-      sweepMs: Date.now() - t0,
-    },
-    "[revocation] sweep complete",
-  );
-
-  return jobIds.length;
 }
 
-async function writeAuditLog(
-  db: SupabaseClient,
+// Writes a structured audit entry via pino. No audit_log Drizzle table exists yet
+// (tracked as deferred in 01-04c SUMMARY — Phase 2 backlog). This is best-effort.
+function writeAuditEntry(
   opts: SweepOptions,
   jobsCancelled: number,
   bullmqRemoved: number,
   t0: number,
   log: Logger,
-): Promise<void> {
-  const { error } = await db.from("audit_log").insert({
-    creator_id: opts.creatorId,
-    event_type: opts.killSwitch ? "kill_switch" : "consent_revoke",
-    payload: {
-      consent_grant_id: opts.consentGrantId,
-      jobs_cancelled: jobsCancelled,
-      bullmq_removed: bullmqRemoved,
-      sweep_ms: Date.now() - t0,
+): void {
+  log.info(
+    {
+      audit: true,
+      creatorId: opts.creatorId,
+      eventType: opts.killSwitch ? "kill_switch" : "consent_revoke",
+      consentGrantId: opts.consentGrantId,
+      jobsCancelled,
+      bullmqRemoved,
+      sweepMs: Date.now() - t0,
     },
-  });
-
-  if (error) {
-    log.error({ err: error.message }, "[revocation] audit log write error");
-  }
+    "[revocation] audit",
+  );
 }
 
 // Starts the BullMQ consent-revocation worker in-process.
@@ -170,17 +179,7 @@ export async function startRevocationWorker(log: Logger): Promise<() => Promise<
     return async () => {};
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    log.warn("[revocation-worker] SUPABASE env vars not set — worker skipped");
-    return async () => {};
-  }
-
   const { Worker } = await import("bullmq");
-  const { createClient } = await import("@supabase/supabase-js");
-
-  const db = createClient(supabaseUrl, supabaseKey);
 
   const worker = new Worker<RevocationPayload>(
     QUEUE_NAMES.consentRevocation,

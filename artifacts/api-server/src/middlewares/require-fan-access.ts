@@ -1,15 +1,9 @@
-// Dunning access gate — OF-168
-//
-// Checks dunning_state on every authenticated fan request. No cache — live DB
-// read ensures fans are gated immediately when state transitions occur.
-//
-// Responses:
-//   402  dunning_state=paused  — { error, dunningState, bannerPayload }
-//   403  dunning_state=cancelled — { error }
-//   next() — active, grace, recovered (or no active subscription)
+// Fan auth middleware — validates signed session cookie and populates res.locals.fanId.
+// Anonymous fans (no cookie) are allowed through; downstream routes check fanId presence.
+// Trial cookie is parsed and exposed via res.locals.fanTrialCount.
 
 import type { Request, Response, NextFunction } from "express";
-import { getUserFromToken, getSupabase, COOKIE_ACCESS_TOKEN } from "../lib/supabase.js";
+import { COOKIE_ACCESS_TOKEN, TRIAL_COOKIE, parseTrialCookie, verifySessionToken } from "../lib/auth.js";
 
 declare global {
   namespace Express {
@@ -17,8 +11,20 @@ declare global {
       fanAuthUserId?: string;
       fanId?: string;
       fanCreatorId?: string;
+      fanTrialCount?: number;
     }
   }
+}
+
+async function getFanById(fanId: string) {
+  const { db, fansTable } = await import("@workspace/db");
+  const { eq } = await import("drizzle-orm");
+  return db
+    .select({ id: fansTable.id })
+    .from(fansTable)
+    .where(eq(fansTable.id, fanId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
 }
 
 export async function requireFanAccess(
@@ -26,80 +32,30 @@ export async function requireFanAccess(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const token: string | undefined =
-    req.cookies?.[COOKIE_ACCESS_TOKEN] ??
-    req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  // Expose trial count for anonymous fans regardless of auth state
+  res.locals.fanTrialCount = parseTrialCookie(req.cookies?.[TRIAL_COOKIE]);
 
-  const user = await getUserFromToken(token);
-  if (!user) {
-    res.status(401).json({ error: "Fan auth required" });
+  const token = req.cookies?.[COOKIE_ACCESS_TOKEN];
+  if (!token) {
+    next();
     return;
   }
 
-  let supabase: ReturnType<typeof getSupabase>;
+  const fanId = verifySessionToken(token);
+  if (!fanId) {
+    next();
+    return;
+  }
+
   try {
-    supabase = getSupabase();
+    const fan = await getFanById(fanId);
+    if (fan) {
+      res.locals.fanId = fan.id;
+      res.locals.fanAuthUserId = fan.id;
+    }
   } catch {
-    res.status(503).json({ error: "Database not configured" });
-    return;
+    // DB unavailable — pass through; downstream will gate if fanId is required
   }
 
-  // Resolve fan_id + creator_id from the auth token
-  const { data: account } = await supabase
-    .from("fan_accounts")
-    .select("fan_id, creator_id")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (!account) {
-    // No fan account — let downstream routes handle this case
-    res.locals.fanAuthUserId = user.id;
-    next();
-    return;
-  }
-
-  res.locals.fanAuthUserId = user.id;
-  res.locals.fanId = account.fan_id;
-  res.locals.fanCreatorId = account.creator_id;
-
-  // Look up the active subscription for this fan+creator pair
-  const { data: sub } = await supabase
-    .from("fan_subscriptions")
-    .select("id, dunning_state")
-    .eq("fan_id", account.fan_id)
-    .eq("creator_id", account.creator_id)
-    .not("status", "eq", "cancelled")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!sub) {
-    // No subscription — not a dunning concern; let route handle access
-    next();
-    return;
-  }
-
-  if (sub.dunning_state === "paused") {
-    res.status(402).json({
-      error: "Subscription payment required",
-      dunningState: "paused",
-      bannerPayload: {
-        type: "dunning_paused",
-        message: "Your subscription payment is overdue. Update your payment method to restore access.",
-        retryUrl: `/api/subscriptions/${sub.id}/retry`,
-      },
-    });
-    return;
-  }
-
-  if (sub.dunning_state === "cancelled") {
-    res.status(403).json({
-      error: "Subscription cancelled",
-      dunningState: "cancelled",
-    });
-    return;
-  }
-
-  // active, grace, or recovered — access permitted
   next();
 }

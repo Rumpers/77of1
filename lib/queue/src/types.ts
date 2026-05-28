@@ -10,6 +10,16 @@ export interface JobPayloadBase {
 export interface TextGenerationPayload extends JobPayloadBase {
   type: "text-generation";
   prompt: string;
+  // ─── Phase 2 Telegram-delivery contract (added in 02-06a) ────────────────
+  // The web chat route does NOT enqueue jobs (it runs the pipeline inline),
+  // so these fields exist for the fan-twin → worker → Telegram delivery path.
+  // `deliveryChannel="web"` is reserved for a possible future async-web path.
+  locale: "en" | "ja" | "zh-TW";
+  conversationId: string;
+  deliveryChannel: "web" | "telegram";
+  telegramChatId?: number; // required when deliveryChannel="telegram"
+  twinId?: string;          // optional — worker can resolve via creatorId
+  handle?: string;          // required for the disclosure footer
 }
 
 export interface VoiceGenerationPayload extends JobPayloadBase {
