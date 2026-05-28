@@ -1,0 +1,37 @@
+{
+  "name": "@workspace/twin-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./conversation": "./src/conversation.ts",
+    "./constitution": "./src/constitution.ts",
+    "./deflections": "./src/deflections.ts",
+    "./disclosure": "./src/disclosure.ts",
+    "./helplines": "./src/helplines.ts",
+    "./hmac-conversation": "./src/hmac-conversation.ts",
+    "./locale": "./src/locale.ts",
+    "./logger": "./src/logger.ts",
+    "./moderation": "./src/moderation.ts",
+    "./notify-founder": "./src/notify-founder.ts",
+    "./provider-types": "./src/provider-types.ts",
+    "./safety-audit": "./src/safety-audit.ts",
+    "./system-prompt": "./src/system-prompt.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "pino": "^9.14.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "catalog:",
+    "express": "^5.2.1",
+    "typescript": "~5.9.3"
+  }
+}

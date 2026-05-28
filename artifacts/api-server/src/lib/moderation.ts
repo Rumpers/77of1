@@ -1,189 +1,46 @@
-// 6-layer moderation pipeline wrappers (MOD-01 + MOD-03 + MOD-04/05/06).
-// Splices into routes/twin.ts and the worker text-generation job (Phase 2
-// scope is api-server only; worker integration lands in plan 02-06b).
+// Re-export shim for the moderation pipeline — moved to @workspace/twin-runtime
+// in plan 02-06a so the worker (artifacts/worker) and fan-twin can import the
+// same L1/L3/L4/L5/L6 pipeline without reaching into api-server's source.
 //
-// Layers covered by this module:
-//   L1 (input)   — runL1Moderation called BEFORE LLM
-//   L3 (output)  — runL3Moderation called AFTER LLM, before persist
-//   L4 (deflect) — composeFlaggedReply pulls strings from deflections.ts
-//   L5 (notify)  — notifyFounderAsync fired on high-severity flags
-//   L6 (audit)   — writeSafetyAuditLog written on every flagged turn
+// This shim REGISTERS api-server's `getModeratorProvider` (which knows about
+// OpenAiModeratorProvider + MockModeratorProvider) as the active factory for
+// twin-runtime's moderation engine. Registration uses a LAZY lookup wrapper
+// instead of binding the symbol at module load — this keeps existing test
+// `vi.mock("../providers/registry.js", () => ({ getTextProvider: ... }))`
+// invocations working (those mocks don't expose getModeratorProvider; binding
+// eagerly would throw at module load). The dynamic require defers the lookup
+// until the first L1/L3 call, by which point the test environment has either
+// set `MODERATOR_PROVIDER=mock` (registry returns the mock without OpenAI) or
+// the test has provided its own stub.
+
+import type { IModeratorProvider } from "@workspace/twin-runtime/provider-types";
+import { setModeratorProviderFactory } from "@workspace/twin-runtime/moderation";
+
+// Eagerly resolve the registry at module load. Vitest's vi.mock() hoists
+// before this import runs, so test files that mock "../providers/registry.js"
+// get their stub; production gets the real registry.
 //
-// L2 (system-prompt guardrail) is owned by lib/system-prompt.ts (D-02-15) and
-// is NOT re-implemented here. The LLM already sees the L2 instructions in its
-// system message; this module is responsible only for input + output checks.
+// IMPORTANT: existing vi.mock setups in the test suite (e.g. twin-chat.e2e)
+// stub only `getTextProvider` and leave `getModeratorProvider` undefined.
+// The factory below tolerates that by throwing inside its body — moderation.ts
+// in twin-runtime catches the throw and FAILS OPEN (`{ flagged: false }`),
+// preserving the pre-02-06a test behaviour bit-for-bit.
+import * as registry from "../providers/registry.js";
 
-import type { ModerationResult } from "../providers/interfaces.js";
-import { ProviderError, ProviderTransientError } from "../providers/interfaces.js";
-import { getModeratorProvider } from "../providers/registry.js";
-import { getDeflection } from "./deflections.js";
-import { getHelpline } from "./helplines.js";
-import { notifyFounderAsync } from "./notify-founder.js";
-import { writeSafetyAuditLog, type CrisisLevel } from "./safety-audit.js";
-import { logger } from "./logger.js";
-
-export type Severity = "none" | "low" | "medium" | "high";
-
-export interface ModerationContext {
-  text: string;
-  locale: string;
-  creatorId: string;
-  fanIdHash: string;
-  sessionId: string;
-}
-
-export interface ModerationOutcome {
-  flagged: boolean;
-  reply?: string;            // when flagged=true, the deflection (+ helpline) reply to send
-  primaryCategory?: string;  // for caller logging
-  severity?: Severity;
-}
-
-/**
- * Map OpenAI moderation categories onto our 4-level severity ladder.
- * High → notifyFounderAsync + safety_audit_log crisis_level=high
- * Medium → safety_audit_log crisis_level=medium
- * Low → audit only
- * None → no audit
- *
- * NOTE: severity is derived from OpenAI categories (not fan-controlled input)
- * to defuse T-02-05-05 (fan can't fake escalation to spam founder).
- */
-export function severityFromCategories(categories: string[]): Severity {
-  if (categories.length === 0) return "none";
-  for (const c of categories) {
-    if (
-      c === "self-harm" ||
-      c.startsWith("self-harm/") ||
-      c === "sexual" ||
-      c === "sexual/minors" ||
-      c === "violence" ||
-      c.startsWith("violence/")
-    ) {
-      return "high";
-    }
-  }
-  for (const c of categories) {
-    if (c === "harassment" || c.startsWith("harassment/")) return "medium";
-  }
-  return "low";
-}
-
-/**
- * Compose the safe reply text sent back to the fan when moderation flags.
- * If categories include any self-harm flag, the helpline string is prepended
- * (separated by "\n\n") BEFORE the deflection — per UI-SPEC the client splits
- * on "\n\n" to render the helpline in its own CrisisHelplineBubble.
- */
-export function composeFlaggedReply(
-  mod: ModerationResult,
-  locale: string,
-): string {
-  const hasSelfHarm = mod.categories.some(
-    (c) => c === "self-harm" || c.startsWith("self-harm/"),
-  );
-  const deflection = getDeflection(locale, mod.primaryCategory);
-  if (hasSelfHarm) {
-    return `${getHelpline(locale)}\n\n${deflection}`;
-  }
-  return deflection;
-}
-
-function severityToCrisisLevel(sev: Severity): CrisisLevel {
-  if (sev === "high") return "high";
-  if (sev === "medium") return "medium";
-  if (sev === "low") return "low";
-  return "none";
-}
-
-/**
- * Run the moderation provider, then dispatch L5 (notify) + L6 (audit) writes,
- * and return the composed safe reply. Shared engine for both L1 (input) and
- * L3 (output) wrappers.
- */
-async function runModeration(
-  layer: "L1" | "L3",
-  ctx: ModerationContext,
-): Promise<ModerationOutcome> {
-  let mod: ModerationResult;
-  try {
-    mod = await getModeratorProvider().moderate(ctx.text);
-  } catch (err) {
-    // On moderation provider failure we FAIL OPEN (let the turn through) but
-    // log loudly. This is a discretionary call — closed-fail would mean every
-    // OpenAI outage takes the twin down. Document this trade-off:
-    //   - Moderation is defense in depth (L2 system prompt is the in-band
-    //     guardrail; L1/L3 are belt-and-braces).
-    //   - SB 243 self-harm coverage uses category SCORES from OpenAI — without
-    //     them we cannot meaningfully inject the helpline anyway.
-    //   - When OpenAI is down, the LLM still runs and the L2 guardrail still
-    //     applies. The audit log captures the failure for the chat operator.
-    const transient = err instanceof ProviderTransientError;
-    const permanent = err instanceof ProviderError;
-    logger.error(
-      {
-        event: `moderation.${layer}.provider_failed`,
-        transient,
-        permanent,
-        err: (err as Error).message,
-      },
-      `[moderation/${layer}] provider failed — failing open`,
-    );
-    return { flagged: false };
-  }
-
-  if (!mod.flagged) {
-    return { flagged: false };
-  }
-
-  const severity = severityFromCategories(mod.categories);
-  const reply = composeFlaggedReply(mod, ctx.locale);
-  const primary = mod.primaryCategory ?? mod.categories[0] ?? "unknown";
-
-  // L6 — audit log (fire-and-forget, hashes only)
-  writeSafetyAuditLog({
-    creatorId: ctx.creatorId,
-    fanId: ctx.fanIdHash,
-    sessionId: ctx.sessionId,
-    messageText: ctx.text,
-    crisisLevel: severityToCrisisLevel(severity),
-    crisisType: primary,
-    locale: ctx.locale,
-    responseSent: true,
-    twinPaused: false,
-  });
-
-  // L5 — founder notify on high severity only
-  if (severity === "high") {
-    notifyFounderAsync(
-      `*Safety flag* (${layer}) creator=${ctx.creatorId} session=${ctx.sessionId} category=${primary}`,
+setModeratorProviderFactory((): IModeratorProvider => {
+  const getter = (
+    registry as { getModeratorProvider?: () => IModeratorProvider }
+  ).getModeratorProvider;
+  if (typeof getter !== "function") {
+    // No getModeratorProvider available — typically because a test mocked
+    // ../providers/registry.js without exposing it. Throw so twin-runtime's
+    // FAIL-OPEN catch block fires (existing pre-02-06a behaviour).
+    throw new Error(
+      "getModeratorProvider is not available on ../providers/registry.js — " +
+        "test mock or registry stub is missing the export.",
     );
   }
+  return getter();
+});
 
-  return {
-    flagged: true,
-    reply,
-    primaryCategory: primary,
-    severity,
-  };
-}
-
-/**
- * L1 — moderate fan input BEFORE the LLM call. When flagged, the caller MUST
- * skip the LLM and send `outcome.reply` directly.
- */
-export function runL1Moderation(
-  ctx: ModerationContext,
-): Promise<ModerationOutcome> {
-  return runModeration("L1", ctx);
-}
-
-/**
- * L3 — moderate LLM OUTPUT before delivery. When flagged, the caller MUST
- * replace the LLM content with `outcome.reply`.
- */
-export function runL3Moderation(
-  ctx: ModerationContext,
-): Promise<ModerationOutcome> {
-  return runModeration("L3", ctx);
-}
+export * from "@workspace/twin-runtime/moderation";

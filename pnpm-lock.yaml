@@ -233,6 +233,9 @@ importers:
       '@workspace/queue':
         specifier: workspace:*
         version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
       bullmq:
         specifier: ^5.56.1
         version: 5.77.2
@@ -309,6 +312,12 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/queue':
+        specifier: workspace:*
+        version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
@@ -776,6 +785,9 @@ importers:
       '@workspace/queue':
         specifier: workspace:*
         version: link:../../lib/queue
+      '@workspace/twin-runtime':
+        specifier: workspace:*
+        version: link:../../lib/twin-runtime
       bullmq:
         specifier: ^5.0.0
         version: 5.77.2
@@ -891,6 +903,34 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
+  lib/twin-runtime:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.27.6)(pg@8.20.0)
+      pino:
+        specifier: ^9.14.0
+        version: 9.14.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       typescript:
         specifier: ~5.9.3
         version: 5.9.3

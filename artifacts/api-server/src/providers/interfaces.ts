@@ -88,40 +88,15 @@ export interface IVideoProvider {
 // L3 (LLM output) safety checks in routes/twin.ts. OpenAI is the only provider
 // allowed for LLM-adjacent moderation per CLAUDE.md mandate — GMI does text
 // generation; OpenAI does moderation only.
-
-export interface ModerationResult {
-  flagged: boolean;
-  categories: string[];           // category names whose `categories[<name>]` is true
-  scores: Record<string, number>; // raw OpenAI category_scores map
-  primaryCategory: string | null; // highest-scoring flagged category, or null
-}
-
-export interface IModeratorProvider {
-  readonly modelId: string;
-  moderate(text: string): Promise<ModerationResult>;
-}
-
-// Non-retryable — 4xx from provider (bad request, invalid model, auth failure)
-export class ProviderError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly provider?: string
-  ) {
-    super(message);
-    this.name = "ProviderError";
-  }
-}
-
-// Retryable — 5xx from provider (server error, rate limit, temporary outage)
-// BullMQ workers should treat this as a signal to retry with backoff.
-export class ProviderTransientError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly provider?: string
-  ) {
-    super(message);
-    this.name = "ProviderTransientError";
-  }
-}
+//
+// MOVED in plan 02-06a: ModerationResult + IModeratorProvider + ProviderError
+// + ProviderTransientError are now owned by @workspace/twin-runtime so the
+// worker (artifacts/worker) and fan-twin can share the same class identities.
+// `instanceof` checks in routes/twin.ts rely on a SINGLE definition crossing
+// both packages, so this file MUST re-export rather than redeclare.
+export {
+  type ModerationResult,
+  type IModeratorProvider,
+  ProviderError,
+  ProviderTransientError,
+} from "@workspace/twin-runtime/provider-types";
