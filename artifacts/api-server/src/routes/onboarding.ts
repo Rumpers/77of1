@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import crypto from "crypto";
 import { getReplitUser } from "../lib/auth.js";
 import { getSupabase } from "../lib/supabase.js";
-import { isKycComplete } from "../lib/kyc.js";
+import { isKycSigned } from "../lib/kyc.js";
 
 const router: IRouter = Router();
 
@@ -107,7 +107,7 @@ router.post("/onboarding/consent", async (req: Request, res: Response) => {
   // after the creator has completed KYC + personality-rights signing + ops approval.
   let kycComplete = false;
   try {
-    kycComplete = await isKycComplete(creatorId);
+    kycComplete = await isKycSigned(creatorId);
   } catch (kycErr) {
     req.log.error({ err: kycErr }, "[onboarding/consent] KYC check failed");
   }

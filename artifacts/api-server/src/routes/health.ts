@@ -23,35 +23,16 @@ router.get("/healthz", (_req: Request, res: Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString(), version });
 });
 
-// GET /api/health/db — Supabase ping; requires X-Health-Secret
+// GET /api/health/db — Drizzle Pool ping; requires X-Health-Secret
+// INFRA-01: replaces the old Supabase dynamic-import ping (T-02-06: health secret preserved)
+// pool is imported lazily to avoid throwing at module load time when DATABASE_URL is absent.
 router.get("/health/db", async (req: Request, res: Response) => {
   if (!requireHealthSecret(req, res)) return;
 
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  if (!url || !key) {
-    res.status(503).json({ status: "error", error: "Supabase env vars not configured" });
-    return;
-  }
-
   const start = Date.now();
   try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(url, key);
-    const { error } = await supabase.rpc("pg_sleep", { seconds: 0 }).maybeSingle();
-    // pg_sleep RPC may not exist; fall back to a raw query via the REST API
-    if (error && error.code !== "PGRST202") {
-      // Try a simpler ping — list tables with a filter that returns empty
-      const { error: pingError } = await supabase
-        .from("_health_ping")
-        .select("1")
-        .limit(1)
-        .maybeSingle();
-      // PGRST116 = table not found, which means DB is reachable
-      if (pingError && pingError.code !== "PGRST116" && pingError.code !== "42P01") {
-        throw pingError;
-      }
-    }
+    const { pool } = await import("@workspace/db");
+    await pool.query("SELECT 1");
     const latencyMs = Date.now() - start;
     res.json({ status: "ok", latencyMs });
   } catch (err) {
