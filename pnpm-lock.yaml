@@ -340,12 +340,18 @@ importers:
 
   artifacts/hermes:
     dependencies:
+      '@telegraf/session':
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7(@types/pg@8.20.0)(pg@8.20.0)(telegraf@4.16.3)
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(pg@8.20.0)
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       telegraf:
         specifier: ^4.16.3
         version: 4.16.3
@@ -353,6 +359,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
       esbuild:
         specifier: 0.27.3
         version: 0.27.3
@@ -362,6 +371,9 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.3
+        version: 3.2.4(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.4)
 
   artifacts/mockup-sandbox:
     devDependencies:
