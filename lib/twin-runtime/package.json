@@ -20,7 +20,8 @@
     "./system-prompt": "./src/system-prompt.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
@@ -32,6 +33,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "express": "^5.2.1",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
   }
 }

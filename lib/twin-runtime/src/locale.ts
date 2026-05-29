@@ -20,7 +20,7 @@ const isLocale = (value: unknown): value is Locale =>
 // zh-TW / zh-Hant must come before bare `zh` so Hong Kong / Taiwan resolve
 // correctly. PRC `zh-CN` deliberately falls through to default `en` because
 // the phase-2 product is JP / TW / HK only (per CLAUDE.md).
-function matchLocaleTag(tag: string): Locale | null {
+export function matchLocaleTag(tag: string): Locale | null {
   const lower = tag.toLowerCase().trim();
   if (lower === "zh-tw" || lower === "zh-hant" || lower.startsWith("zh-hant")) {
     return "zh-TW";
@@ -71,4 +71,12 @@ export function detectLocale(
 
   // 3. Default
   return DEFAULT_LOCALE;
+}
+
+// normalizeLocale — convert any string locale tag (including Hermes-flavor
+// lowercase 'zh-tw') to the canonical Locale type. Null/undefined/empty and
+// unrecognized tags (e.g. 'zh-CN') fall back to DEFAULT_LOCALE ('en').
+export function normalizeLocale(input: string | null | undefined): Locale {
+  if (!input) return DEFAULT_LOCALE;
+  return matchLocaleTag(input) ?? DEFAULT_LOCALE;
 }
