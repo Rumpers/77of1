@@ -209,7 +209,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreatePaymentIntentResponse"
+                $ref: "#/components/schemas/PaymentIntentResult"
         "400":
           description: Bad request
           content:
@@ -801,7 +801,7 @@ components:
         - creatorId
         - packId
 
-    CreatePaymentIntentResponse:
+    PaymentIntentResult:
       type: object
       properties:
         clientSecret:

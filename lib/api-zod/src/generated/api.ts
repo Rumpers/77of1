@@ -109,6 +109,47 @@ export const DeductCreditsResponse = zod.object({
 
 
 /**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const CreatePaymentIntentBody = zod.object({
+  "fanId": zod.string(),
+  "creatorId": zod.string(),
+  "packId": zod.string()
+})
+
+export const CreatePaymentIntentResponse = zod.object({
+  "clientSecret": zod.string(),
+  "paymentIntentId": zod.string()
+})
+
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const PaymentsWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const GetCreditBalanceQueryParams = zod.object({
+  "fanId": zod.coerce.string(),
+  "creatorId": zod.coerce.string()
+})
+
+export const GetCreditBalanceResponse = zod.object({
+  "balance": zod.number(),
+  "fanId": zod.string(),
+  "creatorId": zod.string()
+})
+
+
+/**
  * Create a Stripe checkout session for purchasing credits
  * @summary Create Stripe checkout session
  */

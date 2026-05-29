@@ -26,16 +26,20 @@ import type {
   ConsentInput,
   ConsentResult,
   ConsentRevokeResult,
+  CreatePaymentIntentInput,
   CreatorLinkParams,
+  CreditBalanceResult,
   CreditDeductResult,
   DeductCreditsInput,
   ErrorResponse,
   FanSignupInput,
   FanSignupResult,
+  GetCreditBalanceParams,
   HealthStatus,
   KillSwitchInput,
   KillSwitchResponse,
   KillSwitchResult,
+  PaymentIntentResult,
   PersonaCreateResponse,
   PersonaGetResponse,
   PersonaInput,
@@ -520,6 +524,234 @@ export const useDeductCredits = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDeductCreditsMutationOptions(options));
     }
+
+export const getCreatePaymentIntentUrl = () => {
+
+
+
+
+  return `/api/payments/create-payment-intent`
+}
+
+/**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const createPaymentIntent = async (createPaymentIntentInput: CreatePaymentIntentInput, options?: RequestInit): Promise<PaymentIntentResult> => {
+
+  return customFetch<PaymentIntentResult>(getCreatePaymentIntentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createPaymentIntentInput,)
+  }
+);}
+
+
+
+
+export const getCreatePaymentIntentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext> => {
+
+const mutationKey = ['createPaymentIntent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPaymentIntent>>, {data: BodyType<CreatePaymentIntentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPaymentIntent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createPaymentIntent>>>
+    export type CreatePaymentIntentMutationBody = BodyType<CreatePaymentIntentInput>
+    export type CreatePaymentIntentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create Stripe PaymentIntent
+ */
+export const useCreatePaymentIntent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPaymentIntent>>,
+        TError,
+        {data: BodyType<CreatePaymentIntentInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePaymentIntentMutationOptions(options));
+    }
+
+export const getPaymentsWebhookUrl = () => {
+
+
+
+
+  return `/api/payments/webhook`
+}
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const paymentsWebhook = async ( options?: RequestInit): Promise<WebhookResponse> => {
+
+  return customFetch<WebhookResponse>(getPaymentsWebhookUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPaymentsWebhookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext> => {
+
+const mutationKey = ['paymentsWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof paymentsWebhook>>, void> = () => {
+
+
+          return  paymentsWebhook(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PaymentsWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof paymentsWebhook>>>
+
+    export type PaymentsWebhookMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Stripe PaymentIntent webhook
+ */
+export const usePaymentsWebhook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof paymentsWebhook>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPaymentsWebhookMutationOptions(options));
+    }
+
+export const getGetCreditBalanceUrl = (params: GetCreditBalanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/credits/balance?${stringifiedParams}` : `/api/credits/balance`
+}
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const getCreditBalance = async (params: GetCreditBalanceParams, options?: RequestInit): Promise<CreditBalanceResult> => {
+
+  return customFetch<CreditBalanceResult>(getGetCreditBalanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditBalanceQueryKey = (params?: GetCreditBalanceParams,) => {
+    return [
+    `/api/credits/balance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCreditBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditBalanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditBalance>>> = ({ signal }) => getCreditBalance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditBalance>>>
+export type GetCreditBalanceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get fan credit balance
+ */
+
+export function useGetCreditBalance<TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditBalanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getCreateCheckoutUrl = () => {
 

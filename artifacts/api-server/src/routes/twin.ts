@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { randomUUID } from "crypto";
 import { getSupabase } from "../lib/supabase.js";
 
 const router: IRouter = Router();
@@ -76,14 +77,18 @@ function buildSystemPrompt(persona: Record<string, unknown>, locale: string): st
 }
 
 // POST /api/twin/chat
-// Body: { message: string, handle: string, locale?: string }
+// Body: { message: string, handle: string, locale?: string, fanId?: string, creatorId?: string }
 // Returns: { text: string, disclosure_footer: string }
+// If fanId + creatorId provided, deducts 1 credit atomically before responding.
+// Returns 402 when fan has insufficient credits.
 // Kill switch: if twin_configs.kill_switch is true for this creator, returns 503 immediately.
 router.post("/twin/chat", async (req: Request, res: Response) => {
-  const { message, handle, locale } = req.body as {
+  const { message, handle, locale, fanId, creatorId } = req.body as {
     message?: string;
     handle?: string;
     locale?: string;
+    fanId?: string;
+    creatorId?: string;
   };
 
   if (!message || typeof message !== "string" || !message.trim()) {
@@ -141,6 +146,48 @@ router.post("/twin/chat", async (req: Request, res: Response) => {
     }
   } catch {
     // DB not configured — fall through to stub
+  }
+
+  // Credit deduction: atomic, no double-spend.
+  // Only attempted when fanId + creatorId are provided (authenticated fans).
+  if (fanId && creatorId) {
+    try {
+      const supabase = getSupabase();
+      const interactionId = randomUUID();
+
+      const { data: deductResult, error: deductError } = await supabase.rpc("deduct_credits", {
+        p_fan_id: fanId,
+        p_creator_id: creatorId,
+        p_interaction_id: interactionId,
+        p_cost: 1,
+      });
+
+      if (deductError) {
+        req.log.error({ err: deductError.message }, "[twin/chat] deduct_credits rpc error");
+        res.status(500).json({ error: "Internal server error" });
+        return;
+      }
+
+      const result = deductResult as { success: boolean; error?: string; remainingBalance?: number };
+
+      if (!result.success) {
+        if (result.error === "insufficient_credits") {
+          res.status(402).json({
+            error: "Insufficient credits",
+            remainingBalance: result.remainingBalance ?? 0,
+          });
+          return;
+        }
+        if (result.error === "fan_not_found") {
+          res.status(404).json({ error: "Fan account not found" });
+          return;
+        }
+        res.status(422).json({ error: result.error ?? "Credit deduction failed" });
+        return;
+      }
+    } catch {
+      // DB not configured — deduction skipped (dev/anonymous mode)
+    }
   }
 
   // Stub response (real LLM call wired in OFA-4)

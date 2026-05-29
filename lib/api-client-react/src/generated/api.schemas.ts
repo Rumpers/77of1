@@ -91,6 +91,23 @@ export interface CreditDeductResult {
   remainingBalance?: number | null;
 }
 
+export interface CreatePaymentIntentInput {
+  fanId: string;
+  creatorId: string;
+  packId: string;
+}
+
+export interface PaymentIntentResult {
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
+export interface CreditBalanceResult {
+  balance: number;
+  fanId: string;
+  creatorId: string;
+}
+
 export interface CheckoutInput {
   creatorId: string;
   fanId: string;
@@ -242,5 +259,10 @@ export interface ErrorResponse {
 
 export type CreatorLinkParams = {
 token: string;
+};
+
+export type GetCreditBalanceParams = {
+fanId: string;
+creatorId: string;
 };
 

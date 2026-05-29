@@ -15,6 +15,157 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: "2026-04-22.dahlia" });
 }
 
+// POST /api/payments/create-payment-intent
+// Body: { fanId, creatorId, packId }
+// Returns: { clientSecret, paymentIntentId }
+router.post("/payments/create-payment-intent", async (req: Request, res: Response) => {
+  const { fanId, creatorId, packId } = req.body as {
+    fanId?: string;
+    creatorId?: string;
+    packId?: string;
+  };
+
+  if (!fanId || !creatorId || !packId) {
+    res.status(400).json({ error: "Missing required fields: fanId, creatorId, packId" });
+    return;
+  }
+
+  let supabase: ReturnType<typeof getSupabase>;
+  try {
+    supabase = getSupabase();
+  } catch {
+    res.status(503).json({ error: "Database not configured" });
+    return;
+  }
+
+  const { data: pack, error } = await supabase
+    .from("credit_packs")
+    .select("id, credits, price_cents, stripe_price_id")
+    .eq("id", packId)
+    .eq("active", true)
+    .single();
+
+  if (error || !pack) {
+    res.status(404).json({ error: "Credit pack not found" });
+    return;
+  }
+
+  if (pack.stripe_price_id.startsWith("STRIPE_PRICE_")) {
+    res.status(503).json({ error: "Credit pack Stripe Price ID not configured" });
+    return;
+  }
+
+  const stripe = getStripe();
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: pack.price_cents,
+      currency: "usd",
+      metadata: { fanId, creatorId, packId },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    if (!paymentIntent.client_secret) {
+      res.status(502).json({ error: "Stripe did not return a client_secret" });
+      return;
+    }
+
+    res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Stripe error";
+    req.log.error({ err: message }, "[create-payment-intent] stripe error");
+    res.status(502).json({ error: "Failed to create payment intent" });
+  }
+});
+
+// POST /api/payments/webhook
+// Handles payment_intent.succeeded — verifies STRIPE_WEBHOOK_SECRET signature,
+// then calls apply_credit_purchase to top up the fan's balance.
+// Note: raw body middleware is mounted in app.ts for this path.
+router.post("/payments/webhook", async (req: Request, res: Response) => {
+  const rawBody = req.body as Buffer;
+  const signature = req.headers["stripe-signature"] as string | undefined;
+
+  if (!signature) {
+    res.status(400).json({ error: "Missing stripe-signature header" });
+    return;
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    req.log.error("[payments/webhook] STRIPE_WEBHOOK_SECRET not set");
+    res.status(500).json({ error: "Webhook not configured" });
+    return;
+  }
+
+  const stripe = getStripe();
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(rawBody.toString(), signature, webhookSecret);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown";
+    req.log.error({ err: message }, "[payments/webhook] signature verification failed");
+    res.status(400).json({ error: "Invalid signature" });
+    return;
+  }
+
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const { fanId, creatorId, packId } = (pi.metadata ?? {}) as Record<string, string>;
+
+    if (!fanId || !creatorId || !packId) {
+      req.log.error({ piId: pi.id }, "[payments/webhook] missing PaymentIntent metadata");
+      res.status(422).json({ error: "Missing PaymentIntent metadata" });
+      return;
+    }
+
+    let supabase: ReturnType<typeof getSupabase>;
+    try {
+      supabase = getSupabase();
+    } catch {
+      res.status(503).json({ error: "Database not configured" });
+      return;
+    }
+
+    const { data: pack, error: packError } = await supabase
+      .from("credit_packs")
+      .select("credits")
+      .eq("id", packId)
+      .single();
+
+    if (packError || !pack) {
+      req.log.error({ packId }, "[payments/webhook] credit pack not found");
+      res.status(422).json({ error: "Pack not found" });
+      return;
+    }
+
+    const { data: result, error: rpcError } = await supabase.rpc("apply_credit_purchase", {
+      p_stripe_event_id: event.id,
+      p_fan_id: fanId,
+      p_creator_id: creatorId,
+      p_credits: pack.credits,
+    });
+
+    if (rpcError) {
+      req.log.error({ err: rpcError.message }, "[payments/webhook] apply_credit_purchase failed");
+      res.status(500).json({ error: "Failed to apply credits" });
+      return;
+    }
+
+    if (result === "duplicate") {
+      req.log.info({ eventId: event.id }, "[payments/webhook] duplicate event ignored");
+    } else {
+      req.log.info(
+        { fanId, creatorId, packId, credits: pack.credits },
+        "[payments/webhook] credits applied via PaymentIntent",
+      );
+    }
+  }
+
+  res.json({ received: true });
+});
+
 // POST /api/payments/checkout
 router.post("/payments/checkout", async (req: Request, res: Response) => {
   const parsed = CreateCheckoutBody.safeParse(req.body);
