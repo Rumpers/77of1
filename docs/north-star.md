@@ -6,6 +6,8 @@
 
 **7of1 is an AI-native creator-ops agency.** Influencers send us raw material (DM screenshots, voice notes, selfies); we build, run, and evolve a digital twin of them in their voice; we deploy that twin onto whatever monetization platform they already use (Fanvue, Patreon, Telegram paid channels, Discord paid roles, their own site, etc.). We never run the fan-payment loop. We take a rev-share on the revenue our twin attributably drives.
 
+**Brands:** Consumer-facing brand is **Lala** (at `lala.la`) — that's the name fans and creators interact with. **7of1** stays as the internal corporate name. Instagram-to-Meta shape: the company doesn't have to share a name with the product.
+
 ## What we are not
 
 - Not a fan marketplace. Fans don't pay 7of1; they pay the host platform.
@@ -23,7 +25,7 @@
 7. **Telegram-first** for both Lala (creator side) and Twin (fan side). LINE Official Account follows for JP/TW launch. WhatsApp / Messenger later.
 8. **EN-first for iteration; JP + ZH-TW required by launch.** Twin engine is language-agnostic; voice quality for JP/TW is the wildcard.
 9. **Fan-name masking on-device** before any DM screenshot is uploaded. Solves the third-party consent problem at the upload layer, not the legal layer.
-10. **First fan-facing surfaces:** Telegram fan-twin bot + funnel page on `7of1.tld/[handle]` (free chat → CTA to *her* monetization, with `conversation_id` carried through for attribution).
+10. **First fan-facing surfaces:** Telegram fan-twin bot + funnel page on `lala.la/[handle]` (free chat → CTA to *her* monetization, with `conversation_id` carried through for attribution).
 11. **No fan payment loop, ever.** Resolves the PRD §8.10 vs §5.6 retraction contradiction (host platform owns content delivery and retraction).
 
 ## Lala's voice

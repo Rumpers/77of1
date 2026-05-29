@@ -26,7 +26,7 @@ if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN_LALA is not set");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://7of1.app";
+const WEB_BASE_URL = process.env.WEB_BASE_URL ?? "https://lala.la";
 
 const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
 

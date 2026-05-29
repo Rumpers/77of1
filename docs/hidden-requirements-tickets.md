@@ -56,7 +56,7 @@ That's **18 tickets** dissolved. Remaining tickets still apply (creator-side ide
 - Templated, locale-aware emails (EN / JP / ZH-TW).
 - Bounce/complaint handling + suppression list.
 - Per-template open/click metrics into PostHog.
-- DKIM/SPF/DMARC for `7of1.[tld]`.
+- DKIM/SPF/DMARC for `lala.la`.
 **Acceptance:**
 - [ ] Send magic-link email in <5s p95.
 - [ ] Bounces auto-suppress.
@@ -243,7 +243,7 @@ That's **18 tickets** dissolved. Remaining tickets still apply (creator-side ide
 ### HID-017: DSAR intake & fulfillment workflow
 **Why:** §16 mandates "Fan DSAR within 30 days." No intake channel exists.
 **Scope:**
-- Public DSAR request form on `7of1.[tld]/privacy`.
+- Public DSAR request form on `lala.la/privacy`.
 - Ticketing pipeline → identity verification → data assembly → encrypted delivery.
 - SLA tracker; statutory clocks per jurisdiction (APPI / PDPA / GDPR-residual).
 **Acceptance:**
@@ -610,7 +610,7 @@ That's **18 tickets** dissolved. Remaining tickets still apply (creator-side ide
 
 ### HID-051: Posted-content performance tracking
 **Why:** §5.4 P1 promises "what performed best." Without OAuth scope expansion, no signal.
-**Scope:** Either (a) creator manually pastes metrics, or (b) expanded OAuth scope (re-consent), or (c) link tracking through `7of1.[tld]/[handle]?ref=ig`.
+**Scope:** Either (a) creator manually pastes metrics, or (b) expanded OAuth scope (re-consent), or (c) link tracking through `lala.la/[handle]?ref=ig`.
 **Acceptance:**
 - [ ] At least the link-tracking variant ships P1.
 **Priority:** P1 · **Effort:** M · **PRD ref:** §5.4

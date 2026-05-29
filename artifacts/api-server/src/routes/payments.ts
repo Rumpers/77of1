@@ -201,7 +201,7 @@ router.post("/payments/checkout", async (req: Request, res: Response) => {
   }
 
   const stripe = getStripe();
-  const appUrl = process.env.APP_URL ?? "https://7of1.app";
+  const appUrl = process.env.APP_URL ?? "https://lala.la";
 
   try {
     const session = await stripe.checkout.sessions.create({
