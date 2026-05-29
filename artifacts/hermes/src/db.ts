@@ -1,25 +1,32 @@
-// Hermes DB helpers — all use service-role client to bypass RLS
-import { createClient } from "@supabase/supabase-js";
+// Hermes DB helpers — Drizzle + Replit PG (migrated from Supabase, Phase 1)
+import { db } from "@workspace/db";
+import {
+  creatorsTable,
+  creatorConfigTable,
+  creatorKycTable,
+  creatorTotpTable,
+  twinsTable,
+} from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
-function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set");
-  return createClient(url, key);
-}
+// ─── Creator lookup ───────────────────────────────────────────────────────────
 
+// Return type uses snake_case keys to match existing callers in index.ts
+// (creator.display_name, creator.id). Do not rename.
 export type CreatorRow = { id: string; display_name: string };
 
 export async function findCreatorByTelegramId(
   telegramUserId: number
 ): Promise<CreatorRow | null> {
-  const { data } = await getDb()
-    .from("creators")
-    .select("id, display_name")
-    .eq("telegram_user_id", String(telegramUserId))
-    .maybeSingle();
-  return data ?? null;
+  const rows = await db
+    .select({ id: creatorsTable.id, display_name: creatorsTable.displayName })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.telegramUserId, String(telegramUserId)))
+    .limit(1);
+  return rows[0] ?? null;
 }
+
+// ─── Kill-switch ──────────────────────────────────────────────────────────────
 
 export interface PauseResult {
   elapsed: number;
@@ -31,15 +38,14 @@ export async function setPaused(
   paused: boolean
 ): Promise<PauseResult> {
   const t0 = Date.now();
-  const { error } = await getDb()
-    .from("creator_config")
-    .update({ paused, updated_at: new Date().toISOString() })
-    .eq("creator_id", creatorId);
+  await db
+    .update(creatorConfigTable)
+    .set({ paused, updatedAt: new Date() })
+    .where(eq(creatorConfigTable.creatorId, creatorId));
   const elapsed = Date.now() - t0;
   console.log(
     `[hermes] kill-switch creator_id=${creatorId} paused=${paused} db_write_ms=${elapsed}`
   );
-  if (error) throw error;
   if (elapsed > 4000) {
     console.error(
       `[hermes] WARN kill-switch db write took ${elapsed}ms — approaching ≤5s SLA`
@@ -47,6 +53,12 @@ export async function setPaused(
   }
   return { elapsed };
 }
+
+// ─── Creator stats (partial — fan count is out-of-scope in Phase 1) ──────────
+//
+// D-10: fan_accounts / fan_blocks / fan_credits tables are not in @workspace/db.
+// activeFanCount is stubbed at 0 until Phase 2 wires the fan tables.
+// The paused flag is read from creator_config (in Phase 1 schema).
 
 export interface CreatorStats {
   paused: boolean;
@@ -56,20 +68,292 @@ export interface CreatorStats {
 export async function getCreatorStats(
   creatorId: string
 ): Promise<CreatorStats> {
-  const db = getDb();
-  const [fansResult, configResult] = await Promise.all([
-    db
-      .from("fan_accounts")
-      .select("*", { count: "exact", head: true })
-      .eq("creator_id", creatorId),
-    db
-      .from("creator_config")
-      .select("paused")
-      .eq("creator_id", creatorId)
-      .maybeSingle(),
-  ]);
+  const rows = await db
+    .select({ paused: creatorConfigTable.paused })
+    .from(creatorConfigTable)
+    .where(eq(creatorConfigTable.creatorId, creatorId))
+    .limit(1);
   return {
-    paused: configResult.data?.paused ?? false,
-    activeFanCount: fansResult.count ?? 0,
+    paused: rows[0]?.paused ?? false,
+    activeFanCount: 0, // PHASE-1 STUB: fan_accounts not in @workspace/db — wired in Phase 2
   };
+}
+
+// ─── TOTP helpers ─────────────────────────────────────────────────────────────
+
+export interface TotpRecord {
+  creator_id: string;
+  totp_secret: string;
+  totp_enabled: boolean;
+  recovery_codes: string[];
+}
+
+export async function getTotpRecord(
+  creatorId: string
+): Promise<TotpRecord | null> {
+  const rows = await db
+    .select({
+      creator_id: creatorTotpTable.creatorId,
+      totp_secret: creatorTotpTable.totpSecret,
+      totp_enabled: creatorTotpTable.totpEnabled,
+      recovery_codes: creatorTotpTable.recoveryCodes,
+    })
+    .from(creatorTotpTable)
+    .where(eq(creatorTotpTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function saveTotpEnabled(
+  creatorId: string,
+  secret: string,
+  hashedRecoveryCodes: string[]
+): Promise<void> {
+  await db
+    .insert(creatorTotpTable)
+    .values({
+      creatorId,
+      totpSecret: secret,
+      totpEnabled: true,
+      recoveryCodes: hashedRecoveryCodes,
+      enabledAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: creatorTotpTable.creatorId,
+      set: {
+        totpSecret: secret,
+        totpEnabled: true,
+        recoveryCodes: hashedRecoveryCodes,
+        enabledAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function disableTotpRecord(creatorId: string): Promise<void> {
+  await db
+    .update(creatorTotpTable)
+    .set({
+      totpEnabled: false,
+      recoveryCodes: [],
+      updatedAt: new Date(),
+    })
+    .where(eq(creatorTotpTable.creatorId, creatorId));
+}
+
+export async function updateRecoveryCodes(
+  creatorId: string,
+  hashedCodes: string[]
+): Promise<void> {
+  await db
+    .update(creatorTotpTable)
+    .set({ recoveryCodes: hashedCodes, updatedAt: new Date() })
+    .where(eq(creatorTotpTable.creatorId, creatorId));
+}
+
+// ─── Creator preferences ──────────────────────────────────────────────────────
+
+export interface CreatorPreferences {
+  paused: boolean;
+  timezone: string;
+  hermes_language: string;
+}
+
+export async function getCreatorPreferences(
+  creatorId: string
+): Promise<CreatorPreferences | null> {
+  const rows = await db
+    .select({
+      paused: creatorConfigTable.paused,
+      timezone: creatorConfigTable.timezone,
+      hermes_language: creatorConfigTable.hermesLanguage,
+    })
+    .from(creatorConfigTable)
+    .where(eq(creatorConfigTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function setTimezone(
+  creatorId: string,
+  timezone: string
+): Promise<void> {
+  await db
+    .insert(creatorConfigTable)
+    .values({ creatorId, timezone })
+    .onConflictDoUpdate({
+      target: creatorConfigTable.creatorId,
+      set: { timezone, updatedAt: new Date() },
+    });
+}
+
+export async function setHermesLanguage(
+  creatorId: string,
+  language: string
+): Promise<void> {
+  await db
+    .insert(creatorConfigTable)
+    .values({ creatorId, hermesLanguage: language })
+    .onConflictDoUpdate({
+      target: creatorConfigTable.creatorId,
+      set: { hermesLanguage: language, updatedAt: new Date() },
+    });
+}
+
+// ─── KYC lookup (KYC-03 — /status command surfaces this) ─────────────────────
+//
+// Returns null when no creator_kyc row exists (creator hasn't been routed
+// through the signing flow yet). status is one of the kycStatusEnum literals:
+// 'pending' | 'signed' | 'rejected' per lib/db/src/schema/index.ts.
+
+export interface KycRow {
+  status: string;
+  signingUrl: string | null;
+}
+
+export async function getKycRow(creatorId: string): Promise<KycRow | null> {
+  const rows = await db
+    .select({
+      status: creatorKycTable.status,
+      signingUrl: creatorKycTable.signwellSigningUrl,
+    })
+    .from(creatorKycTable)
+    .where(eq(creatorKycTable.creatorId, creatorId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// ─── Persona-wizard writers (plan 02-07) ─────────────────────────────────────
+//
+// writeCharacterCard: replace the row's character_card JSONB. PERSONA-01.
+// upsertTwinCharacterCard: same but creates the twins row if absent (first
+//   /persona run for a brand-new creator).
+// writeMonetization: merge platform fields into creators.config JSONB AND
+//   mirror platform_url into creators.monetizationUrl (D-02-10 sync). Both
+//   writes share a transaction so the two never drift.
+
+import type { CharacterCardV2 } from "@workspace/db";
+
+export async function upsertTwinCharacterCard(
+  creatorId: string,
+  characterCard: CharacterCardV2,
+  handle: string,
+): Promise<void> {
+  // Try update first; if no row, insert. twinsTable.handle is unique so we
+  // generate a fallback handle from the creator's display handle.
+  const updated = await db
+    .update(twinsTable)
+    .set({ characterCard })
+    .where(eq(twinsTable.creatorId, creatorId))
+    .returning({ id: twinsTable.id });
+  if (updated.length === 0) {
+    await db.insert(twinsTable).values({
+      creatorId,
+      handle,
+      characterCard,
+    });
+  }
+}
+
+export async function writeMonetization(
+  creatorId: string,
+  platformName: string,
+  platformUrl: string,
+): Promise<void> {
+  // Merge platform_name + platform_url into existing config JSONB (preserves
+  // any keys downstream plans may have written). Postgres jsonb concat (||).
+  await db
+    .update(creatorsTable)
+    .set({
+      config: sql`COALESCE(${creatorsTable.config}, '{}'::jsonb) || ${JSON.stringify({
+        platform_name: platformName,
+        platform_url: platformUrl,
+      })}::jsonb`,
+      monetizationUrl: platformUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(creatorsTable.id, creatorId));
+}
+
+// ─── Voice-wizard writer (plan 02-08) ────────────────────────────────────────
+//
+// writeVoiceReferenceUrl: stores the Replit Object Storage URL of the creator's
+// voice reference clip onto twins.voice_reference_url. Called after a
+// successful uploadVoiceReference(...). If no twins row exists yet (creator
+// hasn't run /persona), the function is a no-op — the creator must complete
+// /persona first to create the twin row (PERSONA-01).
+//
+// Side note: in Phase 2 the persona wizard ALWAYS creates the twins row
+// (upsertTwinCharacterCard) before /voice is expected to be useful, so the
+// "no row" branch is defensive only. If observed in production logs, it
+// signals a creator running /voice before /persona — surface as a /voice
+// reply ("Please run /persona first").
+export async function writeVoiceReferenceUrl(
+  creatorId: string,
+  voiceReferenceUrl: string,
+): Promise<{ updated: boolean }> {
+  const result = await db
+    .update(twinsTable)
+    .set({ voiceReferenceUrl })
+    .where(eq(twinsTable.creatorId, creatorId))
+    .returning({ id: twinsTable.id });
+  return { updated: result.length > 0 };
+}
+
+// ─── Voice-revocation helpers (plan 02-08 — ONBOARD-03) ──────────────────────
+//
+// findActiveVoiceConsentGrant: look up the (creator, voice, granted=true,
+//   revokedAt IS NULL) consent_grants row that /revoke_voice should retire.
+//   Returns the row id or null when no active grant exists.
+// markVoiceConsentRevoked: stamp revokedAt + granted=false on the grant row.
+//   Returns the elapsed db-write ms so /revoke_voice can log/warn on >2s
+//   (mirrors setPaused SLA pattern).
+// clearVoiceReferenceUrl: NULL out twins.voice_reference_url AFTER revocation
+//   so the L2/L3 voice-synth path stops finding a reference clip.
+
+import { consentGrantsTable } from "@workspace/db";
+import { and, isNull } from "drizzle-orm";
+
+export async function findActiveVoiceConsentGrant(
+  creatorId: string,
+): Promise<{ id: string } | null> {
+  const rows = await db
+    .select({ id: consentGrantsTable.id })
+    .from(consentGrantsTable)
+    .where(
+      and(
+        eq(consentGrantsTable.creatorId, creatorId),
+        eq(consentGrantsTable.modality, "voice"),
+        eq(consentGrantsTable.granted, true),
+        isNull(consentGrantsTable.revokedAt),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markVoiceConsentRevoked(
+  consentGrantId: string,
+): Promise<{ elapsed: number }> {
+  const t0 = Date.now();
+  await db
+    .update(consentGrantsTable)
+    .set({ granted: false, revokedAt: new Date() })
+    .where(eq(consentGrantsTable.id, consentGrantId));
+  const elapsed = Date.now() - t0;
+  if (elapsed > 2000) {
+    console.error(
+      `[hermes] WARN consent revocation db write took ${elapsed}ms — approaching SLA`,
+    );
+  }
+  return { elapsed };
+}
+
+export async function clearVoiceReferenceUrl(
+  creatorId: string,
+): Promise<void> {
+  await db
+    .update(twinsTable)
+    .set({ voiceReferenceUrl: null })
+    .where(eq(twinsTable.creatorId, creatorId));
 }

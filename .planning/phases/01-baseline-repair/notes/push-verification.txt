@@ -1,0 +1,28 @@
+drizzle-kit push: NOT YET RUN
+Reason: DATABASE_URL is not available in the local worktree execution environment.
+
+Action required in Replit environment:
+1. Ensure DATABASE_URL (or DATABASE_URL_DIRECT for non-pooled DDL) is set.
+2. Run: pnpm --filter @workspace/db run push
+3. Verify tables with:
+   SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;
+   -- Expected: consent_grants, conversation_messages, creator_config, creator_kyc,
+   --           creator_totp, creators, generation_jobs, safety_audit_log, twins
+
+4. Verify enums with:
+   SELECT typname FROM pg_type WHERE typtype='e' ORDER BY typname;
+   -- Expected: consent_grant_modality, crisis_level, generation_job_status,
+   --           kyc_status, message_role, retention_category, twin_visibility
+
+5. Verify KYC status constraint:
+   SELECT column_default, is_nullable, udt_name
+   FROM information_schema.columns
+   WHERE table_name='creator_kyc' AND column_name='status';
+   -- Expected: 'pending'::kyc_status, NO, kyc_status
+
+6. Verify safety_audit_log has no raw PII columns (COMPLY-03):
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name='safety_audit_log' AND column_name IN ('fan_id','message_text','content');
+   -- Expected: zero rows
+
+Update this file with actual output after running in Replit.

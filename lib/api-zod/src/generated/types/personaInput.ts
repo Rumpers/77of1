@@ -5,22 +5,8 @@
  * 7of1 API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { EmojiUsage } from './emojiUsage';
-import type { IntensityLevel } from './intensityLevel';
+import type { PersonaResponse } from './personaResponse';
 
 export interface PersonaInput {
-  /** @maxLength 500 */
-  greeting_style?: string;
-  /** @maxLength 100 */
-  fan_endearment?: string;
-  emoji_usage?: EmojiUsage;
-  /** @maxItems 50 */
-  hard_stops?: string[];
-  /** @maxLength 500 */
-  treatment_style?: string;
-  /** @maxItems 20 */
-  personality_traits?: string[];
-  /** @maxLength 500 */
-  message_style?: string;
-  intensity_level?: IntensityLevel;
+  responses: PersonaResponse[];
 }

@@ -6,6 +6,7 @@ import paymentsRouter from "./payments.js";
 import onboardingRouter from "./onboarding.js";
 import creatorRouter from "./creator.js";
 import twinRouter from "./twin.js";
+import twinProfileRouter from "./twin-profile.js";
 import personaRouter from "./persona.js";
 import assetsRouter from "./assets.js";
 import consentRouter from "./consent.js";
@@ -16,6 +17,7 @@ import dsarRouter from "./dsar.js";
 import reportsRouter from "./reports.js";
 import taxRouter from "./tax.js";
 import linksRouter from "./links.js";
+import oauthRouter from "./oauth.js";
 
 const router: IRouter = Router();
 
@@ -26,6 +28,7 @@ router.use(paymentsRouter);
 router.use(onboardingRouter);
 router.use(creatorRouter);
 router.use(twinRouter);
+router.use(twinProfileRouter);
 router.use(personaRouter);
 router.use(assetsRouter);
 router.use(consentRouter);
@@ -36,6 +39,7 @@ router.use(dsarRouter);
 router.use(emailWebhooksRouter);
 router.use(reportsRouter);
 router.use(taxRouter);
+router.use(oauthRouter);
 // Link tracker last — /:handle catches all unmatched GET paths
 router.use(linksRouter);
 

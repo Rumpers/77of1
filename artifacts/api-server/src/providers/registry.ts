@@ -2,12 +2,19 @@
 // Swapping providers = changing TEXT_PROVIDER / VOICE_PROVIDER / VIDEO_PROVIDER env var.
 // No code change required to switch between gmi, elevenlabs, heygen, or mock.
 
-import type { ITextProvider, IVoiceProvider, IVideoProvider } from "./interfaces.js";
+import type {
+  ITextProvider,
+  IVoiceProvider,
+  IVideoProvider,
+  IModeratorProvider,
+} from "./interfaces.js";
 import { GmiTextProvider } from "./gmi/GmiTextProvider.js";
 import { GmiVoiceProvider } from "./gmi/GmiVoiceProvider.js";
 import { GmiVideoProvider } from "./gmi/GmiVideoProvider.js";
 import { ElevenLabsVoiceProvider } from "./external/ElevenLabsVoiceProvider.js";
 import { HeyGenVideoProvider } from "./external/HeyGenVideoProvider.js";
+import { OpenAiModeratorProvider } from "./openai/OpenAiModeratorProvider.js";
+import { MockModeratorProvider } from "./openai/MockModeratorProvider.js";
 
 // ── Mock providers (test environments only) ───────────────────────────────────
 
@@ -38,6 +45,7 @@ class MockTextProvider implements ITextProvider {
 let _textProvider: ITextProvider | undefined;
 let _voiceProvider: IVoiceProvider | undefined;
 let _videoProvider: IVideoProvider | undefined;
+let _moderatorProvider: IModeratorProvider | undefined;
 
 export function getTextProvider(): ITextProvider {
   if (_textProvider) return _textProvider;
@@ -101,6 +109,28 @@ export function getVideoProvider(): IVideoProvider {
   return _videoProvider;
 }
 
+// MODERATOR_PROVIDER=openai (default) | mock
+// PATTERNS A8: env-driven singleton selection mirroring getTextProvider().
+export function getModeratorProvider(): IModeratorProvider {
+  if (_moderatorProvider) return _moderatorProvider;
+
+  const name = process.env["MODERATOR_PROVIDER"] ?? "openai";
+  switch (name) {
+    case "openai":
+      _moderatorProvider = new OpenAiModeratorProvider();
+      break;
+    case "mock":
+      _moderatorProvider = new MockModeratorProvider();
+      break;
+    default:
+      throw new Error(
+        `Unknown MODERATOR_PROVIDER="${name}". Supported values: openai, mock`,
+      );
+  }
+
+  return _moderatorProvider;
+}
+
 // ── createRegistry — explicit bundle for a named provider set ─────────────────
 // Used by tests and workers that need a fully-typed provider set without
 // relying on env vars. createRegistry('gmi') is the GMI-first default.
@@ -137,4 +167,5 @@ export function resetProviderRegistry(): void {
   _textProvider = undefined;
   _voiceProvider = undefined;
   _videoProvider = undefined;
+  _moderatorProvider = undefined;
 }

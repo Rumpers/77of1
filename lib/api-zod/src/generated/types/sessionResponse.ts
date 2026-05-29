@@ -5,9 +5,15 @@
  * 7of1 API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ReplitUser } from './replitUser';
 
 export interface SessionResponse {
   authenticated: boolean;
-  user?: ReplitUser;
+  /** @nullable */
+  userId?: string | null;
+  /** @nullable */
+  fanId?: string | null;
+  /** @nullable */
+  creatorId?: string | null;
+  /** @nullable */
+  role?: string | null;
 }

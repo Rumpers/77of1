@@ -9,6 +9,16 @@ import * as zod from 'zod';
 
 
 /**
+ * Returns server health status (alias for /healthz)
+ * @summary Basic health check
+ */
+export const HealthBasicResponse = zod.object({
+  "status": zod.string(),
+  "service": zod.string().optional()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
@@ -40,54 +50,179 @@ export const HealthQueueResponse = zod.object({
 
 
 /**
- * Returns the current Replit Auth session
+ * Returns Supabase database connectivity status
+ * @summary Database health check
+ */
+export const HealthDbResponse = zod.object({
+  "status": zod.string(),
+  "service": zod.string().optional()
+})
+
+
+/**
+ * Returns status of external AI providers
+ * @summary AI provider health check
+ */
+export const HealthProvidersResponse = zod.object({
+  "status": zod.string(),
+  "service": zod.string().optional()
+})
+
+
+/**
+ * Returns the current authenticated session
  * @summary Get current session
  */
 export const GetSessionResponse = zod.object({
   "authenticated": zod.boolean(),
-  "user": zod.object({
-  "id": zod.string(),
-  "name": zod.string(),
-  "roles": zod.string(),
-  "bio": zod.string(),
-  "profileImage": zod.string(),
-  "url": zod.string(),
-  "teams": zod.string()
-}).optional()
+  "userId": zod.string().nullish(),
+  "fanId": zod.string().nullish(),
+  "creatorId": zod.string().nullish(),
+  "role": zod.string().nullish()
 })
 
 
 /**
- * Link a Replit user to a creator account via token
- * @summary Link creator account
+ * Clears the session cookie and logs out the current user
+ * @summary Sign out
  */
-export const CreatorLinkQueryParams = zod.object({
-  "token": zod.coerce.string()
-})
-
-export const CreatorLinkResponse = zod.object({
-  "userId": zod.string(),
-  "fanId": zod.string().nullish(),
-  "creatorId": zod.string().nullish(),
-  "sessionToken": zod.string()
+export const SignOutResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 
 /**
- * Convert anonymous trial to linked fan account
- * @summary Fan signup
+ * Sends a magic-link OTP to a fan's email address
+ * @summary Send fan email OTP
  */
-export const FanSignupBody = zod.object({
-  "creatorId": zod.string()
+export const FanSendOtpBody = zod.object({
+  "email": zod.string().email(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
 })
 
-export const FanSignupResponse = zod.object({
-  "session": zod.object({
-  "userId": zod.string(),
+export const FanSendOtpResponse = zod.object({
+  "sent": zod.boolean()
+})
+
+
+/**
+ * Verifies the OTP token sent to a fan's email and creates a session
+ * @summary Verify fan email OTP
+ */
+export const FanVerifyOtpBody = zod.object({
+  "email": zod.string().email(),
+  "token": zod.string(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const FanVerifyOtpResponse = zod.object({
+  "ok": zod.boolean(),
   "fanId": zod.string().nullish(),
   "creatorId": zod.string().nullish(),
-  "sessionToken": zod.string()
+  "isNew": zod.boolean().optional()
 })
+
+
+/**
+ * Sends an SMS OTP to a fan's phone number
+ * @summary Send fan phone OTP
+ */
+export const FanSendPhoneOtpBody = zod.object({
+  "phone": zod.string(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const FanSendPhoneOtpResponse = zod.object({
+  "sent": zod.boolean()
+})
+
+
+/**
+ * Verifies the SMS OTP and creates a fan session
+ * @summary Verify fan phone OTP
+ */
+export const FanVerifyPhoneOtpBody = zod.object({
+  "phone": zod.string(),
+  "token": zod.string(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const FanVerifyPhoneOtpResponse = zod.object({
+  "ok": zod.boolean(),
+  "fanId": zod.string().nullish(),
+  "creatorId": zod.string().nullish(),
+  "isNew": zod.boolean().optional()
+})
+
+
+/**
+ * Sends a magic-link OTP to a creator's email address
+ * @summary Send creator email OTP
+ */
+export const CreatorSendOtpBody = zod.object({
+  "email": zod.string().email(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const CreatorSendOtpResponse = zod.object({
+  "sent": zod.boolean()
+})
+
+
+/**
+ * Verifies the OTP token and creates a creator session
+ * @summary Verify creator email OTP
+ */
+export const CreatorVerifyOtpBody = zod.object({
+  "email": zod.string().email(),
+  "token": zod.string(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const CreatorVerifyOtpResponse = zod.object({
+  "ok": zod.boolean(),
+  "fanId": zod.string().nullish(),
+  "creatorId": zod.string().nullish(),
+  "isNew": zod.boolean().optional()
+})
+
+
+/**
+ * Links the authenticated creator account to a Telegram bot session
+ * @summary Link creator to Telegram
+ */
+export const CreatorTelegramConnectBody = zod.object({
+  "telegramUserId": zod.string(),
+  "telegramUsername": zod.string().optional()
+})
+
+export const CreatorTelegramConnectResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Sends a fan message to the creator's AI twin and returns a response. No auth required for trial sessions (up to 3 free messages).
+
+ * @summary Send message to AI twin
+ */
+export const twinChatBodyLocaleDefault = `en`;
+
+export const TwinChatBody = zod.object({
+  "message": zod.string(),
+  "handle": zod.string().optional(),
+  "locale": zod.enum(['en', 'ja', 'zh-TW']).default(twinChatBodyLocaleDefault)
+})
+
+export const TwinChatResponse = zod.object({
+  "text": zod.string(),
+  "disclosure_footer": zod.string()
 })
 
 
@@ -109,47 +244,6 @@ export const DeductCreditsResponse = zod.object({
 
 
 /**
- * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
- * @summary Create Stripe PaymentIntent
- */
-export const CreatePaymentIntentBody = zod.object({
-  "fanId": zod.string(),
-  "creatorId": zod.string(),
-  "packId": zod.string()
-})
-
-export const CreatePaymentIntentResponse = zod.object({
-  "clientSecret": zod.string(),
-  "paymentIntentId": zod.string()
-})
-
-
-/**
- * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
- * @summary Stripe PaymentIntent webhook
- */
-export const PaymentsWebhookResponse = zod.object({
-  "received": zod.boolean()
-})
-
-
-/**
- * Returns the fan's total remaining credits across all purchased packs
- * @summary Get fan credit balance
- */
-export const GetCreditBalanceQueryParams = zod.object({
-  "fanId": zod.coerce.string(),
-  "creatorId": zod.coerce.string()
-})
-
-export const GetCreditBalanceResponse = zod.object({
-  "balance": zod.number(),
-  "fanId": zod.string(),
-  "creatorId": zod.string()
-})
-
-
-/**
  * Create a Stripe checkout session for purchasing credits
  * @summary Create Stripe checkout session
  */
@@ -165,45 +259,7 @@ export const CreateCheckoutResponse = zod.object({
 
 
 /**
- * Handle Stripe webhook events
- * @summary Stripe webhook
- */
-export const StripeWebhookResponse = zod.object({
-  "received": zod.boolean()
-})
-
-
-/**
- * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator Replit Auth session.
-
- * @summary Revoke a consent grant
- */
-export const RevokeConsentParams = zod.object({
-  "modalityId": zod.enum(['text', 'voice', 'video', 'image']).describe('The AI modality to revoke consent for')
-})
-
-export const RevokeConsentResponse = zod.object({
-  "ok": zod.boolean(),
-  "modalityId": zod.string(),
-  "consentGrantId": zod.string(),
-  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
-})
-
-
-/**
- * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator Replit Auth session.
-
- * @summary Kill switch — cancel all in-flight jobs
- */
-export const TriggerKillSwitchResponse = zod.object({
-  "ok": zod.boolean(),
-  "killSwitch": zod.boolean(),
-  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
-})
-
-
-/**
- * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator Replit Auth session.
+ * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator auth session.
 
  * @summary Submit Step 3 consent grants
  */
@@ -220,6 +276,474 @@ export const SubmitConsentBody = zod.object({
 export const SubmitConsentResponse = zod.object({
   "ok": zod.boolean(),
   "persona_text_granted": zod.boolean()
+})
+
+
+/**
+ * Creator submits free-form Q&A answers used to seed the AI twin persona. Writes to creator_persona_responses. Requires creator auth session.
+
+ * @summary Submit creator persona responses
+ */
+export const SubmitPersonaBody = zod.object({
+  "responses": zod.array(zod.object({
+  "prompt": zod.string(),
+  "answer": zod.string()
+}))
+})
+
+export const SubmitPersonaResponse = zod.object({
+  "ok": zod.boolean(),
+  "saved_count": zod.number()
+})
+
+
+/**
+ * Creator uploads photos and/or videos for AI training. Files are moderated by GMI before storage. Requires creator auth session.
+
+ * @summary Upload creator training assets
+ */
+export const UploadAssetsBody = zod.object({
+  "files": zod.array(zod.instanceof(File))
+})
+
+export const UploadAssetsResponse = zod.object({
+  "ok": zod.boolean(),
+  "asset_ids": zod.array(zod.string())
+})
+
+
+/**
+ * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator auth session.
+
+ * @summary Revoke a consent grant
+ */
+export const RevokeConsentParams = zod.object({
+  "modalityId": zod.enum(['text', 'voice', 'video', 'image']).describe('The AI modality to revoke consent for')
+})
+
+export const RevokeConsentResponse = zod.object({
+  "ok": zod.boolean(),
+  "modalityId": zod.string(),
+  "consentGrantId": zod.string(),
+  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
+})
+
+
+/**
+ * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator auth session.
+
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const TriggerKillSwitchResponse = zod.object({
+  "ok": zod.boolean(),
+  "killSwitch": zod.boolean(),
+  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
+})
+
+
+/**
+ * Returns the creator's DLQ (dead-letter queue) jobs. Requires creator auth session.
+ * @summary Get failed generation jobs
+ */
+export const GetCreatorFailedJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "modality": zod.string(),
+  "error": zod.string().nullish(),
+  "created_at": zod.coerce.date(),
+  "fan_facing_status": zod.string()
+}))
+})
+
+
+/**
+ * Returns lightweight notification flags (e.g. DLQ alert). Requires creator auth session.
+ * @summary Get creator notification flags
+ */
+export const GetCreatorNotificationsResponse = zod.object({
+  "has_dlq_jobs": zod.boolean(),
+  "last_dlq_at": zod.coerce.date().nullable()
+})
+
+
+/**
+ * Clears the DLQ alert flag for the creator. Requires creator auth session.
+ * @summary Dismiss creator notifications
+ */
+export const DismissCreatorNotificationsResponse = zod.object({
+  "dismissed": zod.boolean()
+})
+
+
+/**
+ * Returns the current KYC gate status for the authenticated creator.
+ * @summary Get KYC status
+ */
+export const GetKycStatusResponse = zod.object({
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete']),
+  "creatorId": zod.string(),
+  "idDocSubmittedAt": zod.string().nullish(),
+  "signwellStatus": zod.string().nullish(),
+  "personalityRightsSignedAt": zod.string().nullish(),
+  "taxFormSubmittedAt": zod.string().nullish(),
+  "opsReviewedAt": zod.string().nullish()
+})
+
+
+/**
+ * Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket. Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form with the returned storagePath.
+
+ * @summary Get signed upload URL
+ */
+export const GetKycUploadUrlBody = zod.object({
+  "fileType": zod.enum(['id_doc', 'tax_form']),
+  "mimeType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/webp'])
+})
+
+export const GetKycUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string(),
+  "storagePath": zod.string(),
+  "token": zod.string()
+})
+
+
+/**
+ * Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url), then submits the storagePath here to advance to id_submitted status.
+
+ * @summary Submit identity document reference
+ */
+export const SubmitKycIdentityBody = zod.object({
+  "docType": zod.enum(['passport', 'national_id', 'drivers_license']),
+  "region": zod.string().describe('ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US)'),
+  "storagePath": zod.string()
+})
+
+export const SubmitKycIdentityResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete'])
+})
+
+
+/**
+ * Creates a SignWell document for the creator to sign their personality-rights agreement.
+ * @summary Initiate personality-rights e-signature
+ */
+export const InitiateKycSigningBody = zod.object({
+  "email": zod.string().email(),
+  "displayName": zod.string()
+})
+
+export const InitiateKycSigningResponse = zod.object({
+  "ok": zod.boolean(),
+  "signingUrl": zod.string(),
+  "docId": zod.string()
+})
+
+
+/**
+ * Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath here to advance to tax_submitted status.
+
+ * @summary Submit tax form reference (HID-062)
+ */
+export const SubmitKycTaxFormBody = zod.object({
+  "taxFormType": zod.enum(['W9', 'W8BEN', 'W8BENE']).describe('W9 — US persons and entities (Form W-9). W8BEN — Non-US individuals (Form W-8BEN). W8BENE — Non-US entities (Form W-8BEN-E).\n'),
+  "storagePath": zod.string().describe('Supabase Storage path returned by \/kyc\/upload-url')
+})
+
+export const SubmitKycTaxFormResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete'])
+})
+
+
+/**
+ * Enqueues an immediate dunning-retry job for a past-due subscription. Requires fan auth session.
+
+ * @summary Fan-initiated subscription retry
+ */
+export const RetrySubscriptionParams = zod.object({
+  "id": zod.coerce.string().describe('Subscription ID')
+})
+
+export const RetrySubscriptionResponse = zod.object({
+  "queued": zod.boolean(),
+  "subscriptionId": zod.string(),
+  "attempt": zod.number()
+})
+
+
+/**
+ * Three recovery methods: backup_email, backup_phone (OTP), or id_attestation (manual KYC — returns 202). Fraud guard writes audit log on suspicious activity.
+
+ * @summary Fan account recovery
+ */
+export const FanAccountRecoverBody = zod.object({
+  "method": zod.enum(['backup_email', 'backup_phone']),
+  "contact": zod.string(),
+  "creatorId": zod.string().optional(),
+  "handle": zod.string().optional()
+})
+
+export const FanAccountRecoverResponse = zod.object({
+  "sent": zod.boolean(),
+  "fraud_hold": zod.boolean().optional()
+})
+
+
+/**
+ * Returns the latest DSAR request status and eligibility for a new request. Requires auth.
+ * @summary Get DSAR request status
+ */
+export const GetDsarStatusResponse = zod.object({
+  "latest": zod.union([zod.object({
+  "id": zod.string(),
+  "requester_type": zod.enum(['fan', 'creator']),
+  "status": zod.enum(['processing', 'ready', 'downloaded', 'expired', 'failed']),
+  "requested_at": zod.coerce.date(),
+  "ready_at": zod.coerce.date().nullish(),
+  "expires_at": zod.coerce.date().nullish(),
+  "downloaded_at": zod.coerce.date().nullish(),
+  "download_token": zod.string().nullish()
+}),zod.null()]),
+  "can_request": zod.boolean(),
+  "next_eligible_at": zod.coerce.date().nullable()
+})
+
+
+/**
+ * Submits a Data Subject Access Request. Rate-limited to once per 30 days. Returns a download token with a time-limited expiry (72h for creators, 30d for fans). Requires auth.
+
+ * @summary Submit a DSAR request
+ */
+export const SubmitDsarRequestResponse = zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "requester_type": zod.string(),
+  "download_token": zod.string(),
+  "expires_at": zod.coerce.date(),
+  "package_size_bytes": zod.number()
+})
+
+
+/**
+ * Downloads the data package for a DSAR using a time-limited download token. Requires auth.
+ * @summary Download DSAR data package
+ */
+export const DownloadDsarQueryParams = zod.object({
+  "token": zod.coerce.string().describe('Download token returned by POST \/dsar\/request')
+})
+
+export const DownloadDsarResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
+ * Fan reports an AI twin message. Non-blocking — always returns { ok: true }. DB write is best-effort and does not affect response latency.
+
+ * @summary Submit a content report
+ */
+export const SubmitReportBody = zod.object({
+  "message_id": zod.string(),
+  "category": zod.enum(['off_topic', 'abusive', 'inappropriate', 'fraud']),
+  "message_text": zod.string().optional(),
+  "handle": zod.string().optional(),
+  "locale": zod.string().optional(),
+  "fan_id": zod.string().optional()
+})
+
+export const SubmitReportResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Redirects the creator to the external OAuth authorization page for the specified platform (17live, line, youtube). Requires creator auth session.
+
+ * @summary Initiate OAuth connection
+ */
+export const OauthConnectParams = zod.object({
+  "platform": zod.enum(['17live', 'line', 'youtube'])
+})
+
+
+/**
+ * Handles the redirect from the external OAuth provider. Verifies state, exchanges code for tokens, stores encrypted tokens, redirects to dashboard.
+
+ * @summary OAuth callback handler
+ */
+export const OauthCallbackParams = zod.object({
+  "platform": zod.enum(['17live', 'line', 'youtube'])
+})
+
+export const OauthCallbackQueryParams = zod.object({
+  "code": zod.coerce.string().optional(),
+  "state": zod.coerce.string().optional(),
+  "error": zod.coerce.string().optional()
+})
+
+
+/**
+ * Returns connection status for the platform (no token values exposed). Requires creator auth.
+ * @summary Get OAuth connection status
+ */
+export const OauthStatusParams = zod.object({
+  "platform": zod.enum(['17live', 'line', 'youtube'])
+})
+
+export const OauthStatusResponse = zod.object({
+  "platform": zod.enum(['17live', 'line', 'youtube']),
+  "connected": zod.boolean(),
+  "expiresAt": zod.coerce.date().nullish(),
+  "scope": zod.string().nullish()
+})
+
+
+/**
+ * Revokes and deletes stored tokens for the platform. Requires creator auth.
+ * @summary Revoke OAuth connection
+ */
+export const OauthRevokeParams = zod.object({
+  "platform": zod.enum(['17live', 'line', 'youtube'])
+})
+
+export const OauthRevokeResponse = zod.object({
+  "revoked": zod.boolean(),
+  "platform": zod.enum(['17live', 'line', 'youtube'])
+})
+
+
+/**
+ * Handle Stripe webhook events
+ * @summary Stripe webhook
+ */
+export const StripeWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+
+/**
+ * Receives bounce and complaint events from Resend and records them to the email_suppression_log table. Requires Resend HMAC signature header.
+
+ * @summary Resend email webhook
+ */
+export const EmailWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+
+/**
+ * Fan submits a refund request for a credit purchase. Requires fan auth session.
+ * @summary Submit a refund request
+ */
+export const CreateRefundRequestBody = zod.object({
+  "creator_id": zod.string().optional(),
+  "stripe_payment_intent_id": zod.string(),
+  "amount_credits": zod.number(),
+  "amount_cents": zod.number(),
+  "currency": zod.enum(['jpy', 'twd', 'usd']),
+  "reason_category": zod.enum(['goodwill_7day', 'technical_failure', 'creator_no_show', 'duplicate_charge', 'other']),
+  "fan_notes": zod.string().optional(),
+  "inbound_channel": zod.string().optional()
+})
+
+
+/**
+ * Staff-authenticated list of refund requests with optional status filter.
+ * @summary List refund requests (admin)
+ */
+export const listAdminRefundRequestsQuerySortDefault = `created_desc`;
+
+export const ListAdminRefundRequestsQueryParams = zod.object({
+  "status": zod.enum(['pending', 'approved', 'partially_approved', 'denied', 'processing', 'done', 'failed']).optional(),
+  "sort": zod.enum(['sla_asc', 'created_desc']).default(listAdminRefundRequestsQuerySortDefault)
+})
+
+export const ListAdminRefundRequestsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string(),
+  "fan_id": zod.string(),
+  "creator_id": zod.string(),
+  "stripe_payment_intent_id": zod.string(),
+  "amount_credits": zod.number(),
+  "amount_cents": zod.number(),
+  "currency": zod.string(),
+  "reason_category": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'partially_approved', 'denied', 'processing', 'done', 'failed']),
+  "created_at": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Staff-authenticated detail view including fan credit history.
+ * @summary Get refund request detail (admin)
+ */
+export const GetAdminRefundRequestParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetAdminRefundRequestResponse = zod.object({
+  "id": zod.string(),
+  "fan_id": zod.string(),
+  "creator_id": zod.string(),
+  "stripe_payment_intent_id": zod.string(),
+  "amount_credits": zod.number(),
+  "amount_cents": zod.number(),
+  "currency": zod.string(),
+  "reason_category": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'partially_approved', 'denied', 'processing', 'done', 'failed']),
+  "created_at": zod.coerce.date()
+}).and(zod.object({
+  "creditHistory": zod.array(zod.record(zod.string(), zod.unknown()))
+}))
+
+
+/**
+ * Staff approves, denies, or partially approves a refund request. On approve/partial calls Stripe createRefund synchronously. Writes refund_decisions row, credit_transactions entry, and audit_log entry.
+
+ * @summary Decide a refund request (admin)
+ */
+export const DecideRefundRequestParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DecideRefundRequestBody = zod.object({
+  "decision": zod.enum(['approved', 'denied', 'partial']),
+  "decision_reason_code": zod.string(),
+  "decision_notes": zod.string().optional(),
+  "partial_amount_credits": zod.number().optional()
+})
+
+export const DecideRefundRequestResponse = zod.object({
+  "id": zod.string(),
+  "fan_id": zod.string(),
+  "creator_id": zod.string(),
+  "stripe_payment_intent_id": zod.string(),
+  "amount_credits": zod.number(),
+  "amount_cents": zod.number(),
+  "currency": zod.string(),
+  "reason_category": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'partially_approved', 'denied', 'processing', 'done', 'failed']),
+  "created_at": zod.coerce.date()
+})
+
+
+/**
+ * Recovery rate by creator and time window. Internal staff endpoint.
+ * @summary Get dunning recovery metrics (admin)
+ */
+export const getDunningMetricsQueryWindowDefault = `30d`;
+
+export const GetDunningMetricsQueryParams = zod.object({
+  "creator_id": zod.coerce.string().optional(),
+  "window": zod.enum(['7d', '30d', '90d']).default(getDunningMetricsQueryWindowDefault)
+})
+
+export const GetDunningMetricsResponse = zod.object({
+  "window": zod.string(),
+  "total": zod.number(),
+  "recovered": zod.number(),
+  "cancelled": zod.number(),
+  "recovery_rate": zod.number()
 })
 
 
@@ -253,33 +777,11 @@ export const GetCreatorPersonaResponse = zod.object({
 /**
  * @summary Create or replace creator persona
  */
-export const createCreatorPersonaBodyGreetingStyleMax = 500;
-
-export const createCreatorPersonaBodyFanEndearmentMax = 100;
-
-export const createCreatorPersonaBodyHardStopsItemMax = 200;
-
-export const createCreatorPersonaBodyHardStopsMax = 50;
-
-export const createCreatorPersonaBodyTreatmentStyleMax = 500;
-
-export const createCreatorPersonaBodyPersonalityTraitsItemMax = 100;
-
-export const createCreatorPersonaBodyPersonalityTraitsMax = 20;
-
-export const createCreatorPersonaBodyMessageStyleMax = 500;
-
-
-
 export const CreateCreatorPersonaBody = zod.object({
-  "greeting_style": zod.string().max(createCreatorPersonaBodyGreetingStyleMax).optional(),
-  "fan_endearment": zod.string().max(createCreatorPersonaBodyFanEndearmentMax).optional(),
-  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']).optional(),
-  "hard_stops": zod.array(zod.string().max(createCreatorPersonaBodyHardStopsItemMax)).max(createCreatorPersonaBodyHardStopsMax).optional(),
-  "treatment_style": zod.string().max(createCreatorPersonaBodyTreatmentStyleMax).optional(),
-  "personality_traits": zod.array(zod.string().max(createCreatorPersonaBodyPersonalityTraitsItemMax)).max(createCreatorPersonaBodyPersonalityTraitsMax).optional(),
-  "message_style": zod.string().max(createCreatorPersonaBodyMessageStyleMax).optional(),
-  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']).optional()
+  "responses": zod.array(zod.object({
+  "prompt": zod.string(),
+  "answer": zod.string()
+}))
 })
 
 
@@ -344,6 +846,47 @@ export const SetKillSwitchBody = zod.object({
 export const SetKillSwitchResponse = zod.object({
   "kill_switch": zod.boolean(),
   "kill_switch_activated_at": zod.coerce.date().nullish()
+})
+
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const GetCreditBalanceQueryParams = zod.object({
+  "fanId": zod.coerce.string(),
+  "creatorId": zod.coerce.string()
+})
+
+export const GetCreditBalanceResponse = zod.object({
+  "balance": zod.number(),
+  "fanId": zod.string(),
+  "creatorId": zod.string()
+})
+
+
+/**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const CreatePaymentIntentBody = zod.object({
+  "fanId": zod.string(),
+  "creatorId": zod.string(),
+  "packId": zod.string()
+})
+
+export const CreatePaymentIntentResponse = zod.object({
+  "clientSecret": zod.string(),
+  "paymentIntentId": zod.string()
+})
+
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const PaymentsWebhookResponse = zod.object({
+  "received": zod.boolean()
 })
 
 

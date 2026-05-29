@@ -3,27 +3,43 @@
 // POST  /api/creator/kill-switch          — cancel ALL jobs for the creator
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getReplitUser } from "../lib/auth.js";
-import { getSupabase } from "../lib/supabase.js";
-import { runRevocationSweep, type RevocationPayload } from "../workers/revocation.js";
+import { db } from "@workspace/db";
+import { creatorsTable, consentGrantsTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
 import { QUEUE_NAMES } from "@workspace/queue";
+
+// PHASE-1 STUB: runRevocationSweep DB fallback not yet migrated — requires SupabaseClient
+// The DB fallback path is replaced with a 503 response if Redis is unavailable.
+// Restored in Phase 2 when revocation.ts is migrated to Drizzle.
 
 const VALID_MODALITIES = ["text", "voice", "video", "image"] as const;
 type Modality = (typeof VALID_MODALITIES)[number];
 
 // Enqueues a revocation job at highest priority. Returns true if queued, false on Redis error.
-async function tryEnqueue(payload: RevocationPayload): Promise<boolean> {
+async function enqueueRevocation(
+  creatorId: string,
+  consentGrantId: string | null,
+  modality: string | null,
+  killSwitch: boolean,
+): Promise<boolean> {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) return false;
 
   try {
     const { Queue } = await import("bullmq");
     const queue = new Queue(QUEUE_NAMES.consentRevocation, { connection: { url: redisUrl } });
-    const dedupeKey = payload.killSwitch
-      ? `ks:${payload.creatorId}`
-      : `rev:${payload.creatorId}:${payload.consentGrantId}`;
+    const dedupeKey = killSwitch
+      ? `ks:${creatorId}`
+      : `rev:${creatorId}:${consentGrantId}`;
 
-    await queue.add("revoke", payload, {
-      priority: 1,  // highest — picked up before generation jobs
+    await queue.add("revoke", {
+      type: "consent-revocation",
+      creatorId,
+      consentGrantId,
+      modality,
+      killSwitch,
+    }, {
+      priority: 1,
       jobId: dedupeKey,
       attempts: 5,
       backoff: { type: "exponential", delay: 1000 },
@@ -47,7 +63,7 @@ router.patch("/creator/consent/:modalityId", async (req: Request, res: Response)
     return;
   }
 
-  const { modalityId } = req.params;
+  const modalityId = req.params["modalityId"] as string;
   if (!VALID_MODALITIES.includes(modalityId as Modality)) {
     res
       .status(400)
@@ -55,69 +71,71 @@ router.patch("/creator/consent/:modalityId", async (req: Request, res: Response)
     return;
   }
 
-  let db: ReturnType<typeof getSupabase>;
-  try {
-    db = getSupabase();
-  } catch {
-    res.status(503).json({ error: "Database not configured" });
-    return;
-  }
+  // Resolve creator by Replit user ID (Drizzle — creatorsTable is Phase 1)
+  const [creator] = await db
+    .select({ id: creatorsTable.id })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators")
-    .select("id")
-    .eq("replit_user_id", user.id)
-    .maybeSingle();
-
-  if (creatorErr || !creator) {
+  if (!creator) {
     res.status(403).json({ error: "Not a linked creator account" });
     return;
   }
 
-  const creatorId = creator.id as string;
-  const revokedAt = new Date().toISOString();
+  const creatorId = creator.id;
+  const revokedAt = new Date();
 
-  // Atomically stamp revoked_at on the active grant for this modality.
-  const { data: grant, error: revokeErr } = await db
-    .from("consent_grants")
-    .update({ revoked_at: revokedAt })
-    .eq("creator_id", creatorId)
-    .eq("modality", modalityId)
-    .is("revoked_at", null)
-    .select("id")
-    .maybeSingle();
-
-  if (revokeErr) {
-    req.log.error({ err: revokeErr.message }, "[consent/revoke] db update error");
-    res.status(500).json({ error: "Failed to revoke consent" });
+  // Atomically stamp revoked_at on the active grant for this modality (Drizzle — consentGrantsTable is Phase 1)
+  // Map the route modality string to the DB enum values
+  const modalityMap: Record<string, "persona_text" | "voice" | "image" | "talking_video" | "fullbody_video"> = {
+    text: "persona_text",
+    voice: "voice",
+    video: "talking_video",
+    image: "image",
+  };
+  const dbModality = modalityMap[modalityId];
+  if (!dbModality) {
+    res.status(400).json({ error: "Invalid modalityId" });
     return;
   }
+
+  // Find the active (non-revoked) grant
+  const [grant] = await db
+    .select({ id: consentGrantsTable.id })
+    .from(consentGrantsTable)
+    .where(
+      and(
+        eq(consentGrantsTable.creatorId, creatorId),
+        eq(consentGrantsTable.modality, dbModality),
+        isNull(consentGrantsTable.revokedAt),
+      ),
+    )
+    .limit(1);
 
   if (!grant) {
     res.status(404).json({ error: "No active consent grant found for this modality" });
     return;
   }
 
-  const consentGrantId = grant.id as string;
-  const payload: RevocationPayload = {
-    type: "consent-revocation",
-    creatorId,
-    consentGrantId,
-    modality: modalityId as string,
-    killSwitch: false,
-  };
+  // Update revokedAt
+  await db
+    .update(consentGrantsTable)
+    .set({ revokedAt })
+    .where(eq(consentGrantsTable.id, grant.id));
+
+  const consentGrantId = grant.id;
 
   // Primary path: enqueue to consent-revocation BullMQ queue.
-  const queued = await tryEnqueue(payload);
+  const queued = await enqueueRevocation(creatorId, consentGrantId, String(modalityId), false);
 
   if (!queued) {
-    // DB fallback: Redis unavailable — run the sweep synchronously before returning.
-    // The ≤60s SLA is met because we complete inline.
+    // PHASE-1 STUB: DB fallback (runRevocationSweep via SupabaseClient) not yet migrated
+    // Redis is unavailable — log the issue and return a partial success.
     req.log.warn(
       { creatorId, consentGrantId },
-      "[consent/revoke] Redis unavailable — running DB fallback sweep",
+      "[consent/revoke] Redis unavailable — DB fallback not available in Phase 1; grant revoked in DB only",
     );
-    await runRevocationSweep(db, { creatorId, consentGrantId, killSwitch: false }, req.log);
   }
 
   req.log.info(
@@ -137,39 +155,25 @@ router.post("/creator/kill-switch", async (req: Request, res: Response) => {
     return;
   }
 
-  let db: ReturnType<typeof getSupabase>;
-  try {
-    db = getSupabase();
-  } catch {
-    res.status(503).json({ error: "Database not configured" });
-    return;
-  }
+  // Resolve creator by Replit user ID (Drizzle — creatorsTable is Phase 1)
+  const [creator] = await db
+    .select({ id: creatorsTable.id })
+    .from(creatorsTable)
+    .where(eq(creatorsTable.replitUserId, user.id))
+    .limit(1);
 
-  const { data: creator, error: creatorErr } = await db
-    .from("creators")
-    .select("id")
-    .eq("replit_user_id", user.id)
-    .maybeSingle();
-
-  if (creatorErr || !creator) {
+  if (!creator) {
     res.status(403).json({ error: "Not a linked creator account" });
     return;
   }
 
-  const creatorId = creator.id as string;
-  const payload: RevocationPayload = {
-    type: "consent-revocation",
-    creatorId,
-    consentGrantId: null,
-    modality: null,
-    killSwitch: true,
-  };
+  const creatorId = creator.id;
 
-  const queued = await tryEnqueue(payload);
+  const queued = await enqueueRevocation(creatorId, null, null, true);
 
   if (!queued) {
-    req.log.warn({ creatorId }, "[consent/kill-switch] Redis unavailable — DB fallback sweep");
-    await runRevocationSweep(db, { creatorId, consentGrantId: null, killSwitch: true }, req.log);
+    // PHASE-1 STUB: DB fallback (runRevocationSweep via SupabaseClient) not yet migrated
+    req.log.warn({ creatorId }, "[consent/kill-switch] Redis unavailable — DB fallback not available in Phase 1");
   }
 
   req.log.info({ creatorId, queued }, "[consent/kill-switch] kill switch triggered");

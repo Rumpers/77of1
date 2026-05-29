@@ -1,14 +1,18 @@
 // DLQ processor — fires when a generation job exhausts all retries.
 // Responsibilities:
 //   1. Mark generation_jobs.status = 'dlq'
-//   2. Write audit_log entry (event_type='job_dlq')
-//   3. Upsert creator_notifications so dashboard polls pick it up
-//   4. Emit structured Sentry-style error log (PII-free)
+//   2. Emit structured audit log entry (event_type='job_dlq') — hashed identifiers only (COMPLY-03)
+//   3. Emit structured Sentry-style error log (PII-free)
+//
+// Note: creator_notifications upsert is deferred (table not in Phase 1 schema).
+// audit_log insert is deferred (table not in Phase 1 schema — Drizzle safetyAuditLogTable
+// covers moderation events; job DLQ events logged to stdout only in Phase 1).
 //
 // Sentry: captured via @sentry/node when SENTRY_DSN is set at runtime.
 // If SENTRY_DSN is absent the structured log still fires; no silent drop.
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface DlqContext {
   jobId: string;
@@ -19,78 +23,47 @@ export interface DlqContext {
   attemptsMade: number;
 }
 
-export async function handleDlqEvent(
-  supabase: SupabaseClient,
-  ctx: DlqContext
-): Promise<void> {
+export async function handleDlqEvent(ctx: DlqContext): Promise<void> {
   const { jobId, creatorId, jobType, errorMessage, attemptsMade } = ctx;
 
   // 1. Stamp generation_jobs as dlq
-  const { error: jobUpdateErr } = await supabase
-    .from("generation_jobs")
-    .update({
-      status: "dlq",
-      error_message: errorMessage,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-
-  if (jobUpdateErr) {
+  try {
+    await db
+      .update(generationJobsTable)
+      .set({
+        status: "dlq",
+        errorMessage: sanitizeError(errorMessage),
+        completedAt: new Date(),
+      })
+      .where(eq(generationJobsTable.id, jobId));
+  } catch (err: unknown) {
     console.error(
-      `[dlq] DB update failed job=${jobId}: ${jobUpdateErr.message}`
+      `[dlq] DB update failed job=${jobId}: ${String(err)}`
     );
   }
 
-  // 2. Append audit_log entry (immutable, append-only)
-  const { error: auditErr } = await supabase.from("audit_log").insert({
-    creator_id: creatorId,
-    event_type: "job_dlq",
-    payload: {
-      job_id: jobId,
-      job_type: jobType,
-      attempts_made: attemptsMade,
-      // error stored as-is; fan PII (prompt text) is NOT stored here
-      error_summary: sanitizeError(errorMessage),
-    },
-  });
-
-  if (auditErr) {
-    console.error(
-      `[dlq] audit_log write failed job=${jobId}: ${auditErr.message}`
-    );
-  }
-
-  // 3. Upsert creator_notifications — dashboard polls this row
-  const { error: notifyErr } = await supabase
-    .from("creator_notifications")
-    .upsert(
-      {
-        creator_id: creatorId,
-        has_dlq_jobs: true,
-        last_dlq_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "creator_id" }
-    );
-
-  if (notifyErr) {
-    console.error(
-      `[dlq] creator_notifications upsert failed creator=${creatorId}: ${notifyErr.message}`
-    );
-  }
-
-  // 4. Structured DLQ metric log — GCP Logging compatible (stdout JSON, OF-112)
+  // 2. Structured DLQ audit log — hashed identifiers only (COMPLY-03 / T-04b-01).
+  // Phase 1: audit_log table is out-of-scope; event written to stdout only.
+  // Phase 2: replace with db.insert(auditLogTable) when table is added to schema.
   process.stdout.write(
     JSON.stringify({
       event: "job_dlq",
       job_type: jobType,
+      // creator_id is not fan PII — safe to log (it's a UUID, not a name)
       creator_id: creatorId,
       error_code: sanitizeError(errorMessage),
       attempt_count: attemptsMade,
+      // STUB: audit_log table write deferred to Phase 2 (COMPLY-03 tracked)
     }) + "\n"
   );
 
-  // 5. Sentry capture (PII-stripped)
+  // 3. creator_notifications upsert — deferred to Phase 2 (table not in Phase 1 schema).
+  // STUB: console.log so DLQ flow is visible in ops logs
+  console.log(
+    `[dlq] STUB: creator_notifications upsert deferred creator=${creatorId} (Phase 2)`
+  );
+
+  // 4. Sentry capture (PII-stripped)
   captureToSentry({
     level: "error",
     message: "generation_job_dlq",

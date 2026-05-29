@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: auth
     description: Authentication operations
+  - name: twin
+    description: AI twin chat operations
   - name: credits
     description: Credit operations
   - name: payments
@@ -22,7 +24,41 @@ tags:
     description: Creator management and consent operations
   - name: persona
     description: Creator persona setup and twin configuration
+  - name: kyc
+    description: Creator KYC and tax-form intake (OF-124, HID-062)
+  - name: subscriptions
+    description: Fan subscription operations
+  - name: account
+    description: Fan account recovery
+  - name: dsar
+    description: Data subject access requests
+  - name: reports
+    description: Fan content reports
+  - name: oauth
+    description: Creator OAuth connections
+  - name: webhooks
+    description: Inbound webhook handlers
+  - name: refunds
+    description: Refund request and admin decision flow
+  - name: admin
+    description: Internal admin and staff operations
 paths:
+  # ── Health ─────────────────────────────────────────────────────────────────
+
+  /health:
+    get:
+      operationId: healthBasic
+      tags: [health]
+      summary: Basic health check
+      description: Returns server health status (alias for /healthz)
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
   /healthz:
     get:
       operationId: healthCheck
@@ -57,12 +93,54 @@ paths:
               schema:
                 $ref: "#/components/schemas/QueueHealth"
 
+  /health/db:
+    get:
+      operationId: healthDb
+      tags: [health]
+      summary: Database health check
+      description: Returns Supabase database connectivity status
+      responses:
+        "200":
+          description: Database healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Database degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /health/providers:
+    get:
+      operationId: healthProviders
+      tags: [health]
+      summary: AI provider health check
+      description: Returns status of external AI providers
+      responses:
+        "200":
+          description: Providers healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: One or more providers degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ───────────────────────────────────────────────────────────────────
+
   /auth/session:
     get:
       operationId: getSession
       tags: [auth]
       summary: Get current session
-      description: Returns the current Replit Auth session
+      description: Returns the current authenticated session
       responses:
         "200":
           description: Authenticated
@@ -77,69 +155,213 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /auth/creator-link:
-    get:
-      operationId: creatorLink
+  /auth/signout:
+    post:
+      operationId: signOut
       tags: [auth]
-      summary: Link creator account
-      description: Link a Replit user to a creator account via token
-      parameters:
-        - name: token
-          in: query
-          required: true
-          schema:
-            type: string
+      summary: Sign out
+      description: Clears the session cookie and logs out the current user
       responses:
         "200":
-          description: Creator linked
+          description: Signed out
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSession"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Creator not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "409":
-          description: Conflict
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/OkResponse"
 
-  /auth/fan/signup:
+  /auth/fan/send-otp:
     post:
-      operationId: fanSignup
+      operationId: fanSendOtp
       tags: [auth]
-      summary: Fan signup
-      description: Convert anonymous trial to linked fan account
+      summary: Send fan email OTP
+      description: Sends a magic-link OTP to a fan's email address
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FanSignupInput"
+              $ref: "#/components/schemas/SendOtpInput"
       responses:
         "200":
-          description: Fan signed up
+          description: OTP sent
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FanSignupResult"
+                $ref: "#/components/schemas/SendOtpResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/fan/verify-otp:
+    post:
+      operationId: fanVerifyOtp
+      tags: [auth]
+      summary: Verify fan email OTP
+      description: Verifies the OTP token sent to a fan's email and creates a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpInput"
+      responses:
+        "200":
+          description: OTP verified, session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyOtpResult"
+        "400":
+          description: Bad request or invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: OTP expired or incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/fan/send-phone-otp:
+    post:
+      operationId: fanSendPhoneOtp
+      tags: [auth]
+      summary: Send fan phone OTP
+      description: Sends an SMS OTP to a fan's phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendPhoneOtpInput"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendOtpResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/fan/verify-phone-otp:
+    post:
+      operationId: fanVerifyPhoneOtp
+      tags: [auth]
+      summary: Verify fan phone OTP
+      description: Verifies the SMS OTP and creates a fan session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPhoneOtpInput"
+      responses:
+        "200":
+          description: OTP verified, session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyOtpResult"
+        "400":
+          description: Bad request or invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: OTP expired or incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/creator/send-otp:
+    post:
+      operationId: creatorSendOtp
+      tags: [auth]
+      summary: Send creator email OTP
+      description: Sends a magic-link OTP to a creator's email address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOtpInput"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendOtpResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/creator/verify-otp:
+    post:
+      operationId: creatorVerifyOtp
+      tags: [auth]
+      summary: Verify creator email OTP
+      description: Verifies the OTP token and creates a creator session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpInput"
+      responses:
+        "200":
+          description: OTP verified, session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyOtpResult"
+        "400":
+          description: Bad request or invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: OTP expired or incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/creator/telegram-connect:
+    post:
+      operationId: creatorTelegramConnect
+      tags: [auth]
+      summary: Link creator to Telegram
+      description: Links the authenticated creator account to a Telegram bot session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelegramConnectInput"
+      responses:
+        "200":
+          description: Telegram account linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
         "400":
           description: Bad request
           content:
@@ -147,11 +369,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-          description: Unauthorized
+          description: Not authenticated
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Twin chat ──────────────────────────────────────────────────────────────
+
+  /twin/chat:
+    post:
+      operationId: twinChat
+      tags: [twin]
+      summary: Send message to AI twin
+      description: >
+        Sends a fan message to the creator's AI twin and returns a response.
+        No auth required for trial sessions (up to 3 free messages).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwinChatInput"
+      responses:
+        "200":
+          description: AI twin response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwinChatResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Insufficient credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Credits ────────────────────────────────────────────────────────────────
 
   /credits/deduct:
     post:
@@ -191,100 +451,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /payments/create-payment-intent:
-    post:
-      operationId: createPaymentIntent
-      tags: [payments]
-      summary: Create Stripe PaymentIntent
-      description: Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreatePaymentIntentInput"
-      responses:
-        "200":
-          description: PaymentIntent created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PaymentIntentResult"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Pack not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "503":
-          description: Stripe or DB not configured
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /payments/webhook:
-    post:
-      operationId: paymentsWebhook
-      tags: [payments]
-      summary: Stripe PaymentIntent webhook
-      description: Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
-      responses:
-        "200":
-          description: Webhook received
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WebhookResponse"
-        "400":
-          description: Invalid signature or missing header
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /credits/balance:
-    get:
-      operationId: getCreditBalance
-      tags: [credits]
-      summary: Get fan credit balance
-      description: Returns the fan's total remaining credits across all purchased packs
-      parameters:
-        - name: fanId
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: creatorId
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Balance returned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CreditBalanceResult"
-        "400":
-          description: Missing required query params
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Fan not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+  # ── Payments ───────────────────────────────────────────────────────────────
 
   /payments/checkout:
     post:
@@ -318,25 +485,133 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /webhooks/stripe:
+  # ── Onboarding ─────────────────────────────────────────────────────────────
+
+  /onboarding/consent:
     post:
-      operationId: stripeWebhook
-      tags: [payments]
-      summary: Stripe webhook
-      description: Handle Stripe webhook events
+      operationId: submitConsent
+      tags: [onboarding]
+      summary: Submit Step 3 consent grants
+      description: >
+        Creator submits yes/no for each AI modality. Writes consent_grants rows,
+        transitions creator_assets from pending_consent to released (if persona_text
+        granted), and advances creator_onboarding.status to STEP_3_COMPLETE.
+        Requires creator auth session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentInput"
       responses:
         "200":
-          description: Webhook received
+          description: Consent recorded
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WebhookResponse"
+                $ref: "#/components/schemas/ConsentResult"
         "400":
-          description: Bad request
+          description: Missing or invalid answers
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /onboarding/persona:
+    post:
+      operationId: submitPersona
+      tags: [onboarding]
+      summary: Submit creator persona responses
+      description: >
+        Creator submits free-form Q&A answers used to seed the AI twin persona.
+        Writes to creator_persona_responses. Requires creator auth session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonaInput"
+      responses:
+        "200":
+          description: Persona responses saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaResult"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /onboarding/assets:
+    post:
+      operationId: uploadAssets
+      tags: [onboarding]
+      summary: Upload creator training assets
+      description: >
+        Creator uploads photos and/or videos for AI training. Files are moderated
+        by GMI before storage. Requires creator auth session.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+                - files
+      responses:
+        "200":
+          description: All files passed moderation and were stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetUploadResult"
+        "400":
+          description: No files received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: One or more files blocked by content moderation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetRejectionResult"
+        "503":
+          description: Content moderation or DB unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Creator management ─────────────────────────────────────────────────────
 
   /creator/consent/{modalityId}:
     patch:
@@ -347,7 +622,7 @@ paths:
         Revokes the active consent grant for a specific modality and cancels all
         pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA).
         Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable.
-        Requires creator Replit Auth session.
+        Requires creator auth session.
       parameters:
         - name: modalityId
           in: path
@@ -402,7 +677,7 @@ paths:
       description: >
         Cancels ALL pending and processing generation jobs for the creator regardless
         of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation
-        but scoped to the whole creator. Requires creator Replit Auth session.
+        but scoped to the whole creator. Requires creator auth session.
       responses:
         "200":
           description: Kill switch triggered
@@ -429,31 +704,607 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /onboarding/consent:
+  /creator/jobs/failed:
+    get:
+      operationId: getCreatorFailedJobs
+      tags: [creator]
+      summary: Get failed generation jobs
+      description: Returns the creator's DLQ (dead-letter queue) jobs. Requires creator auth session.
+      responses:
+        "200":
+          description: Failed jobs list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedJobsResult"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /creator/notifications:
+    get:
+      operationId: getCreatorNotifications
+      tags: [creator]
+      summary: Get creator notification flags
+      description: Returns lightweight notification flags (e.g. DLQ alert). Requires creator auth session.
+      responses:
+        "200":
+          description: Notification flags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatorNotifications"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /creator/notifications/dismiss:
     post:
-      operationId: submitConsent
-      tags: [onboarding]
-      summary: Submit Step 3 consent grants
+      operationId: dismissCreatorNotifications
+      tags: [creator]
+      summary: Dismiss creator notifications
+      description: Clears the DLQ alert flag for the creator. Requires creator auth session.
+      responses:
+        "200":
+          description: Notification dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissNotificationResult"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── KYC ───────────────────────────────────────────────────────────────────
+
+  /kyc/status:
+    get:
+      operationId: getKycStatus
+      tags: [kyc]
+      summary: Get KYC status
+      description: Returns the current KYC gate status for the authenticated creator.
+      responses:
+        "200":
+          description: KYC status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycStatusResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a creator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/upload-url:
+    post:
+      operationId: getKycUploadUrl
+      tags: [kyc]
+      summary: Get signed upload URL
       description: >
-        Creator submits yes/no for each AI modality. Writes consent_grants rows,
-        transitions creator_assets from pending_consent to released (if persona_text
-        granted), and advances creator_onboarding.status to STEP_3_COMPLETE.
-        Requires creator Replit Auth session.
+        Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket.
+        Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form
+        with the returned storagePath.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ConsentInput"
+              $ref: "#/components/schemas/KycUploadUrlInput"
       responses:
         "200":
-          description: Consent recorded
+          description: Signed upload URL
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConsentResult"
+                $ref: "#/components/schemas/KycUploadUrlResponse"
         "400":
-          description: Missing or invalid answers
+          description: Invalid fileType or mimeType
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/identity:
+    post:
+      operationId: submitKycIdentity
+      tags: [kyc]
+      summary: Submit identity document reference
+      description: >
+        Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url),
+        then submits the storagePath here to advance to id_submitted status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycIdentityInput"
+      responses:
+        "200":
+          description: Identity doc recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycOkResponse"
+        "400":
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/initiate-signing:
+    post:
+      operationId: initiateKycSigning
+      tags: [kyc]
+      summary: Initiate personality-rights e-signature
+      description: Creates a SignWell document for the creator to sign their personality-rights agreement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycInitiateSigningInput"
+      responses:
+        "200":
+          description: Signing URL returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycSigningResponse"
+        "400":
+          description: Identity doc not yet submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Wrong status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/tax-form:
+    post:
+      operationId: submitKycTaxForm
+      tags: [kyc]
+      summary: Submit tax form reference (HID-062)
+      description: >
+        Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage
+        first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath
+        here to advance to tax_submitted status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycTaxFormInput"
+      responses:
+        "200":
+          description: Tax form recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycOkResponse"
+        "400":
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: KYC already complete or rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Subscriptions ──────────────────────────────────────────────────────────
+
+  /subscriptions/{id}/retry:
+    post:
+      operationId: retrySubscription
+      tags: [subscriptions]
+      summary: Fan-initiated subscription retry
+      description: >
+        Enqueues an immediate dunning-retry job for a past-due subscription.
+        Requires fan auth session.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Subscription ID
+      responses:
+        "200":
+          description: Retry enqueued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionRetryResult"
+        "401":
+          description: Fan auth required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Subscription not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Subscription not eligible for retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Failed to enqueue retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database or queue not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Account recovery ───────────────────────────────────────────────────────
+
+  /account/fan/recover:
+    post:
+      operationId: fanAccountRecover
+      tags: [account]
+      summary: Fan account recovery
+      description: >
+        Three recovery methods: backup_email, backup_phone (OTP), or id_attestation
+        (manual KYC — returns 202). Fraud guard writes audit log on suspicious activity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FanRecoverInput"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FanRecoverIdAttestationInput"
+      responses:
+        "200":
+          description: Recovery initiated (OTP sent)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FanRecoverResult"
+        "202":
+          description: ID attestation queued for manual review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FanRecoverIdResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Auth service not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── DSAR ───────────────────────────────────────────────────────────────────
+
+  /dsar:
+    get:
+      operationId: getDsarStatus
+      tags: [dsar]
+      summary: Get DSAR request status
+      description: Returns the latest DSAR request status and eligibility for a new request. Requires auth.
+      responses:
+        "200":
+          description: DSAR status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DsarStatusResult"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /dsar/request:
+    post:
+      operationId: submitDsarRequest
+      tags: [dsar]
+      summary: Submit a DSAR request
+      description: >
+        Submits a Data Subject Access Request. Rate-limited to once per 30 days.
+        Returns a download token with a time-limited expiry (72h for creators, 30d for fans).
+        Requires auth.
+      responses:
+        "200":
+          description: DSAR package ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DsarRequestResult"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit — one DSAR per 30 days
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DsarRateLimitResult"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /dsar/download:
+    get:
+      operationId: downloadDsar
+      tags: [dsar]
+      summary: Download DSAR data package
+      description: Downloads the data package for a DSAR using a time-limited download token. Requires auth.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Download token returned by POST /dsar/request
+      responses:
+        "200":
+          description: Data package JSON file
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Token required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Token does not belong to this account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Data package not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Download link expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Reports ────────────────────────────────────────────────────────────────
+
+  /reports:
+    post:
+      operationId: submitReport
+      tags: [reports]
+      summary: Submit a content report
+      description: >
+        Fan reports an AI twin message. Non-blocking — always returns { ok: true }.
+        DB write is best-effort and does not affect response latency.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "200":
+          description: Report received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── OAuth ──────────────────────────────────────────────────────────────────
+
+  /oauth/{platform}/connect:
+    get:
+      operationId: oauthConnect
+      tags: [oauth]
+      summary: Initiate OAuth connection
+      description: >
+        Redirects the creator to the external OAuth authorization page for the
+        specified platform (17live, line, youtube). Requires creator auth session.
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthPlatform"
+      responses:
+        "302":
+          description: Redirect to external OAuth authorization page
+        "400":
+          description: Unsupported platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /oauth/{platform}/callback:
+    get:
+      operationId: oauthCallback
+      tags: [oauth]
+      summary: OAuth callback handler
+      description: >
+        Handles the redirect from the external OAuth provider. Verifies state,
+        exchanges code for tokens, stores encrypted tokens, redirects to dashboard.
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthPlatform"
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to dashboard (with oauth_connected or oauth_error query param)
+        "400":
+          description: Invalid state or missing parameters
+        "503":
+          description: Database not configured
+
+  /oauth/{platform}/status:
+    get:
+      operationId: oauthStatus
+      tags: [oauth]
+      summary: Get OAuth connection status
+      description: Returns connection status for the platform (no token values exposed). Requires creator auth.
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthPlatform"
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthStatusResult"
+        "400":
+          description: Unsupported platform
           content:
             application/json:
               schema:
@@ -466,6 +1317,321 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /oauth/{platform}:
+    delete:
+      operationId: oauthRevoke
+      tags: [oauth]
+      summary: Revoke OAuth connection
+      description: Revokes and deletes stored tokens for the platform. Requires creator auth.
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/OAuthPlatform"
+      responses:
+        "200":
+          description: Connection revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthRevokeResult"
+        "400":
+          description: Unsupported platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Webhooks ───────────────────────────────────────────────────────────────
+
+  /webhooks/stripe:
+    post:
+      operationId: stripeWebhook
+      tags: [webhooks]
+      summary: Stripe webhook
+      description: Handle Stripe webhook events
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /webhooks/email:
+    post:
+      operationId: emailWebhook
+      tags: [webhooks]
+      summary: Resend email webhook
+      description: >
+        Receives bounce and complaint events from Resend and records them to the
+        email_suppression_log table. Requires Resend HMAC signature header.
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Invalid JSON body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Refunds ────────────────────────────────────────────────────────────────
+
+  /fan/refund-requests:
+    post:
+      operationId: createRefundRequest
+      tags: [refunds]
+      summary: Submit a refund request
+      description: Fan submits a refund request for a credit purchase. Requires fan auth session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundRequestInput"
+      responses:
+        "201":
+          description: Refund request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundRequest"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Fan account required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/refund-requests:
+    get:
+      operationId: listAdminRefundRequests
+      tags: [admin]
+      summary: List refund requests (admin)
+      description: Staff-authenticated list of refund requests with optional status filter.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/RefundStatus"
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [sla_asc, created_desc]
+            default: created_desc
+      responses:
+        "200":
+          description: Refund requests list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundRequestListResult"
+        "400":
+          description: Invalid status filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Staff auth required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/refund-requests/{id}:
+    get:
+      operationId: getAdminRefundRequest
+      tags: [admin]
+      summary: Get refund request detail (admin)
+      description: Staff-authenticated detail view including fan credit history.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Refund request detail with credit history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundRequestDetail"
+        "401":
+          description: Staff auth required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Refund request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/refund-requests/{id}/decide:
+    post:
+      operationId: decideRefundRequest
+      tags: [admin]
+      summary: Decide a refund request (admin)
+      description: >
+        Staff approves, denies, or partially approves a refund request.
+        On approve/partial calls Stripe createRefund synchronously.
+        Writes refund_decisions row, credit_transactions entry, and audit_log entry.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefundDecisionInput"
+      responses:
+        "200":
+          description: Decision applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundRequest"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Staff auth required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Refund request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Stripe refund failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/dunning-metrics:
+    get:
+      operationId: getDunningMetrics
+      tags: [admin]
+      summary: Get dunning recovery metrics (admin)
+      description: Recovery rate by creator and time window. Internal staff endpoint.
+      parameters:
+        - name: creator_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["7d", "30d", "90d"]
+            default: "30d"
+      responses:
+        "200":
+          description: Dunning metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DunningMetricsResult"
+        "503":
+          description: Database not configured
           content:
             application/json:
               schema:
@@ -618,40 +1784,124 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /credits/balance:
+    get:
+      operationId: getCreditBalance
+      tags: [credits]
+      summary: Get fan credit balance
+      description: Returns the fan's total remaining credits across all purchased packs
+      parameters:
+        - name: fanId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: creatorId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Balance returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditBalanceResult"
+        "400":
+          description: Missing required query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Fan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/create-payment-intent:
+    post:
+      operationId: createPaymentIntent
+      tags: [payments]
+      summary: Create Stripe PaymentIntent
+      description: Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentIntentInput"
+      responses:
+        "200":
+          description: PaymentIntent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentIntentResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pack not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Stripe or DB not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/webhook:
+    post:
+      operationId: paymentsWebhook
+      tags: [payments]
+      summary: Stripe PaymentIntent webhook
+      description: Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Invalid signature or missing header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
-    ConsentRevokeResult:
-      type: object
-      properties:
-        ok:
-          type: boolean
-        modalityId:
-          type: string
-        consentGrantId:
-          type: string
-        queued:
-          type: boolean
-          description: true if job was enqueued to BullMQ; false if DB fallback was used
-      required:
-        - ok
-        - modalityId
-        - consentGrantId
-        - queued
+    # ── Shared primitives ───────────────────────────────────────────────────
 
-    KillSwitchResult:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        remainingBalance:
+          type: ["integer", "null"]
+      required:
+        - error
+
+    OkResponse:
       type: object
       properties:
         ok:
           type: boolean
-        killSwitch:
-          type: boolean
-        queued:
-          type: boolean
-          description: true if job was enqueued to BullMQ; false if DB fallback was used
       required:
         - ok
-        - killSwitch
-        - queued
+
+    # ── Health ──────────────────────────────────────────────────────────────
 
     HealthStatus:
       type: object
@@ -693,72 +1943,140 @@ components:
       required:
         - status
 
+    # ── Auth ────────────────────────────────────────────────────────────────
+
     SessionResponse:
       type: object
       properties:
         authenticated:
           type: boolean
-        user:
-          $ref: "#/components/schemas/ReplitUser"
-      required:
-        - authenticated
-
-    ReplitUser:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        roles:
-          type: string
-        bio:
-          type: string
-        profileImage:
-          type: string
-        url:
-          type: string
-        teams:
-          type: string
-      required:
-        - id
-        - name
-        - roles
-        - bio
-        - profileImage
-        - url
-        - teams
-
-    AuthSession:
-      type: object
-      properties:
         userId:
-          type: string
+          type: ["string", "null"]
         fanId:
           type: ["string", "null"]
         creatorId:
           type: ["string", "null"]
-        sessionToken:
-          type: string
+        role:
+          type: ["string", "null"]
       required:
-        - userId
-        - sessionToken
+        - authenticated
 
-    FanSignupInput:
+    SendOtpInput:
       type: object
       properties:
+        email:
+          type: string
+          format: email
         creatorId:
           type: string
+        handle:
+          type: string
       required:
-        - creatorId
+        - email
 
-    FanSignupResult:
+    SendOtpResult:
       type: object
       properties:
-        session:
-          $ref: "#/components/schemas/AuthSession"
+        sent:
+          type: boolean
       required:
-        - session
+        - sent
+
+    VerifyOtpInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+        creatorId:
+          type: string
+        handle:
+          type: string
+      required:
+        - email
+        - token
+
+    VerifyOtpResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        fanId:
+          type: ["string", "null"]
+        creatorId:
+          type: ["string", "null"]
+        isNew:
+          type: boolean
+      required:
+        - ok
+
+    SendPhoneOtpInput:
+      type: object
+      properties:
+        phone:
+          type: string
+        creatorId:
+          type: string
+        handle:
+          type: string
+      required:
+        - phone
+
+    VerifyPhoneOtpInput:
+      type: object
+      properties:
+        phone:
+          type: string
+        token:
+          type: string
+        creatorId:
+          type: string
+        handle:
+          type: string
+      required:
+        - phone
+        - token
+
+    TelegramConnectInput:
+      type: object
+      properties:
+        telegramUserId:
+          type: string
+        telegramUsername:
+          type: string
+      required:
+        - telegramUserId
+
+    # ── Twin ────────────────────────────────────────────────────────────────
+
+    TwinChatInput:
+      type: object
+      properties:
+        message:
+          type: string
+        handle:
+          type: string
+        locale:
+          type: string
+          enum: [en, ja, "zh-TW"]
+          default: en
+      required:
+        - message
+
+    TwinChatResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        disclosure_footer:
+          type: string
+      required:
+        - text
+        - disclosure_footer
+
+    # ── Credits ─────────────────────────────────────────────────────────────
 
     DeductCreditsInput:
       type: object
@@ -787,44 +2105,7 @@ components:
       required:
         - success
 
-    CreatePaymentIntentInput:
-      type: object
-      properties:
-        fanId:
-          type: string
-        creatorId:
-          type: string
-        packId:
-          type: string
-      required:
-        - fanId
-        - creatorId
-        - packId
-
-    PaymentIntentResult:
-      type: object
-      properties:
-        clientSecret:
-          type: string
-        paymentIntentId:
-          type: string
-      required:
-        - clientSecret
-        - paymentIntentId
-
-    CreditBalanceResult:
-      type: object
-      properties:
-        balance:
-          type: integer
-        fanId:
-          type: string
-        creatorId:
-          type: string
-      required:
-        - balance
-        - fanId
-        - creatorId
+    # ── Payments ────────────────────────────────────────────────────────────
 
     CheckoutInput:
       type: object
@@ -855,6 +2136,8 @@ components:
           type: boolean
       required:
         - received
+
+    # ── Onboarding / Consent ────────────────────────────────────────────────
 
     ConsentGrantType:
       type: string
@@ -904,111 +2187,662 @@ components:
         - ok
         - persona_text_granted
 
-    EmojiUsage:
-      type: string
-      enum: [none, minimal, moderate, heavy]
-
-    IntensityLevel:
-      type: string
-      enum: [warm, intimate, explicit]
-
-    Persona:
+    PersonaResponse:
       type: object
       properties:
-        id:
+        prompt:
           type: string
-          format: uuid
-        creator_id:
+        answer:
           type: string
-        greeting_style:
-          type: string
-        fan_endearment:
-          type: string
-        emoji_usage:
-          $ref: "#/components/schemas/EmojiUsage"
-        hard_stops:
-          type: array
-          items:
-            type: string
-        treatment_style:
-          type: string
-        personality_traits:
-          type: array
-          items:
-            type: string
-        message_style:
-          type: string
-        intensity_level:
-          $ref: "#/components/schemas/IntensityLevel"
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
       required:
-        - id
-        - creator_id
-        - greeting_style
-        - fan_endearment
-        - emoji_usage
-        - hard_stops
-        - treatment_style
-        - personality_traits
-        - message_style
-        - intensity_level
-        - created_at
-        - updated_at
-
-    TwinConfigSummary:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        kill_switch:
-          type: boolean
-        kill_switch_activated_at:
-          type: ["string", "null"]
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - kill_switch
+        - prompt
+        - answer
 
     PersonaInput:
       type: object
       properties:
-        greeting_style:
-          type: string
-          maxLength: 500
-        fan_endearment:
-          type: string
-          maxLength: 100
-        emoji_usage:
-          $ref: "#/components/schemas/EmojiUsage"
-        hard_stops:
+        responses:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonaResponse"
+      required:
+        - responses
+
+    PersonaResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        saved_count:
+          type: integer
+      required:
+        - ok
+        - saved_count
+
+    AssetUploadResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        asset_ids:
           type: array
           items:
             type: string
-            maxLength: 200
-          maxItems: 50
-        treatment_style:
+      required:
+        - ok
+        - asset_ids
+
+    AssetRejected:
+      type: object
+      properties:
+        filename:
           type: string
-          maxLength: 500
-        personality_traits:
+        reason:
+          type: string
+      required:
+        - filename
+        - reason
+
+    AssetRejectionResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        rejected:
           type: array
           items:
-            type: string
-            maxLength: 100
-          maxItems: 20
-        message_style:
+            $ref: "#/components/schemas/AssetRejected"
+      required:
+        - ok
+        - rejected
+
+    # ── Creator ─────────────────────────────────────────────────────────────
+
+    ConsentRevokeResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        modalityId:
           type: string
-          maxLength: 500
-        intensity_level:
-          $ref: "#/components/schemas/IntensityLevel"
+        consentGrantId:
+          type: string
+        queued:
+          type: boolean
+          description: true if job was enqueued to BullMQ; false if DB fallback was used
+      required:
+        - ok
+        - modalityId
+        - consentGrantId
+        - queued
+
+    KillSwitchResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        killSwitch:
+          type: boolean
+        queued:
+          type: boolean
+          description: true if job was enqueued to BullMQ; false if DB fallback was used
+      required:
+        - ok
+        - killSwitch
+        - queued
+
+    FailedJob:
+      type: object
+      properties:
+        id:
+          type: string
+        modality:
+          type: string
+        error:
+          type: ["string", "null"]
+        created_at:
+          type: string
+          format: date-time
+        fan_facing_status:
+          type: string
+      required:
+        - id
+        - modality
+        - created_at
+        - fan_facing_status
+
+    FailedJobsResult:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailedJob"
+      required:
+        - jobs
+
+    CreatorNotifications:
+      type: object
+      properties:
+        has_dlq_jobs:
+          type: boolean
+        last_dlq_at:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - has_dlq_jobs
+        - last_dlq_at
+
+    DismissNotificationResult:
+      type: object
+      properties:
+        dismissed:
+          type: boolean
+      required:
+        - dismissed
+
+    # ── Subscriptions ────────────────────────────────────────────────────────
+
+    SubscriptionRetryResult:
+      type: object
+      properties:
+        queued:
+          type: boolean
+        subscriptionId:
+          type: string
+        attempt:
+          type: integer
+      required:
+        - queued
+        - subscriptionId
+        - attempt
+
+    # ── Account recovery ─────────────────────────────────────────────────────
+
+    FanRecoverInput:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [backup_email, backup_phone]
+        contact:
+          type: string
+        creatorId:
+          type: string
+        handle:
+          type: string
+      required:
+        - method
+        - contact
+
+    FanRecoverIdAttestationInput:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [id_attestation]
+        full_name:
+          type: string
+        dob:
+          type: string
+        id_document:
+          type: string
+          format: binary
+        contact:
+          type: string
+        creatorId:
+          type: string
+        handle:
+          type: string
+      required:
+        - method
+        - full_name
+        - dob
+        - id_document
+
+    FanRecoverResult:
+      type: object
+      properties:
+        sent:
+          type: boolean
+        fraud_hold:
+          type: boolean
+      required:
+        - sent
+
+    FanRecoverIdResult:
+      type: object
+      properties:
+        queued:
+          type: boolean
+        request_id:
+          type: string
+      required:
+        - queued
+        - request_id
+
+    # ── DSAR ────────────────────────────────────────────────────────────────
+
+    DsarRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        requester_type:
+          type: string
+          enum: [fan, creator]
+        status:
+          type: string
+          enum: [processing, ready, downloaded, expired, failed]
+        requested_at:
+          type: string
+          format: date-time
+        ready_at:
+          type: ["string", "null"]
+          format: date-time
+        expires_at:
+          type: ["string", "null"]
+          format: date-time
+        downloaded_at:
+          type: ["string", "null"]
+          format: date-time
+        download_token:
+          type: ["string", "null"]
+      required:
+        - id
+        - requester_type
+        - status
+        - requested_at
+
+    DsarStatusResult:
+      type: object
+      properties:
+        latest:
+          oneOf:
+            - $ref: "#/components/schemas/DsarRequest"
+            - type: "null"
+        can_request:
+          type: boolean
+        next_eligible_at:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - latest
+        - can_request
+        - next_eligible_at
+
+    DsarRequestResult:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        requester_type:
+          type: string
+        download_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        package_size_bytes:
+          type: integer
+      required:
+        - id
+        - status
+        - requester_type
+        - download_token
+        - expires_at
+        - package_size_bytes
+
+    DsarRateLimitResult:
+      type: object
+      properties:
+        error:
+          type: string
+        next_eligible_at:
+          type: string
+          format: date-time
+      required:
+        - error
+        - next_eligible_at
+
+    # ── Reports ──────────────────────────────────────────────────────────────
+
+    ReportCategory:
+      type: string
+      enum: [off_topic, abusive, inappropriate, fraud]
+
+    ReportInput:
+      type: object
+      properties:
+        message_id:
+          type: string
+        category:
+          $ref: "#/components/schemas/ReportCategory"
+        message_text:
+          type: string
+        handle:
+          type: string
+        locale:
+          type: string
+        fan_id:
+          type: string
+      required:
+        - message_id
+        - category
+
+    # ── OAuth ────────────────────────────────────────────────────────────────
+
+    OAuthPlatform:
+      type: string
+      enum: ["17live", "line", "youtube"]
+
+    OAuthStatusResult:
+      type: object
+      properties:
+        platform:
+          $ref: "#/components/schemas/OAuthPlatform"
+        connected:
+          type: boolean
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        scope:
+          type: ["string", "null"]
+      required:
+        - platform
+        - connected
+
+    OAuthRevokeResult:
+      type: object
+      properties:
+        revoked:
+          type: boolean
+        platform:
+          $ref: "#/components/schemas/OAuthPlatform"
+      required:
+        - revoked
+        - platform
+
+    # ── Refunds ──────────────────────────────────────────────────────────────
+
+    RefundStatus:
+      type: string
+      enum: [pending, approved, partially_approved, denied, processing, done, failed]
+
+    RefundReasonCategory:
+      type: string
+      enum:
+        - goodwill_7day
+        - technical_failure
+        - creator_no_show
+        - duplicate_charge
+        - other
+
+    RefundRequestInput:
+      type: object
+      properties:
+        creator_id:
+          type: string
+        stripe_payment_intent_id:
+          type: string
+        amount_credits:
+          type: integer
+        amount_cents:
+          type: integer
+        currency:
+          type: string
+          enum: [jpy, twd, usd]
+        reason_category:
+          $ref: "#/components/schemas/RefundReasonCategory"
+        fan_notes:
+          type: string
+        inbound_channel:
+          type: string
+      required:
+        - stripe_payment_intent_id
+        - amount_credits
+        - amount_cents
+        - currency
+        - reason_category
+
+    RefundRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        fan_id:
+          type: string
+        creator_id:
+          type: string
+        stripe_payment_intent_id:
+          type: string
+        amount_credits:
+          type: integer
+        amount_cents:
+          type: integer
+        currency:
+          type: string
+        reason_category:
+          type: string
+        status:
+          $ref: "#/components/schemas/RefundStatus"
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fan_id
+        - creator_id
+        - stripe_payment_intent_id
+        - amount_credits
+        - amount_cents
+        - currency
+        - reason_category
+        - status
+        - created_at
+
+    RefundRequestListResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RefundRequest"
+      required:
+        - data
+
+    RefundRequestDetail:
+      allOf:
+        - $ref: "#/components/schemas/RefundRequest"
+        - type: object
+          properties:
+            creditHistory:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+          required:
+            - creditHistory
+
+    RefundDecisionInput:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [approved, denied, partial]
+        decision_reason_code:
+          type: string
+        decision_notes:
+          type: string
+        partial_amount_credits:
+          type: integer
+      required:
+        - decision
+        - decision_reason_code
+
+    # ── Admin / Dunning ──────────────────────────────────────────────────────
+
+    DunningMetricsResult:
+      type: object
+      properties:
+        window:
+          type: string
+        total:
+          type: integer
+        recovered:
+          type: integer
+        cancelled:
+          type: integer
+        recovery_rate:
+          type: number
+      required:
+        - window
+        - total
+        - recovered
+        - cancelled
+        - recovery_rate
+
+    # ── KYC ──────────────────────────────────────────────────────────────────
+
+    KycStatus:
+      type: string
+      enum:
+        - pending
+        - id_submitted
+        - id_verified
+        - signing_initiated
+        - rights_signed
+        - tax_submitted
+        - ops_approved
+        - complete
+
+    KycStatusResponse:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/KycStatus"
+        creatorId:
+          type: string
+        idDocSubmittedAt:
+          type: ["string", "null"]
+        signwellStatus:
+          type: ["string", "null"]
+        personalityRightsSignedAt:
+          type: ["string", "null"]
+        taxFormSubmittedAt:
+          type: ["string", "null"]
+        opsReviewedAt:
+          type: ["string", "null"]
+      required:
+        - status
+        - creatorId
+
+    KycOkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/KycStatus"
+      required:
+        - ok
+        - status
+
+    KycUploadUrlInput:
+      type: object
+      properties:
+        fileType:
+          type: string
+          enum: [id_doc, tax_form]
+        mimeType:
+          type: string
+          enum:
+            - application/pdf
+            - image/jpeg
+            - image/png
+            - image/heic
+            - image/webp
+      required:
+        - fileType
+        - mimeType
+
+    KycUploadUrlResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        storagePath:
+          type: string
+        token:
+          type: string
+      required:
+        - uploadUrl
+        - storagePath
+        - token
+
+    KycIdentityInput:
+      type: object
+      properties:
+        docType:
+          type: string
+          enum: [passport, national_id, drivers_license]
+        region:
+          type: string
+          description: ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US)
+        storagePath:
+          type: string
+      required:
+        - docType
+        - region
+        - storagePath
+
+    KycInitiateSigningInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+      required:
+        - email
+        - displayName
+
+    KycSigningResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        signingUrl:
+          type: string
+        docId:
+          type: string
+      required:
+        - ok
+        - signingUrl
+        - docId
+
+    KycTaxFormType:
+      type: string
+      enum: [W9, W8BEN, W8BENE]
+      description: >
+        W9 — US persons and entities (Form W-9).
+        W8BEN — Non-US individuals (Form W-8BEN).
+        W8BENE — Non-US entities (Form W-8BEN-E).
+
+    KycTaxFormInput:
+      type: object
+      properties:
+        taxFormType:
+          $ref: "#/components/schemas/KycTaxFormType"
+        storagePath:
+          type: string
+          description: Supabase Storage path returned by /kyc/upload-url
+      required:
+        - taxFormType
+        - storagePath
 
     PersonaPatchInput:
       type: object
@@ -1076,6 +2910,24 @@ components:
       required:
         - persona
 
+    TwinConfigSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kill_switch:
+          type: boolean
+        kill_switch_activated_at:
+          type: ["string", "null"]
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - kill_switch
+
     KillSwitchInput:
       type: object
       properties:
@@ -1095,12 +2947,97 @@ components:
       required:
         - kill_switch
 
-    ErrorResponse:
+    CreatePaymentIntentInput:
       type: object
       properties:
-        error:
+        fanId:
           type: string
-        remainingBalance:
-          type: ["integer", "null"]
+        creatorId:
+          type: string
+        packId:
+          type: string
       required:
-        - error
+        - fanId
+        - creatorId
+        - packId
+
+    PaymentIntentResult:
+      type: object
+      properties:
+        clientSecret:
+          type: string
+        paymentIntentId:
+          type: string
+      required:
+        - clientSecret
+        - paymentIntentId
+
+    CreditBalanceResult:
+      type: object
+      properties:
+        balance:
+          type: integer
+        fanId:
+          type: string
+        creatorId:
+          type: string
+      required:
+        - balance
+        - fanId
+        - creatorId
+
+    EmojiUsage:
+      type: string
+      enum: [none, minimal, moderate, heavy]
+
+    IntensityLevel:
+      type: string
+      enum: [warm, intimate, explicit]
+
+    Persona:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+        greeting_style:
+          type: string
+        fan_endearment:
+          type: string
+        emoji_usage:
+          $ref: "#/components/schemas/EmojiUsage"
+        hard_stops:
+          type: array
+          items:
+            type: string
+        treatment_style:
+          type: string
+        personality_traits:
+          type: array
+          items:
+            type: string
+        message_style:
+          type: string
+        intensity_level:
+          $ref: "#/components/schemas/IntensityLevel"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - creator_id
+        - greeting_style
+        - fan_endearment
+        - emoji_usage
+        - hard_stops
+        - treatment_style
+        - personality_traits
+        - message_style
+        - intensity_level
+        - created_at
+        - updated_at

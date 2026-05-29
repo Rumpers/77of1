@@ -83,6 +83,12 @@ type Messages = {
     report_submit: string;
     report_cancel: string;
     report_success: string;
+    // Phase 2 additions (UI-SPEC Copywriting Contract)
+    empty_state: string;
+    error_connection: string;
+    error_paused: string;
+    error_kyc: string;
+    monetization_cta: string;
   };
   dsar: {
     page_title: string;
@@ -104,6 +110,30 @@ type Messages = {
     data_rights_link: string;
     loading: string;
     creator_note: string;
+    fan_tab: string;
+    creator_tab: string;
+    fan_title: string;
+    fan_subtitle: string;
+    email_label: string;
+    email_placeholder: string;
+    request_type_label: string;
+    request_type_all: string;
+    request_type_messages: string;
+    request_type_account: string;
+    fan_notice: string;
+    fan_submit: string;
+    creator_title: string;
+    creator_subtitle: string;
+    creator_email_label: string;
+    creator_notice: string;
+    email_invalid: string;
+    submitting: string;
+    creator_submit: string;
+    done_title: string;
+    done_body_fan: string;
+    done_body_creator: string;
+    done_support_hint: string;
+    powered_by: string;
   };
   onboard: {
     step1: {
@@ -243,6 +273,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "Submit report",
       report_cancel: "Cancel",
       report_success: "Report submitted. Thank you.",
+      empty_state: "Say hi to {handle} ✨",
+      error_connection: "Connection issue. Please try again.",
+      error_paused: "{handle} is taking a short break. Check back soon.",
+      error_kyc: "This twin isn't quite ready yet. Try again later.",
+      monetization_cta: "Want more? Find me on {platform_name} →",
     },
     dsar: {
       page_title: "Your Data Rights",
@@ -264,6 +299,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "Your data rights",
       loading: "Loading…",
       creator_note: "As a creator, your download link is valid for 72 hours.",
+      fan_tab: "Fan Data",
+      creator_tab: "Creator Data",
+      fan_title: "Download your fan data",
+      fan_subtitle: "Get a copy of all messages and credits data.",
+      email_label: "Email address",
+      email_placeholder: "you@example.com",
+      request_type_label: "What data do you want?",
+      request_type_all: "Everything",
+      request_type_messages: "Messages only",
+      request_type_account: "Account data only",
+      fan_notice: "Your data package will be ready immediately. The link is valid for 30 days.",
+      fan_submit: "Request my data",
+      creator_title: "Download your creator data",
+      creator_subtitle: "Get a copy of your persona, consents, and asset metadata.",
+      creator_email_label: "Creator email address",
+      creator_notice: "Your download link is valid for 72 hours.",
+      email_invalid: "Please enter a valid email address.",
+      submitting: "Submitting…",
+      creator_submit: "Request creator data",
+      done_title: "Done",
+      done_body_fan: "Your data package has been submitted. Check your email for the download link.",
+      done_body_creator: "Your creator data package has been submitted. Check your email for the download link.",
+      done_support_hint: "If you have questions, email support@lala.la",
+      powered_by: "Powered by lala.la",
     },
     onboard: {
       step1: {
@@ -446,6 +505,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "報告を送信",
       report_cancel: "キャンセル",
       report_success: "報告を送信しました。ありがとうございます。",
+      empty_state: "{handle}にあいさつしよう ✨",
+      error_connection: "接続エラーが発生しました。もう一度お試しください。",
+      error_paused: "{handle}は少し休憩中です。またあとで来てね。",
+      error_kyc: "このツインはまだ準備中です。あとでまた来てね。",
+      monetization_cta: "もっと話したい？{platform_name}で会えるよ →",
     },
     dsar: {
       page_title: "データに関する権利",
@@ -467,6 +531,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "データに関する権利",
       loading: "読み込み中…",
       creator_note: "クリエイターの場合、ダウンロードリンクは72時間有効です。",
+      fan_tab: "ファンデータ",
+      creator_tab: "クリエイターデータ",
+      fan_title: "ファンデータをダウンロード",
+      fan_subtitle: "メッセージとクレジットデータのコピーを取得します。",
+      email_label: "メールアドレス",
+      email_placeholder: "you@example.com",
+      request_type_label: "どのデータが必要ですか？",
+      request_type_all: "すべて",
+      request_type_messages: "メッセージのみ",
+      request_type_account: "アカウントデータのみ",
+      fan_notice: "データパッケージはすぐに準備されます。リンクは30日間有効です。",
+      fan_submit: "データをリクエスト",
+      creator_title: "クリエイターデータをダウンロード",
+      creator_subtitle: "ペルソナ、同意、アセットメタデータのコピーを取得します。",
+      creator_email_label: "クリエイターメールアドレス",
+      creator_notice: "ダウンロードリンクは72時間有効です。",
+      email_invalid: "有効なメールアドレスを入力してください。",
+      submitting: "送信中…",
+      creator_submit: "クリエイターデータをリクエスト",
+      done_title: "完了",
+      done_body_fan: "データパッケージが送信されました。ダウンロードリンクはメールで送信されます。",
+      done_body_creator: "クリエイターデータパッケージが送信されました。ダウンロードリンクはメールで送信されます。",
+      done_support_hint: "ご質問はsupport@lala.laまでメールください",
+      powered_by: "Powered by lala.la",
     },
     onboard: {
       step1: {
@@ -649,6 +737,11 @@ const messages: Record<Locale, Messages> = {
       report_submit: "送出檢舉",
       report_cancel: "取消",
       report_success: "檢舉已送出，謝謝您。",
+      empty_state: "跟 {handle} 打個招呼 ✨",
+      error_connection: "連線出問題了，請再試一次。",
+      error_paused: "{handle} 暫時休息中，稍後再來看看。",
+      error_kyc: "這個分身還沒準備好，請晚點再來。",
+      monetization_cta: "想聊更多嗎？來 {platform_name} 找我 →",
     },
     dsar: {
       page_title: "您的資料權利",
@@ -670,6 +763,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "您的資料權利",
       loading: "載入中…",
       creator_note: "作為創作者，您的下載連結有效期為72小時。",
+      fan_tab: "粉絲資料",
+      creator_tab: "創作者資料",
+      fan_title: "下載粉絲資料",
+      fan_subtitle: "取得所有訊息和點數資料的副本。",
+      email_label: "電子郵件地址",
+      email_placeholder: "you@example.com",
+      request_type_label: "您需要哪些資料？",
+      request_type_all: "全部",
+      request_type_messages: "僅訊息",
+      request_type_account: "僅帳戶資料",
+      fan_notice: "您的資料套件將立即準備好。連結有效期為30天。",
+      fan_submit: "申請我的資料",
+      creator_title: "下載創作者資料",
+      creator_subtitle: "取得您的角色設定、授權和素材中繼資料的副本。",
+      creator_email_label: "創作者電子郵件地址",
+      creator_notice: "下載連結有效期為72小時。",
+      email_invalid: "請輸入有效的電子郵件地址。",
+      submitting: "提交中…",
+      creator_submit: "申請創作者資料",
+      done_title: "完成",
+      done_body_fan: "您的資料套件已提交。請查看您的電子郵件以取得下載連結。",
+      done_body_creator: "您的創作者資料套件已提交。請查看您的電子郵件以取得下載連結。",
+      done_support_hint: "如有疑問，請發送電子郵件至support@lala.la",
+      powered_by: "Powered by lala.la",
     },
     onboard: {
       step1: {

@@ -196,68 +196,69 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: red; /*replace with H S L */
+  /* UI-SPEC Color (02-UI-SPEC.md) — dark mode is the v1 default for the fan page. */
+  --background: 0 0% 6%;            /* #0f0f0f surface */
 
-  --foreground: red; /*replace with H S L */
+  --foreground: 0 0% 94%;           /* #f0f0f0 primary text */
 
-  --border: red; /*replace with H S L */
+  --border: 0 0% 13%;               /* #222 faint divider */
 
-  --card: red; /*replace with H S L */
+  --card: 0 0% 10%;                 /* #1a1a1a elevated surface (paywall, dialogs) */
 
-  --card-foreground: red; /*replace with H S L */
+  --card-foreground: 0 0% 94%;
 
-  --card-border: red; /*replace with H S L */
+  --card-border: 0 0% 13%;
 
-  --sidebar: red; /*replace with H S L */
+  --sidebar: 0 0% 8%;
 
-  --sidebar-foreground: red; /*replace with H S L */
+  --sidebar-foreground: 0 0% 94%;
 
-  --sidebar-border: red; /*replace with H S L */
+  --sidebar-border: 0 0% 13%;
 
-  --sidebar-primary: red; /*replace with H S L */
+  --sidebar-primary: 263 80% 58%;   /* fallback brand violet */
 
-  --sidebar-primary-foreground: red; /*replace with H S L */
+  --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: red; /*replace with H S L */
+  --sidebar-accent: 0 0% 16%;
 
-  --sidebar-accent-foreground: red; /*replace with H S L */
+  --sidebar-accent-foreground: 0 0% 94%;
 
-  --sidebar-ring: red; /*replace with H S L */
+  --sidebar-ring: 263 80% 58%;
 
-  --popover: red; /*replace with H S L */
+  --popover: 0 0% 10%;
 
-  --popover-foreground: red; /*replace with H S L */
+  --popover-foreground: 0 0% 94%;
 
-  --popover-border: red; /*replace with H S L */
+  --popover-border: 0 0% 13%;
 
-  --primary: red; /*replace with H S L */
+  --primary: 263 80% 58%;           /* #7c3aed default brand (overridden per-creator via --brand) */
 
-  --primary-foreground: red; /*replace with H S L */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: red; /*replace with H S L */
+  --secondary: 0 0% 16%;            /* #2a2a2a AI bubble fill */
 
-  --secondary-foreground: red; /*replace with H S L */
+  --secondary-foreground: 0 0% 91%; /* #e8e8e8 AI bubble text */
 
-  --muted: red; /*replace with H S L */
+  --muted: 0 0% 16%;
 
-  --muted-foreground: red; /*replace with H S L */
+  --muted-foreground: 0 0% 67%;     /* #aaa muted primary */
 
-  --accent: red; /*replace with H S L */
+  --accent: 0 0% 16%;
 
-  --accent-foreground: red; /*replace with H S L */
+  --accent-foreground: 0 0% 94%;
 
-  --destructive: red; /*replace with H S L */
+  --destructive: 0 84% 71%;         /* #f87171 red-400 (error text only) */
 
-  --destructive-foreground: red; /*replace with H S L */
+  --destructive-foreground: 0 0% 100%;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: red; /*replace with H S L */
-  --ring: red; /*replace with H S L */
-  --chart-1: red; /*replace with H S L */
-  --chart-2: red; /*replace with H S L */
-  --chart-3: red; /*replace with H S L */
-  --chart-4: red; /*replace with H S L */
-  --chart-5: red; /*replace with H S L */
+  --input: 0 0% 20%;                /* #333 input field border */
+  --ring: 263 80% 58%;
+  --chart-1: 263 80% 58%;
+  --chart-2: 200 92% 48%;
+  --chart-3: 349 89% 60%;
+  --chart-4: 142 71% 45%;
+  --chart-5: 43 96% 56%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);

@@ -1,64 +1,54 @@
 // Moderation worker — outbound content moderation before delivery.
 // Lifecycle: queued → processing → complete | failed.
 // IModeratorProvider is wired via ProviderRegistry.moderator.
+//
+// Per D-13: worker body is a STUB in Phase 1.
+// Phase 2: wire OpenAI omni-moderation-latest via registry.moderator.
 
 import { Worker } from "bullmq";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { db, generationJobsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import type { ProviderRegistry, ModerationPayload } from "@workspace/queue";
 import { QUEUE_NAMES } from "@workspace/queue";
 
 const CONCURRENCY = 10;
 
 export function createWorker(
-  registry: ProviderRegistry,
+  _registry: ProviderRegistry,
   redisUrl: string,
-  supabase: SupabaseClient,
 ): Worker<ModerationPayload> {
   const worker = new Worker<ModerationPayload>(
     QUEUE_NAMES.moderation,
     async (job) => {
-      const { jobDbId, creatorId, fanId, content, language, modality, consentGrantVersion } =
-        job.data;
+      const { jobDbId, creatorId, fanId, modality } = job.data;
 
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "processing",
-          bullmq_job_id: job.id,
-          attempt_count: job.attemptsMade + 1,
-          consent_grant_version: consentGrantVersion,
+          bullmqJobId: job.id,
+          attemptCount: job.attemptsMade + 1,
         })
-        .eq("id", jobDbId);
+        .where(eq(generationJobsTable.id, jobDbId));
 
       console.log(
         `[moderation] processing job=${jobDbId} creator=${creatorId} fan=${fanId}` +
-          ` modality=${modality} lang=${language}`,
+          ` modality=${modality}`,
       );
 
-      if (!registry.moderator) {
-        throw new Error("moderator provider not registered");
-      }
+      // STUB: OpenAI moderation pipeline wired in Phase 2 (L1/L3 layers per CLAUDE.md).
+      console.log(`[moderation] STUB: moderation body filled in Phase 2`);
 
-      const result = await registry.moderator.moderate(content, language);
-
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "complete",
-          output: JSON.stringify(result),
-          completed_at: new Date().toISOString(),
-          error_message: null,
+          completedAt: new Date(),
+          errorMessage: null,
         })
-        .eq("id", jobDbId);
+        .where(eq(generationJobsTable.id, jobDbId));
 
-      if (!result.passed) {
-        console.warn(
-          `[moderation] blocked job=${jobDbId} creator=${creatorId}` +
-            ` categories=${result.flaggedCategories.join(",")}`,
-        );
-      } else {
-        console.log(`[moderation] passed job=${jobDbId} confidence=${result.confidence}`);
-      }
+      console.log(`[moderation] done (stub) job=${jobDbId}`);
     },
     { connection: { url: redisUrl }, concurrency: CONCURRENCY },
   );
@@ -67,19 +57,19 @@ export function createWorker(
     if (!job) return;
     const isFinal = job.attemptsMade >= (job.opts.attempts ?? 1);
     if (isFinal) {
-      await supabase
-        .from("generation_jobs")
-        .update({
+      await db
+        .update(generationJobsTable)
+        .set({
           status: "failed",
-          error_message: err.message,
-          completed_at: new Date().toISOString(),
+          errorMessage: err.message,
+          completedAt: new Date(),
         })
-        .eq("id", job.data.jobDbId);
+        .where(eq(generationJobsTable.id, job.data.jobDbId));
     } else {
-      await supabase
-        .from("generation_jobs")
-        .update({ attempt_count: job.attemptsMade })
-        .eq("id", job.data.jobDbId);
+      await db
+        .update(generationJobsTable)
+        .set({ attemptCount: job.attemptsMade })
+        .where(eq(generationJobsTable.id, job.data.jobDbId));
     }
     console.error(`[moderation] failed job=${job.id} attempt=${job.attemptsMade} error=${err.message}`);
   });

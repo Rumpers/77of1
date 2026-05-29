@@ -20,33 +20,77 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AuthSession,
+  AssetRejectionResult,
+  AssetUploadResult,
   CheckoutInput,
   CheckoutResponse,
   ConsentInput,
   ConsentResult,
   ConsentRevokeResult,
   CreatePaymentIntentInput,
-  CreatorLinkParams,
+  CreatorNotifications,
   CreditBalanceResult,
   CreditDeductResult,
   DeductCreditsInput,
+  DismissNotificationResult,
+  DownloadDsar200,
+  DownloadDsarParams,
+  DsarRateLimitResult,
+  DsarRequestResult,
+  DsarStatusResult,
+  DunningMetricsResult,
   ErrorResponse,
-  FanSignupInput,
-  FanSignupResult,
+  FailedJobsResult,
+  FanRecoverIdAttestationInput,
+  FanRecoverIdResult,
+  FanRecoverInput,
+  FanRecoverResult,
   GetCreditBalanceParams,
+  GetDunningMetricsParams,
   HealthStatus,
   KillSwitchInput,
   KillSwitchResponse,
   KillSwitchResult,
+  KycIdentityInput,
+  KycInitiateSigningInput,
+  KycOkResponse,
+  KycSigningResponse,
+  KycStatusResponse,
+  KycTaxFormInput,
+  KycUploadUrlInput,
+  KycUploadUrlResponse,
+  ListAdminRefundRequestsParams,
+  OAuthPlatform,
+  OAuthRevokeResult,
+  OAuthStatusResult,
+  OauthCallbackParams,
+  OkResponse,
   PaymentIntentResult,
   PersonaCreateResponse,
   PersonaGetResponse,
   PersonaInput,
   PersonaPatchInput,
   PersonaPatchResponse,
+  PersonaResult,
   QueueHealth,
+  RefundDecisionInput,
+  RefundRequest,
+  RefundRequestDetail,
+  RefundRequestInput,
+  RefundRequestListResult,
+  ReportInput,
+  SendOtpInput,
+  SendOtpResult,
+  SendPhoneOtpInput,
   SessionResponse,
+  SubscriptionRetryResult,
+  TelegramConnectInput,
+  TwinChatInput,
+  TwinChatResponse,
+  UploadAssetsBody,
+  VerifyOtpInput,
+  VerifyOtpResult,
+  VerifyPhoneOtpInput,
   WebhookResponse
 } from './api.schemas';
 
@@ -59,6 +103,84 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+export const getHealthBasicUrl = () => {
+
+
+
+
+  return `/api/health`
+}
+
+/**
+ * Returns server health status (alias for /healthz)
+ * @summary Basic health check
+ */
+export const healthBasic = async ( options?: RequestInit): Promise<HealthStatus> => {
+
+  return customFetch<HealthStatus>(getHealthBasicUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getHealthBasicQueryKey = () => {
+    return [
+    `/api/health`
+    ] as const;
+    }
+
+
+export const getHealthBasicQueryOptions = <TData = Awaited<ReturnType<typeof healthBasic>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthBasic>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthBasicQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthBasic>>> = ({ signal }) => healthBasic({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthBasic>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type HealthBasicQueryResult = NonNullable<Awaited<ReturnType<typeof healthBasic>>>
+export type HealthBasicQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Basic health check
+ */
+
+export function useHealthBasic<TData = Awaited<ReturnType<typeof healthBasic>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthBasic>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getHealthBasicQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
 
 
 
@@ -218,6 +340,162 @@ export function useHealthQueue<TData = Awaited<ReturnType<typeof healthQueue>>, 
 
 
 
+export const getHealthDbUrl = () => {
+
+
+
+
+  return `/api/health/db`
+}
+
+/**
+ * Returns Supabase database connectivity status
+ * @summary Database health check
+ */
+export const healthDb = async ( options?: RequestInit): Promise<HealthStatus> => {
+
+  return customFetch<HealthStatus>(getHealthDbUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getHealthDbQueryKey = () => {
+    return [
+    `/api/health/db`
+    ] as const;
+    }
+
+
+export const getHealthDbQueryOptions = <TData = Awaited<ReturnType<typeof healthDb>>, TError = ErrorType<HealthStatus>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthDb>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthDbQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthDb>>> = ({ signal }) => healthDb({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthDb>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type HealthDbQueryResult = NonNullable<Awaited<ReturnType<typeof healthDb>>>
+export type HealthDbQueryError = ErrorType<HealthStatus>
+
+
+/**
+ * @summary Database health check
+ */
+
+export function useHealthDb<TData = Awaited<ReturnType<typeof healthDb>>, TError = ErrorType<HealthStatus>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthDb>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getHealthDbQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getHealthProvidersUrl = () => {
+
+
+
+
+  return `/api/health/providers`
+}
+
+/**
+ * Returns status of external AI providers
+ * @summary AI provider health check
+ */
+export const healthProviders = async ( options?: RequestInit): Promise<HealthStatus> => {
+
+  return customFetch<HealthStatus>(getHealthProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getHealthProvidersQueryKey = () => {
+    return [
+    `/api/health/providers`
+    ] as const;
+    }
+
+
+export const getHealthProvidersQueryOptions = <TData = Awaited<ReturnType<typeof healthProviders>>, TError = ErrorType<HealthStatus>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthProvidersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthProviders>>> = ({ signal }) => healthProviders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthProviders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type HealthProvidersQueryResult = NonNullable<Awaited<ReturnType<typeof healthProviders>>>
+export type HealthProvidersQueryError = ErrorType<HealthStatus>
+
+
+/**
+ * @summary AI provider health check
+ */
+
+export function useHealthProviders<TData = Awaited<ReturnType<typeof healthProviders>>, TError = ErrorType<HealthStatus>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthProviders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getHealthProvidersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getGetSessionUrl = () => {
 
 
@@ -227,7 +505,7 @@ export const getGetSessionUrl = () => {
 }
 
 /**
- * Returns the current Replit Auth session
+ * Returns the current authenticated session
  * @summary Get current session
  */
 export const getSession = async ( options?: RequestInit): Promise<SessionResponse> => {
@@ -296,31 +574,24 @@ export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TE
 
 
 
-export const getCreatorLinkUrl = (params: CreatorLinkParams,) => {
-  const normalizedParams = new URLSearchParams();
+export const getSignOutUrl = () => {
 
-  Object.entries(params || {}).forEach(([key, value]) => {
 
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
 
-  const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/auth/creator-link?${stringifiedParams}` : `/api/auth/creator-link`
+  return `/api/auth/signout`
 }
 
 /**
- * Link a Replit user to a creator account via token
- * @summary Link creator account
+ * Clears the session cookie and logs out the current user
+ * @summary Sign out
  */
-export const creatorLink = async (params: CreatorLinkParams, options?: RequestInit): Promise<AuthSession> => {
+export const signOut = async ( options?: RequestInit): Promise<OkResponse> => {
 
-  return customFetch<AuthSession>(getCreatorLinkUrl(params),
+  return customFetch<OkResponse>(getSignOutUrl(),
   {
     ...options,
-    method: 'GET'
+    method: 'POST'
 
 
   }
@@ -329,90 +600,11 @@ export const creatorLink = async (params: CreatorLinkParams, options?: RequestIn
 
 
 
+export const getSignOutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext> => {
 
-export const getCreatorLinkQueryKey = (params?: CreatorLinkParams,) => {
-    return [
-    `/api/auth/creator-link`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getCreatorLinkQueryOptions = <TData = Awaited<ReturnType<typeof creatorLink>>, TError = ErrorType<ErrorResponse>>(params: CreatorLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof creatorLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getCreatorLinkQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof creatorLink>>> = ({ signal }) => creatorLink(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof creatorLink>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type CreatorLinkQueryResult = NonNullable<Awaited<ReturnType<typeof creatorLink>>>
-export type CreatorLinkQueryError = ErrorType<ErrorResponse>
-
-
-/**
- * @summary Link creator account
- */
-
-export function useCreatorLink<TData = Awaited<ReturnType<typeof creatorLink>>, TError = ErrorType<ErrorResponse>>(
- params: CreatorLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof creatorLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getCreatorLinkQueryOptions(params,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export const getFanSignupUrl = () => {
-
-
-
-
-  return `/api/auth/fan/signup`
-}
-
-/**
- * Convert anonymous trial to linked fan account
- * @summary Fan signup
- */
-export const fanSignup = async (fanSignupInput: FanSignupInput, options?: RequestInit): Promise<FanSignupResult> => {
-
-  return customFetch<FanSignupResult>(getFanSignupUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      fanSignupInput,)
-  }
-);}
-
-
-
-
-export const getFanSignupMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSignup>>, TError,{data: BodyType<FanSignupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof fanSignup>>, TError,{data: BodyType<FanSignupInput>}, TContext> => {
-
-const mutationKey = ['fanSignup'];
+const mutationKey = ['signOut'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -422,10 +614,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanSignup>>, {data: BodyType<FanSignupInput>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof signOut>>, void> = () => {
 
-          return  fanSignup(data,requestOptions)
+
+          return  signOut(requestOptions)
         }
 
 
@@ -435,22 +627,599 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type FanSignupMutationResult = NonNullable<Awaited<ReturnType<typeof fanSignup>>>
-    export type FanSignupMutationBody = BodyType<FanSignupInput>
-    export type FanSignupMutationError = ErrorType<ErrorResponse>
+    export type SignOutMutationResult = NonNullable<Awaited<ReturnType<typeof signOut>>>
+
+    export type SignOutMutationError = ErrorType<unknown>
 
     /**
- * @summary Fan signup
+ * @summary Sign out
  */
-export const useFanSignup = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSignup>>, TError,{data: BodyType<FanSignupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useSignOut = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signOut>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof fanSignup>>,
+        Awaited<ReturnType<typeof signOut>>,
         TError,
-        {data: BodyType<FanSignupInput>},
+        void,
         TContext
       > => {
-      return useMutation(getFanSignupMutationOptions(options));
+      return useMutation(getSignOutMutationOptions(options));
+    }
+
+export const getFanSendOtpUrl = () => {
+
+
+
+
+  return `/api/auth/fan/send-otp`
+}
+
+/**
+ * Sends a magic-link OTP to a fan's email address
+ * @summary Send fan email OTP
+ */
+export const fanSendOtp = async (sendOtpInput: SendOtpInput, options?: RequestInit): Promise<SendOtpResult> => {
+
+  return customFetch<SendOtpResult>(getFanSendOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendOtpInput,)
+  }
+);}
+
+
+
+
+export const getFanSendOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fanSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext> => {
+
+const mutationKey = ['fanSendOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanSendOtp>>, {data: BodyType<SendOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fanSendOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FanSendOtpMutationResult = NonNullable<Awaited<ReturnType<typeof fanSendOtp>>>
+    export type FanSendOtpMutationBody = BodyType<SendOtpInput>
+    export type FanSendOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send fan email OTP
+ */
+export const useFanSendOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fanSendOtp>>,
+        TError,
+        {data: BodyType<SendOtpInput>},
+        TContext
+      > => {
+      return useMutation(getFanSendOtpMutationOptions(options));
+    }
+
+export const getFanVerifyOtpUrl = () => {
+
+
+
+
+  return `/api/auth/fan/verify-otp`
+}
+
+/**
+ * Verifies the OTP token sent to a fan's email and creates a session
+ * @summary Verify fan email OTP
+ */
+export const fanVerifyOtp = async (verifyOtpInput: VerifyOtpInput, options?: RequestInit): Promise<VerifyOtpResult> => {
+
+  return customFetch<VerifyOtpResult>(getFanVerifyOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      verifyOtpInput,)
+  }
+);}
+
+
+
+
+export const getFanVerifyOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fanVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext> => {
+
+const mutationKey = ['fanVerifyOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanVerifyOtp>>, {data: BodyType<VerifyOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fanVerifyOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FanVerifyOtpMutationResult = NonNullable<Awaited<ReturnType<typeof fanVerifyOtp>>>
+    export type FanVerifyOtpMutationBody = BodyType<VerifyOtpInput>
+    export type FanVerifyOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Verify fan email OTP
+ */
+export const useFanVerifyOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fanVerifyOtp>>,
+        TError,
+        {data: BodyType<VerifyOtpInput>},
+        TContext
+      > => {
+      return useMutation(getFanVerifyOtpMutationOptions(options));
+    }
+
+export const getFanSendPhoneOtpUrl = () => {
+
+
+
+
+  return `/api/auth/fan/send-phone-otp`
+}
+
+/**
+ * Sends an SMS OTP to a fan's phone number
+ * @summary Send fan phone OTP
+ */
+export const fanSendPhoneOtp = async (sendPhoneOtpInput: SendPhoneOtpInput, options?: RequestInit): Promise<SendOtpResult> => {
+
+  return customFetch<SendOtpResult>(getFanSendPhoneOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendPhoneOtpInput,)
+  }
+);}
+
+
+
+
+export const getFanSendPhoneOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSendPhoneOtp>>, TError,{data: BodyType<SendPhoneOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fanSendPhoneOtp>>, TError,{data: BodyType<SendPhoneOtpInput>}, TContext> => {
+
+const mutationKey = ['fanSendPhoneOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanSendPhoneOtp>>, {data: BodyType<SendPhoneOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fanSendPhoneOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FanSendPhoneOtpMutationResult = NonNullable<Awaited<ReturnType<typeof fanSendPhoneOtp>>>
+    export type FanSendPhoneOtpMutationBody = BodyType<SendPhoneOtpInput>
+    export type FanSendPhoneOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send fan phone OTP
+ */
+export const useFanSendPhoneOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanSendPhoneOtp>>, TError,{data: BodyType<SendPhoneOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fanSendPhoneOtp>>,
+        TError,
+        {data: BodyType<SendPhoneOtpInput>},
+        TContext
+      > => {
+      return useMutation(getFanSendPhoneOtpMutationOptions(options));
+    }
+
+export const getFanVerifyPhoneOtpUrl = () => {
+
+
+
+
+  return `/api/auth/fan/verify-phone-otp`
+}
+
+/**
+ * Verifies the SMS OTP and creates a fan session
+ * @summary Verify fan phone OTP
+ */
+export const fanVerifyPhoneOtp = async (verifyPhoneOtpInput: VerifyPhoneOtpInput, options?: RequestInit): Promise<VerifyOtpResult> => {
+
+  return customFetch<VerifyOtpResult>(getFanVerifyPhoneOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      verifyPhoneOtpInput,)
+  }
+);}
+
+
+
+
+export const getFanVerifyPhoneOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanVerifyPhoneOtp>>, TError,{data: BodyType<VerifyPhoneOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fanVerifyPhoneOtp>>, TError,{data: BodyType<VerifyPhoneOtpInput>}, TContext> => {
+
+const mutationKey = ['fanVerifyPhoneOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanVerifyPhoneOtp>>, {data: BodyType<VerifyPhoneOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fanVerifyPhoneOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FanVerifyPhoneOtpMutationResult = NonNullable<Awaited<ReturnType<typeof fanVerifyPhoneOtp>>>
+    export type FanVerifyPhoneOtpMutationBody = BodyType<VerifyPhoneOtpInput>
+    export type FanVerifyPhoneOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Verify fan phone OTP
+ */
+export const useFanVerifyPhoneOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanVerifyPhoneOtp>>, TError,{data: BodyType<VerifyPhoneOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fanVerifyPhoneOtp>>,
+        TError,
+        {data: BodyType<VerifyPhoneOtpInput>},
+        TContext
+      > => {
+      return useMutation(getFanVerifyPhoneOtpMutationOptions(options));
+    }
+
+export const getCreatorSendOtpUrl = () => {
+
+
+
+
+  return `/api/auth/creator/send-otp`
+}
+
+/**
+ * Sends a magic-link OTP to a creator's email address
+ * @summary Send creator email OTP
+ */
+export const creatorSendOtp = async (sendOtpInput: SendOtpInput, options?: RequestInit): Promise<SendOtpResult> => {
+
+  return customFetch<SendOtpResult>(getCreatorSendOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendOtpInput,)
+  }
+);}
+
+
+
+
+export const getCreatorSendOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof creatorSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext> => {
+
+const mutationKey = ['creatorSendOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof creatorSendOtp>>, {data: BodyType<SendOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  creatorSendOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatorSendOtpMutationResult = NonNullable<Awaited<ReturnType<typeof creatorSendOtp>>>
+    export type CreatorSendOtpMutationBody = BodyType<SendOtpInput>
+    export type CreatorSendOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send creator email OTP
+ */
+export const useCreatorSendOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorSendOtp>>, TError,{data: BodyType<SendOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof creatorSendOtp>>,
+        TError,
+        {data: BodyType<SendOtpInput>},
+        TContext
+      > => {
+      return useMutation(getCreatorSendOtpMutationOptions(options));
+    }
+
+export const getCreatorVerifyOtpUrl = () => {
+
+
+
+
+  return `/api/auth/creator/verify-otp`
+}
+
+/**
+ * Verifies the OTP token and creates a creator session
+ * @summary Verify creator email OTP
+ */
+export const creatorVerifyOtp = async (verifyOtpInput: VerifyOtpInput, options?: RequestInit): Promise<VerifyOtpResult> => {
+
+  return customFetch<VerifyOtpResult>(getCreatorVerifyOtpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      verifyOtpInput,)
+  }
+);}
+
+
+
+
+export const getCreatorVerifyOtpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof creatorVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext> => {
+
+const mutationKey = ['creatorVerifyOtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof creatorVerifyOtp>>, {data: BodyType<VerifyOtpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  creatorVerifyOtp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatorVerifyOtpMutationResult = NonNullable<Awaited<ReturnType<typeof creatorVerifyOtp>>>
+    export type CreatorVerifyOtpMutationBody = BodyType<VerifyOtpInput>
+    export type CreatorVerifyOtpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Verify creator email OTP
+ */
+export const useCreatorVerifyOtp = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorVerifyOtp>>, TError,{data: BodyType<VerifyOtpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof creatorVerifyOtp>>,
+        TError,
+        {data: BodyType<VerifyOtpInput>},
+        TContext
+      > => {
+      return useMutation(getCreatorVerifyOtpMutationOptions(options));
+    }
+
+export const getCreatorTelegramConnectUrl = () => {
+
+
+
+
+  return `/api/auth/creator/telegram-connect`
+}
+
+/**
+ * Links the authenticated creator account to a Telegram bot session
+ * @summary Link creator to Telegram
+ */
+export const creatorTelegramConnect = async (telegramConnectInput: TelegramConnectInput, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getCreatorTelegramConnectUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      telegramConnectInput,)
+  }
+);}
+
+
+
+
+export const getCreatorTelegramConnectMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorTelegramConnect>>, TError,{data: BodyType<TelegramConnectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof creatorTelegramConnect>>, TError,{data: BodyType<TelegramConnectInput>}, TContext> => {
+
+const mutationKey = ['creatorTelegramConnect'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof creatorTelegramConnect>>, {data: BodyType<TelegramConnectInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  creatorTelegramConnect(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatorTelegramConnectMutationResult = NonNullable<Awaited<ReturnType<typeof creatorTelegramConnect>>>
+    export type CreatorTelegramConnectMutationBody = BodyType<TelegramConnectInput>
+    export type CreatorTelegramConnectMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Link creator to Telegram
+ */
+export const useCreatorTelegramConnect = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof creatorTelegramConnect>>, TError,{data: BodyType<TelegramConnectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof creatorTelegramConnect>>,
+        TError,
+        {data: BodyType<TelegramConnectInput>},
+        TContext
+      > => {
+      return useMutation(getCreatorTelegramConnectMutationOptions(options));
+    }
+
+export const getTwinChatUrl = () => {
+
+
+
+
+  return `/api/twin/chat`
+}
+
+/**
+ * Sends a fan message to the creator's AI twin and returns a response. No auth required for trial sessions (up to 3 free messages).
+
+ * @summary Send message to AI twin
+ */
+export const twinChat = async (twinChatInput: TwinChatInput, options?: RequestInit): Promise<TwinChatResponse> => {
+
+  return customFetch<TwinChatResponse>(getTwinChatUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      twinChatInput,)
+  }
+);}
+
+
+
+
+export const getTwinChatMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof twinChat>>, TError,{data: BodyType<TwinChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof twinChat>>, TError,{data: BodyType<TwinChatInput>}, TContext> => {
+
+const mutationKey = ['twinChat'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof twinChat>>, {data: BodyType<TwinChatInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  twinChat(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TwinChatMutationResult = NonNullable<Awaited<ReturnType<typeof twinChat>>>
+    export type TwinChatMutationBody = BodyType<TwinChatInput>
+    export type TwinChatMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send message to AI twin
+ */
+export const useTwinChat = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof twinChat>>, TError,{data: BodyType<TwinChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof twinChat>>,
+        TError,
+        {data: BodyType<TwinChatInput>},
+        TContext
+      > => {
+      return useMutation(getTwinChatMutationOptions(options));
     }
 
 export const getDeductCreditsUrl = () => {
@@ -525,234 +1294,6 @@ export const useDeductCredits = <TError = ErrorType<ErrorResponse>,
       return useMutation(getDeductCreditsMutationOptions(options));
     }
 
-export const getCreatePaymentIntentUrl = () => {
-
-
-
-
-  return `/api/payments/create-payment-intent`
-}
-
-/**
- * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
- * @summary Create Stripe PaymentIntent
- */
-export const createPaymentIntent = async (createPaymentIntentInput: CreatePaymentIntentInput, options?: RequestInit): Promise<PaymentIntentResult> => {
-
-  return customFetch<PaymentIntentResult>(getCreatePaymentIntentUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createPaymentIntentInput,)
-  }
-);}
-
-
-
-
-export const getCreatePaymentIntentMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext> => {
-
-const mutationKey = ['createPaymentIntent'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPaymentIntent>>, {data: BodyType<CreatePaymentIntentInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createPaymentIntent(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreatePaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createPaymentIntent>>>
-    export type CreatePaymentIntentMutationBody = BodyType<CreatePaymentIntentInput>
-    export type CreatePaymentIntentMutationError = ErrorType<ErrorResponse>
-
-    /**
- * @summary Create Stripe PaymentIntent
- */
-export const useCreatePaymentIntent = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createPaymentIntent>>,
-        TError,
-        {data: BodyType<CreatePaymentIntentInput>},
-        TContext
-      > => {
-      return useMutation(getCreatePaymentIntentMutationOptions(options));
-    }
-
-export const getPaymentsWebhookUrl = () => {
-
-
-
-
-  return `/api/payments/webhook`
-}
-
-/**
- * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
- * @summary Stripe PaymentIntent webhook
- */
-export const paymentsWebhook = async ( options?: RequestInit): Promise<WebhookResponse> => {
-
-  return customFetch<WebhookResponse>(getPaymentsWebhookUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-export const getPaymentsWebhookMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext> => {
-
-const mutationKey = ['paymentsWebhook'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof paymentsWebhook>>, void> = () => {
-
-
-          return  paymentsWebhook(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PaymentsWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof paymentsWebhook>>>
-
-    export type PaymentsWebhookMutationError = ErrorType<ErrorResponse>
-
-    /**
- * @summary Stripe PaymentIntent webhook
- */
-export const usePaymentsWebhook = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof paymentsWebhook>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getPaymentsWebhookMutationOptions(options));
-    }
-
-export const getGetCreditBalanceUrl = (params: GetCreditBalanceParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/credits/balance?${stringifiedParams}` : `/api/credits/balance`
-}
-
-/**
- * Returns the fan's total remaining credits across all purchased packs
- * @summary Get fan credit balance
- */
-export const getCreditBalance = async (params: GetCreditBalanceParams, options?: RequestInit): Promise<CreditBalanceResult> => {
-
-  return customFetch<CreditBalanceResult>(getGetCreditBalanceUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetCreditBalanceQueryKey = (params?: GetCreditBalanceParams,) => {
-    return [
-    `/api/credits/balance`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getGetCreditBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetCreditBalanceQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditBalance>>> = ({ signal }) => getCreditBalance(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetCreditBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditBalance>>>
-export type GetCreditBalanceQueryError = ErrorType<ErrorResponse>
-
-
-/**
- * @summary Get fan credit balance
- */
-
-export function useGetCreditBalance<TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(
- params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetCreditBalanceQueryOptions(params,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
 export const getCreateCheckoutUrl = () => {
 
 
@@ -823,6 +1364,1739 @@ export const useCreateCheckout = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateCheckoutMutationOptions(options));
+    }
+
+export const getSubmitConsentUrl = () => {
+
+
+
+
+  return `/api/onboarding/consent`
+}
+
+/**
+ * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator auth session.
+
+ * @summary Submit Step 3 consent grants
+ */
+export const submitConsent = async (consentInput: ConsentInput, options?: RequestInit): Promise<ConsentResult> => {
+
+  return customFetch<ConsentResult>(getSubmitConsentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      consentInput,)
+  }
+);}
+
+
+
+
+export const getSubmitConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext> => {
+
+const mutationKey = ['submitConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitConsent>>, {data: BodyType<ConsentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitConsentMutationResult = NonNullable<Awaited<ReturnType<typeof submitConsent>>>
+    export type SubmitConsentMutationBody = BodyType<ConsentInput>
+    export type SubmitConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit Step 3 consent grants
+ */
+export const useSubmitConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitConsent>>,
+        TError,
+        {data: BodyType<ConsentInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitConsentMutationOptions(options));
+    }
+
+export const getSubmitPersonaUrl = () => {
+
+
+
+
+  return `/api/onboarding/persona`
+}
+
+/**
+ * Creator submits free-form Q&A answers used to seed the AI twin persona. Writes to creator_persona_responses. Requires creator auth session.
+
+ * @summary Submit creator persona responses
+ */
+export const submitPersona = async (personaInput: PersonaInput, options?: RequestInit): Promise<PersonaResult> => {
+
+  return customFetch<PersonaResult>(getSubmitPersonaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      personaInput,)
+  }
+);}
+
+
+
+
+export const getSubmitPersonaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitPersona>>, TError,{data: BodyType<PersonaInput>}, TContext> => {
+
+const mutationKey = ['submitPersona'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitPersona>>, {data: BodyType<PersonaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitPersona(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitPersonaMutationResult = NonNullable<Awaited<ReturnType<typeof submitPersona>>>
+    export type SubmitPersonaMutationBody = BodyType<PersonaInput>
+    export type SubmitPersonaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit creator persona responses
+ */
+export const useSubmitPersona = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitPersona>>,
+        TError,
+        {data: BodyType<PersonaInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitPersonaMutationOptions(options));
+    }
+
+export const getUploadAssetsUrl = () => {
+
+
+
+
+  return `/api/onboarding/assets`
+}
+
+/**
+ * Creator uploads photos and/or videos for AI training. Files are moderated by GMI before storage. Requires creator auth session.
+
+ * @summary Upload creator training assets
+ */
+export const uploadAssets = async (uploadAssetsBody: UploadAssetsBody, options?: RequestInit): Promise<AssetUploadResult> => {
+    const formData = new FormData();
+uploadAssetsBody.files.forEach(value => formData.append(`files`, value));
+
+  return customFetch<AssetUploadResult>(getUploadAssetsUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getUploadAssetsMutationOptions = <TError = ErrorType<ErrorResponse | AssetRejectionResult>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadAssets>>, TError,{data: BodyType<UploadAssetsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadAssets>>, TError,{data: BodyType<UploadAssetsBody>}, TContext> => {
+
+const mutationKey = ['uploadAssets'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadAssets>>, {data: BodyType<UploadAssetsBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadAssets(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadAssetsMutationResult = NonNullable<Awaited<ReturnType<typeof uploadAssets>>>
+    export type UploadAssetsMutationBody = BodyType<UploadAssetsBody>
+    export type UploadAssetsMutationError = ErrorType<ErrorResponse | AssetRejectionResult>
+
+    /**
+ * @summary Upload creator training assets
+ */
+export const useUploadAssets = <TError = ErrorType<ErrorResponse | AssetRejectionResult>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadAssets>>, TError,{data: BodyType<UploadAssetsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadAssets>>,
+        TError,
+        {data: BodyType<UploadAssetsBody>},
+        TContext
+      > => {
+      return useMutation(getUploadAssetsMutationOptions(options));
+    }
+
+export const getRevokeConsentUrl = (modalityId: 'text' | 'voice' | 'video' | 'image',) => {
+
+
+
+
+  return `/api/creator/consent/${modalityId}`
+}
+
+/**
+ * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator auth session.
+
+ * @summary Revoke a consent grant
+ */
+export const revokeConsent = async (modalityId: 'text' | 'voice' | 'video' | 'image', options?: RequestInit): Promise<ConsentRevokeResult> => {
+
+  return customFetch<ConsentRevokeResult>(getRevokeConsentUrl(modalityId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext> => {
+
+const mutationKey = ['revokeConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeConsent>>, {modalityId: 'text' | 'voice' | 'video' | 'image'}> = (props) => {
+          const {modalityId} = props ?? {};
+
+          return  revokeConsent(modalityId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeConsentMutationResult = NonNullable<Awaited<ReturnType<typeof revokeConsent>>>
+
+    export type RevokeConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Revoke a consent grant
+ */
+export const useRevokeConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeConsent>>,
+        TError,
+        {modalityId: 'text' | 'voice' | 'video' | 'image'},
+        TContext
+      > => {
+      return useMutation(getRevokeConsentMutationOptions(options));
+    }
+
+export const getTriggerKillSwitchUrl = () => {
+
+
+
+
+  return `/api/creator/kill-switch`
+}
+
+/**
+ * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator auth session.
+
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const triggerKillSwitch = async ( options?: RequestInit): Promise<KillSwitchResult> => {
+
+  return customFetch<KillSwitchResult>(getTriggerKillSwitchUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerKillSwitchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerKillSwitch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerKillSwitch>>, void> = () => {
+
+
+          return  triggerKillSwitch(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerKillSwitchMutationResult = NonNullable<Awaited<ReturnType<typeof triggerKillSwitch>>>
+
+    export type TriggerKillSwitchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const useTriggerKillSwitch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerKillSwitch>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerKillSwitchMutationOptions(options));
+    }
+
+export const getGetCreatorFailedJobsUrl = () => {
+
+
+
+
+  return `/api/creator/jobs/failed`
+}
+
+/**
+ * Returns the creator's DLQ (dead-letter queue) jobs. Requires creator auth session.
+ * @summary Get failed generation jobs
+ */
+export const getCreatorFailedJobs = async ( options?: RequestInit): Promise<FailedJobsResult> => {
+
+  return customFetch<FailedJobsResult>(getGetCreatorFailedJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreatorFailedJobsQueryKey = () => {
+    return [
+    `/api/creator/jobs/failed`
+    ] as const;
+    }
+
+
+export const getGetCreatorFailedJobsQueryOptions = <TData = Awaited<ReturnType<typeof getCreatorFailedJobs>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorFailedJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreatorFailedJobsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreatorFailedJobs>>> = ({ signal }) => getCreatorFailedJobs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreatorFailedJobs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreatorFailedJobsQueryResult = NonNullable<Awaited<ReturnType<typeof getCreatorFailedJobs>>>
+export type GetCreatorFailedJobsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get failed generation jobs
+ */
+
+export function useGetCreatorFailedJobs<TData = Awaited<ReturnType<typeof getCreatorFailedJobs>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorFailedJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreatorFailedJobsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCreatorNotificationsUrl = () => {
+
+
+
+
+  return `/api/creator/notifications`
+}
+
+/**
+ * Returns lightweight notification flags (e.g. DLQ alert). Requires creator auth session.
+ * @summary Get creator notification flags
+ */
+export const getCreatorNotifications = async ( options?: RequestInit): Promise<CreatorNotifications> => {
+
+  return customFetch<CreatorNotifications>(getGetCreatorNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreatorNotificationsQueryKey = () => {
+    return [
+    `/api/creator/notifications`
+    ] as const;
+    }
+
+
+export const getGetCreatorNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof getCreatorNotifications>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreatorNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreatorNotifications>>> = ({ signal }) => getCreatorNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreatorNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreatorNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof getCreatorNotifications>>>
+export type GetCreatorNotificationsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get creator notification flags
+ */
+
+export function useGetCreatorNotifications<TData = Awaited<ReturnType<typeof getCreatorNotifications>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreatorNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDismissCreatorNotificationsUrl = () => {
+
+
+
+
+  return `/api/creator/notifications/dismiss`
+}
+
+/**
+ * Clears the DLQ alert flag for the creator. Requires creator auth session.
+ * @summary Dismiss creator notifications
+ */
+export const dismissCreatorNotifications = async ( options?: RequestInit): Promise<DismissNotificationResult> => {
+
+  return customFetch<DismissNotificationResult>(getDismissCreatorNotificationsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDismissCreatorNotificationsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissCreatorNotifications>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissCreatorNotifications>>, TError,void, TContext> => {
+
+const mutationKey = ['dismissCreatorNotifications'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissCreatorNotifications>>, void> = () => {
+
+
+          return  dismissCreatorNotifications(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissCreatorNotificationsMutationResult = NonNullable<Awaited<ReturnType<typeof dismissCreatorNotifications>>>
+
+    export type DismissCreatorNotificationsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Dismiss creator notifications
+ */
+export const useDismissCreatorNotifications = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissCreatorNotifications>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissCreatorNotifications>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDismissCreatorNotificationsMutationOptions(options));
+    }
+
+export const getGetKycStatusUrl = () => {
+
+
+
+
+  return `/api/kyc/status`
+}
+
+/**
+ * Returns the current KYC gate status for the authenticated creator.
+ * @summary Get KYC status
+ */
+export const getKycStatus = async ( options?: RequestInit): Promise<KycStatusResponse> => {
+
+  return customFetch<KycStatusResponse>(getGetKycStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKycStatusQueryKey = () => {
+    return [
+    `/api/kyc/status`
+    ] as const;
+    }
+
+
+export const getGetKycStatusQueryOptions = <TData = Awaited<ReturnType<typeof getKycStatus>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKycStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKycStatus>>> = ({ signal }) => getKycStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKycStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getKycStatus>>>
+export type GetKycStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get KYC status
+ */
+
+export function useGetKycStatus<TData = Awaited<ReturnType<typeof getKycStatus>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKycStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKycStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetKycUploadUrlUrl = () => {
+
+
+
+
+  return `/api/kyc/upload-url`
+}
+
+/**
+ * Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket. Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form with the returned storagePath.
+
+ * @summary Get signed upload URL
+ */
+export const getKycUploadUrl = async (kycUploadUrlInput: KycUploadUrlInput, options?: RequestInit): Promise<KycUploadUrlResponse> => {
+
+  return customFetch<KycUploadUrlResponse>(getGetKycUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycUploadUrlInput,)
+  }
+);}
+
+
+
+
+export const getGetKycUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext> => {
+
+const mutationKey = ['getKycUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getKycUploadUrl>>, {data: BodyType<KycUploadUrlInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  getKycUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetKycUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof getKycUploadUrl>>>
+    export type GetKycUploadUrlMutationBody = BodyType<KycUploadUrlInput>
+    export type GetKycUploadUrlMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Get signed upload URL
+ */
+export const useGetKycUploadUrl = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getKycUploadUrl>>, TError,{data: BodyType<KycUploadUrlInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getKycUploadUrl>>,
+        TError,
+        {data: BodyType<KycUploadUrlInput>},
+        TContext
+      > => {
+      return useMutation(getGetKycUploadUrlMutationOptions(options));
+    }
+
+export const getSubmitKycIdentityUrl = () => {
+
+
+
+
+  return `/api/kyc/identity`
+}
+
+/**
+ * Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url), then submits the storagePath here to advance to id_submitted status.
+
+ * @summary Submit identity document reference
+ */
+export const submitKycIdentity = async (kycIdentityInput: KycIdentityInput, options?: RequestInit): Promise<KycOkResponse> => {
+
+  return customFetch<KycOkResponse>(getSubmitKycIdentityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycIdentityInput,)
+  }
+);}
+
+
+
+
+export const getSubmitKycIdentityMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext> => {
+
+const mutationKey = ['submitKycIdentity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitKycIdentity>>, {data: BodyType<KycIdentityInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitKycIdentity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitKycIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof submitKycIdentity>>>
+    export type SubmitKycIdentityMutationBody = BodyType<KycIdentityInput>
+    export type SubmitKycIdentityMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit identity document reference
+ */
+export const useSubmitKycIdentity = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycIdentity>>, TError,{data: BodyType<KycIdentityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitKycIdentity>>,
+        TError,
+        {data: BodyType<KycIdentityInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitKycIdentityMutationOptions(options));
+    }
+
+export const getInitiateKycSigningUrl = () => {
+
+
+
+
+  return `/api/kyc/initiate-signing`
+}
+
+/**
+ * Creates a SignWell document for the creator to sign their personality-rights agreement.
+ * @summary Initiate personality-rights e-signature
+ */
+export const initiateKycSigning = async (kycInitiateSigningInput: KycInitiateSigningInput, options?: RequestInit): Promise<KycSigningResponse> => {
+
+  return customFetch<KycSigningResponse>(getInitiateKycSigningUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycInitiateSigningInput,)
+  }
+);}
+
+
+
+
+export const getInitiateKycSigningMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext> => {
+
+const mutationKey = ['initiateKycSigning'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initiateKycSigning>>, {data: BodyType<KycInitiateSigningInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  initiateKycSigning(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitiateKycSigningMutationResult = NonNullable<Awaited<ReturnType<typeof initiateKycSigning>>>
+    export type InitiateKycSigningMutationBody = BodyType<KycInitiateSigningInput>
+    export type InitiateKycSigningMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Initiate personality-rights e-signature
+ */
+export const useInitiateKycSigning = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateKycSigning>>, TError,{data: BodyType<KycInitiateSigningInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initiateKycSigning>>,
+        TError,
+        {data: BodyType<KycInitiateSigningInput>},
+        TContext
+      > => {
+      return useMutation(getInitiateKycSigningMutationOptions(options));
+    }
+
+export const getSubmitKycTaxFormUrl = () => {
+
+
+
+
+  return `/api/kyc/tax-form`
+}
+
+/**
+ * Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath here to advance to tax_submitted status.
+
+ * @summary Submit tax form reference (HID-062)
+ */
+export const submitKycTaxForm = async (kycTaxFormInput: KycTaxFormInput, options?: RequestInit): Promise<KycOkResponse> => {
+
+  return customFetch<KycOkResponse>(getSubmitKycTaxFormUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      kycTaxFormInput,)
+  }
+);}
+
+
+
+
+export const getSubmitKycTaxFormMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext> => {
+
+const mutationKey = ['submitKycTaxForm'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitKycTaxForm>>, {data: BodyType<KycTaxFormInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitKycTaxForm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitKycTaxFormMutationResult = NonNullable<Awaited<ReturnType<typeof submitKycTaxForm>>>
+    export type SubmitKycTaxFormMutationBody = BodyType<KycTaxFormInput>
+    export type SubmitKycTaxFormMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit tax form reference (HID-062)
+ */
+export const useSubmitKycTaxForm = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitKycTaxForm>>, TError,{data: BodyType<KycTaxFormInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitKycTaxForm>>,
+        TError,
+        {data: BodyType<KycTaxFormInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitKycTaxFormMutationOptions(options));
+    }
+
+export const getRetrySubscriptionUrl = (id: string,) => {
+
+
+
+
+  return `/api/subscriptions/${id}/retry`
+}
+
+/**
+ * Enqueues an immediate dunning-retry job for a past-due subscription. Requires fan auth session.
+
+ * @summary Fan-initiated subscription retry
+ */
+export const retrySubscription = async (id: string, options?: RequestInit): Promise<SubscriptionRetryResult> => {
+
+  return customFetch<SubscriptionRetryResult>(getRetrySubscriptionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRetrySubscriptionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrySubscription>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retrySubscription>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['retrySubscription'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retrySubscription>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  retrySubscription(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetrySubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof retrySubscription>>>
+
+    export type RetrySubscriptionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Fan-initiated subscription retry
+ */
+export const useRetrySubscription = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrySubscription>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retrySubscription>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRetrySubscriptionMutationOptions(options));
+    }
+
+export const getFanAccountRecoverUrl = () => {
+
+
+
+
+  return `/api/account/fan/recover`
+}
+
+/**
+ * Three recovery methods: backup_email, backup_phone (OTP), or id_attestation (manual KYC — returns 202). Fraud guard writes audit log on suspicious activity.
+
+ * @summary Fan account recovery
+ */
+export const fanAccountRecover = async (fanAccountRecoverBody: FanRecoverInput | FanRecoverIdAttestationInput, options?: RequestInit): Promise<FanRecoverResult | FanRecoverIdResult> => {
+
+  return customFetch<FanRecoverResult | FanRecoverIdResult>(getFanAccountRecoverUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: JSON.stringify(
+      fanAccountRecoverBody,)
+  }
+);}
+
+
+
+
+export const getFanAccountRecoverMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanAccountRecover>>, TError,{data: BodyType<FanRecoverInput | FanRecoverIdAttestationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fanAccountRecover>>, TError,{data: BodyType<FanRecoverInput | FanRecoverIdAttestationInput>}, TContext> => {
+
+const mutationKey = ['fanAccountRecover'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fanAccountRecover>>, {data: BodyType<FanRecoverInput | FanRecoverIdAttestationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  fanAccountRecover(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FanAccountRecoverMutationResult = NonNullable<Awaited<ReturnType<typeof fanAccountRecover>>>
+    export type FanAccountRecoverMutationBody = BodyType<FanRecoverInput | FanRecoverIdAttestationInput>
+    export type FanAccountRecoverMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Fan account recovery
+ */
+export const useFanAccountRecover = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fanAccountRecover>>, TError,{data: BodyType<FanRecoverInput | FanRecoverIdAttestationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fanAccountRecover>>,
+        TError,
+        {data: BodyType<FanRecoverInput | FanRecoverIdAttestationInput>},
+        TContext
+      > => {
+      return useMutation(getFanAccountRecoverMutationOptions(options));
+    }
+
+export const getGetDsarStatusUrl = () => {
+
+
+
+
+  return `/api/dsar`
+}
+
+/**
+ * Returns the latest DSAR request status and eligibility for a new request. Requires auth.
+ * @summary Get DSAR request status
+ */
+export const getDsarStatus = async ( options?: RequestInit): Promise<DsarStatusResult> => {
+
+  return customFetch<DsarStatusResult>(getGetDsarStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDsarStatusQueryKey = () => {
+    return [
+    `/api/dsar`
+    ] as const;
+    }
+
+
+export const getGetDsarStatusQueryOptions = <TData = Awaited<ReturnType<typeof getDsarStatus>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDsarStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDsarStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDsarStatus>>> = ({ signal }) => getDsarStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDsarStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDsarStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getDsarStatus>>>
+export type GetDsarStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get DSAR request status
+ */
+
+export function useGetDsarStatus<TData = Awaited<ReturnType<typeof getDsarStatus>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDsarStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDsarStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSubmitDsarRequestUrl = () => {
+
+
+
+
+  return `/api/dsar/request`
+}
+
+/**
+ * Submits a Data Subject Access Request. Rate-limited to once per 30 days. Returns a download token with a time-limited expiry (72h for creators, 30d for fans). Requires auth.
+
+ * @summary Submit a DSAR request
+ */
+export const submitDsarRequest = async ( options?: RequestInit): Promise<DsarRequestResult> => {
+
+  return customFetch<DsarRequestResult>(getSubmitDsarRequestUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSubmitDsarRequestMutationOptions = <TError = ErrorType<ErrorResponse | DsarRateLimitResult>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitDsarRequest>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitDsarRequest>>, TError,void, TContext> => {
+
+const mutationKey = ['submitDsarRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitDsarRequest>>, void> = () => {
+
+
+          return  submitDsarRequest(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitDsarRequestMutationResult = NonNullable<Awaited<ReturnType<typeof submitDsarRequest>>>
+
+    export type SubmitDsarRequestMutationError = ErrorType<ErrorResponse | DsarRateLimitResult>
+
+    /**
+ * @summary Submit a DSAR request
+ */
+export const useSubmitDsarRequest = <TError = ErrorType<ErrorResponse | DsarRateLimitResult>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitDsarRequest>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitDsarRequest>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSubmitDsarRequestMutationOptions(options));
+    }
+
+export const getDownloadDsarUrl = (params: DownloadDsarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dsar/download?${stringifiedParams}` : `/api/dsar/download`
+}
+
+/**
+ * Downloads the data package for a DSAR using a time-limited download token. Requires auth.
+ * @summary Download DSAR data package
+ */
+export const downloadDsar = async (params: DownloadDsarParams, options?: RequestInit): Promise<DownloadDsar200> => {
+
+  return customFetch<DownloadDsar200>(getDownloadDsarUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadDsarQueryKey = (params?: DownloadDsarParams,) => {
+    return [
+    `/api/dsar/download`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getDownloadDsarQueryOptions = <TData = Awaited<ReturnType<typeof downloadDsar>>, TError = ErrorType<ErrorResponse>>(params: DownloadDsarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadDsar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadDsarQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadDsar>>> = ({ signal }) => downloadDsar(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadDsar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadDsarQueryResult = NonNullable<Awaited<ReturnType<typeof downloadDsar>>>
+export type DownloadDsarQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Download DSAR data package
+ */
+
+export function useDownloadDsar<TData = Awaited<ReturnType<typeof downloadDsar>>, TError = ErrorType<ErrorResponse>>(
+ params: DownloadDsarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadDsar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadDsarQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSubmitReportUrl = () => {
+
+
+
+
+  return `/api/reports`
+}
+
+/**
+ * Fan reports an AI twin message. Non-blocking — always returns { ok: true }. DB write is best-effort and does not affect response latency.
+
+ * @summary Submit a content report
+ */
+export const submitReport = async (reportInput: ReportInput, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getSubmitReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reportInput,)
+  }
+);}
+
+
+
+
+export const getSubmitReportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitReport>>, TError,{data: BodyType<ReportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitReport>>, TError,{data: BodyType<ReportInput>}, TContext> => {
+
+const mutationKey = ['submitReport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitReport>>, {data: BodyType<ReportInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitReport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitReportMutationResult = NonNullable<Awaited<ReturnType<typeof submitReport>>>
+    export type SubmitReportMutationBody = BodyType<ReportInput>
+    export type SubmitReportMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Submit a content report
+ */
+export const useSubmitReport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitReport>>, TError,{data: BodyType<ReportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitReport>>,
+        TError,
+        {data: BodyType<ReportInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitReportMutationOptions(options));
+    }
+
+export const getOauthConnectUrl = (platform: OAuthPlatform,) => {
+
+
+
+
+  return `/api/oauth/${platform}/connect`
+}
+
+/**
+ * Redirects the creator to the external OAuth authorization page for the specified platform (17live, line, youtube). Requires creator auth session.
+
+ * @summary Initiate OAuth connection
+ */
+export const oauthConnect = async (platform: OAuthPlatform, options?: RequestInit): Promise<unknown> => {
+
+  return customFetch<unknown>(getOauthConnectUrl(platform),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getOauthConnectQueryKey = (platform: OAuthPlatform,) => {
+    return [
+    `/api/oauth/${platform}/connect`
+    ] as const;
+    }
+
+
+export const getOauthConnectQueryOptions = <TData = Awaited<ReturnType<typeof oauthConnect>>, TError = ErrorType<void | ErrorResponse>>(platform: OAuthPlatform, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthConnect>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOauthConnectQueryKey(platform);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof oauthConnect>>> = ({ signal }) => oauthConnect(platform, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(platform), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof oauthConnect>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OauthConnectQueryResult = NonNullable<Awaited<ReturnType<typeof oauthConnect>>>
+export type OauthConnectQueryError = ErrorType<void | ErrorResponse>
+
+
+/**
+ * @summary Initiate OAuth connection
+ */
+
+export function useOauthConnect<TData = Awaited<ReturnType<typeof oauthConnect>>, TError = ErrorType<void | ErrorResponse>>(
+ platform: OAuthPlatform, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthConnect>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOauthConnectQueryOptions(platform,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOauthCallbackUrl = (platform: OAuthPlatform,
+    params?: OauthCallbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/oauth/${platform}/callback?${stringifiedParams}` : `/api/oauth/${platform}/callback`
+}
+
+/**
+ * Handles the redirect from the external OAuth provider. Verifies state, exchanges code for tokens, stores encrypted tokens, redirects to dashboard.
+
+ * @summary OAuth callback handler
+ */
+export const oauthCallback = async (platform: OAuthPlatform,
+    params?: OauthCallbackParams, options?: RequestInit): Promise<unknown> => {
+
+  return customFetch<unknown>(getOauthCallbackUrl(platform,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getOauthCallbackQueryKey = (platform: OAuthPlatform,
+    params?: OauthCallbackParams,) => {
+    return [
+    `/api/oauth/${platform}/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getOauthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof oauthCallback>>, TError = ErrorType<void>>(platform: OAuthPlatform,
+    params?: OauthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOauthCallbackQueryKey(platform,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof oauthCallback>>> = ({ signal }) => oauthCallback(platform,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(platform), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof oauthCallback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OauthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof oauthCallback>>>
+export type OauthCallbackQueryError = ErrorType<void>
+
+
+/**
+ * @summary OAuth callback handler
+ */
+
+export function useOauthCallback<TData = Awaited<ReturnType<typeof oauthCallback>>, TError = ErrorType<void>>(
+ platform: OAuthPlatform,
+    params?: OauthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOauthCallbackQueryOptions(platform,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOauthStatusUrl = (platform: OAuthPlatform,) => {
+
+
+
+
+  return `/api/oauth/${platform}/status`
+}
+
+/**
+ * Returns connection status for the platform (no token values exposed). Requires creator auth.
+ * @summary Get OAuth connection status
+ */
+export const oauthStatus = async (platform: OAuthPlatform, options?: RequestInit): Promise<OAuthStatusResult> => {
+
+  return customFetch<OAuthStatusResult>(getOauthStatusUrl(platform),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getOauthStatusQueryKey = (platform: OAuthPlatform,) => {
+    return [
+    `/api/oauth/${platform}/status`
+    ] as const;
+    }
+
+
+export const getOauthStatusQueryOptions = <TData = Awaited<ReturnType<typeof oauthStatus>>, TError = ErrorType<ErrorResponse>>(platform: OAuthPlatform, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOauthStatusQueryKey(platform);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof oauthStatus>>> = ({ signal }) => oauthStatus(platform, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(platform), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof oauthStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OauthStatusQueryResult = NonNullable<Awaited<ReturnType<typeof oauthStatus>>>
+export type OauthStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get OAuth connection status
+ */
+
+export function useOauthStatus<TData = Awaited<ReturnType<typeof oauthStatus>>, TError = ErrorType<ErrorResponse>>(
+ platform: OAuthPlatform, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof oauthStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOauthStatusQueryOptions(platform,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOauthRevokeUrl = (platform: OAuthPlatform,) => {
+
+
+
+
+  return `/api/oauth/${platform}`
+}
+
+/**
+ * Revokes and deletes stored tokens for the platform. Requires creator auth.
+ * @summary Revoke OAuth connection
+ */
+export const oauthRevoke = async (platform: OAuthPlatform, options?: RequestInit): Promise<OAuthRevokeResult> => {
+
+  return customFetch<OAuthRevokeResult>(getOauthRevokeUrl(platform),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getOauthRevokeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof oauthRevoke>>, TError,{platform: OAuthPlatform}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof oauthRevoke>>, TError,{platform: OAuthPlatform}, TContext> => {
+
+const mutationKey = ['oauthRevoke'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof oauthRevoke>>, {platform: OAuthPlatform}> = (props) => {
+          const {platform} = props ?? {};
+
+          return  oauthRevoke(platform,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OauthRevokeMutationResult = NonNullable<Awaited<ReturnType<typeof oauthRevoke>>>
+
+    export type OauthRevokeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Revoke OAuth connection
+ */
+export const useOauthRevoke = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof oauthRevoke>>, TError,{platform: OAuthPlatform}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof oauthRevoke>>,
+        TError,
+        {platform: OAuthPlatform},
+        TContext
+      > => {
+      return useMutation(getOauthRevokeMutationOptions(options));
     }
 
 export const getStripeWebhookUrl = () => {
@@ -896,94 +3170,22 @@ export const useStripeWebhook = <TError = ErrorType<ErrorResponse>,
       return useMutation(getStripeWebhookMutationOptions(options));
     }
 
-export const getRevokeConsentUrl = (modalityId: 'text' | 'voice' | 'video' | 'image',) => {
+export const getEmailWebhookUrl = () => {
 
 
 
 
-  return `/api/creator/consent/${modalityId}`
+  return `/api/webhooks/email`
 }
 
 /**
- * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator Replit Auth session.
+ * Receives bounce and complaint events from Resend and records them to the email_suppression_log table. Requires Resend HMAC signature header.
 
- * @summary Revoke a consent grant
+ * @summary Resend email webhook
  */
-export const revokeConsent = async (modalityId: 'text' | 'voice' | 'video' | 'image', options?: RequestInit): Promise<ConsentRevokeResult> => {
+export const emailWebhook = async ( options?: RequestInit): Promise<WebhookResponse> => {
 
-  return customFetch<ConsentRevokeResult>(getRevokeConsentUrl(modalityId),
-  {
-    ...options,
-    method: 'PATCH'
-
-
-  }
-);}
-
-
-
-
-export const getRevokeConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext> => {
-
-const mutationKey = ['revokeConsent'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeConsent>>, {modalityId: 'text' | 'voice' | 'video' | 'image'}> = (props) => {
-          const {modalityId} = props ?? {};
-
-          return  revokeConsent(modalityId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RevokeConsentMutationResult = NonNullable<Awaited<ReturnType<typeof revokeConsent>>>
-
-    export type RevokeConsentMutationError = ErrorType<ErrorResponse>
-
-    /**
- * @summary Revoke a consent grant
- */
-export const useRevokeConsent = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof revokeConsent>>,
-        TError,
-        {modalityId: 'text' | 'voice' | 'video' | 'image'},
-        TContext
-      > => {
-      return useMutation(getRevokeConsentMutationOptions(options));
-    }
-
-export const getTriggerKillSwitchUrl = () => {
-
-
-
-
-  return `/api/creator/kill-switch`
-}
-
-/**
- * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator Replit Auth session.
-
- * @summary Kill switch — cancel all in-flight jobs
- */
-export const triggerKillSwitch = async ( options?: RequestInit): Promise<KillSwitchResult> => {
-
-  return customFetch<KillSwitchResult>(getTriggerKillSwitchUrl(),
+  return customFetch<WebhookResponse>(getEmailWebhookUrl(),
   {
     ...options,
     method: 'POST'
@@ -995,11 +3197,11 @@ export const triggerKillSwitch = async ( options?: RequestInit): Promise<KillSwi
 
 
 
-export const getTriggerKillSwitchMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext> => {
+export const getEmailWebhookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emailWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof emailWebhook>>, TError,void, TContext> => {
 
-const mutationKey = ['triggerKillSwitch'];
+const mutationKey = ['emailWebhook'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1009,10 +3211,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerKillSwitch>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof emailWebhook>>, void> = () => {
 
 
-          return  triggerKillSwitch(requestOptions)
+          return  emailWebhook(requestOptions)
         }
 
 
@@ -1022,57 +3224,56 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type TriggerKillSwitchMutationResult = NonNullable<Awaited<ReturnType<typeof triggerKillSwitch>>>
+    export type EmailWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof emailWebhook>>>
 
-    export type TriggerKillSwitchMutationError = ErrorType<ErrorResponse>
+    export type EmailWebhookMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Kill switch — cancel all in-flight jobs
+ * @summary Resend email webhook
  */
-export const useTriggerKillSwitch = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useEmailWebhook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof emailWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof triggerKillSwitch>>,
+        Awaited<ReturnType<typeof emailWebhook>>,
         TError,
         void,
         TContext
       > => {
-      return useMutation(getTriggerKillSwitchMutationOptions(options));
+      return useMutation(getEmailWebhookMutationOptions(options));
     }
 
-export const getSubmitConsentUrl = () => {
+export const getCreateRefundRequestUrl = () => {
 
 
 
 
-  return `/api/onboarding/consent`
+  return `/api/fan/refund-requests`
 }
 
 /**
- * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator Replit Auth session.
-
- * @summary Submit Step 3 consent grants
+ * Fan submits a refund request for a credit purchase. Requires fan auth session.
+ * @summary Submit a refund request
  */
-export const submitConsent = async (consentInput: ConsentInput, options?: RequestInit): Promise<ConsentResult> => {
+export const createRefundRequest = async (refundRequestInput: RefundRequestInput, options?: RequestInit): Promise<RefundRequest> => {
 
-  return customFetch<ConsentResult>(getSubmitConsentUrl(),
+  return customFetch<RefundRequest>(getCreateRefundRequestUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      consentInput,)
+      refundRequestInput,)
   }
 );}
 
 
 
 
-export const getSubmitConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext> => {
+export const getCreateRefundRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,{data: BodyType<RefundRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,{data: BodyType<RefundRequestInput>}, TContext> => {
 
-const mutationKey = ['submitConsent'];
+const mutationKey = ['createRefundRequest'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1082,10 +3283,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitConsent>>, {data: BodyType<ConsentInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRefundRequest>>, {data: BodyType<RefundRequestInput>}> = (props) => {
           const {data} = props ?? {};
 
-          return  submitConsent(data,requestOptions)
+          return  createRefundRequest(data,requestOptions)
         }
 
 
@@ -1095,23 +3296,345 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type SubmitConsentMutationResult = NonNullable<Awaited<ReturnType<typeof submitConsent>>>
-    export type SubmitConsentMutationBody = BodyType<ConsentInput>
-    export type SubmitConsentMutationError = ErrorType<ErrorResponse>
+    export type CreateRefundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createRefundRequest>>>
+    export type CreateRefundRequestMutationBody = BodyType<RefundRequestInput>
+    export type CreateRefundRequestMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Submit Step 3 consent grants
+ * @summary Submit a refund request
  */
-export const useSubmitConsent = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreateRefundRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,{data: BodyType<RefundRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof submitConsent>>,
+        Awaited<ReturnType<typeof createRefundRequest>>,
         TError,
-        {data: BodyType<ConsentInput>},
+        {data: BodyType<RefundRequestInput>},
         TContext
       > => {
-      return useMutation(getSubmitConsentMutationOptions(options));
+      return useMutation(getCreateRefundRequestMutationOptions(options));
     }
+
+export const getListAdminRefundRequestsUrl = (params?: ListAdminRefundRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/refund-requests?${stringifiedParams}` : `/api/admin/refund-requests`
+}
+
+/**
+ * Staff-authenticated list of refund requests with optional status filter.
+ * @summary List refund requests (admin)
+ */
+export const listAdminRefundRequests = async (params?: ListAdminRefundRequestsParams, options?: RequestInit): Promise<RefundRequestListResult> => {
+
+  return customFetch<RefundRequestListResult>(getListAdminRefundRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminRefundRequestsQueryKey = (params?: ListAdminRefundRequestsParams,) => {
+    return [
+    `/api/admin/refund-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminRefundRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = ErrorType<ErrorResponse>>(params?: ListAdminRefundRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminRefundRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminRefundRequests>>> = ({ signal }) => listAdminRefundRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminRefundRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminRefundRequests>>>
+export type ListAdminRefundRequestsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List refund requests (admin)
+ */
+
+export function useListAdminRefundRequests<TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListAdminRefundRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminRefundRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAdminRefundRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/refund-requests/${id}`
+}
+
+/**
+ * Staff-authenticated detail view including fan credit history.
+ * @summary Get refund request detail (admin)
+ */
+export const getAdminRefundRequest = async (id: string, options?: RequestInit): Promise<RefundRequestDetail> => {
+
+  return customFetch<RefundRequestDetail>(getGetAdminRefundRequestUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminRefundRequestQueryKey = (id: string,) => {
+    return [
+    `/api/admin/refund-requests/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminRefundRequestQueryOptions = <TData = Awaited<ReturnType<typeof getAdminRefundRequest>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRefundRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminRefundRequestQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminRefundRequest>>> = ({ signal }) => getAdminRefundRequest(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminRefundRequest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminRefundRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminRefundRequest>>>
+export type GetAdminRefundRequestQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get refund request detail (admin)
+ */
+
+export function useGetAdminRefundRequest<TData = Awaited<ReturnType<typeof getAdminRefundRequest>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRefundRequest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminRefundRequestQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDecideRefundRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/refund-requests/${id}/decide`
+}
+
+/**
+ * Staff approves, denies, or partially approves a refund request. On approve/partial calls Stripe createRefund synchronously. Writes refund_decisions row, credit_transactions entry, and audit_log entry.
+
+ * @summary Decide a refund request (admin)
+ */
+export const decideRefundRequest = async (id: string,
+    refundDecisionInput: RefundDecisionInput, options?: RequestInit): Promise<RefundRequest> => {
+
+  return customFetch<RefundRequest>(getDecideRefundRequestUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      refundDecisionInput,)
+  }
+);}
+
+
+
+
+export const getDecideRefundRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideRefundRequest>>, TError,{id: string;data: BodyType<RefundDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideRefundRequest>>, TError,{id: string;data: BodyType<RefundDecisionInput>}, TContext> => {
+
+const mutationKey = ['decideRefundRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideRefundRequest>>, {id: string;data: BodyType<RefundDecisionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  decideRefundRequest(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideRefundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof decideRefundRequest>>>
+    export type DecideRefundRequestMutationBody = BodyType<RefundDecisionInput>
+    export type DecideRefundRequestMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Decide a refund request (admin)
+ */
+export const useDecideRefundRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideRefundRequest>>, TError,{id: string;data: BodyType<RefundDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideRefundRequest>>,
+        TError,
+        {id: string;data: BodyType<RefundDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getDecideRefundRequestMutationOptions(options));
+    }
+
+export const getGetDunningMetricsUrl = (params?: GetDunningMetricsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/dunning-metrics?${stringifiedParams}` : `/api/admin/dunning-metrics`
+}
+
+/**
+ * Recovery rate by creator and time window. Internal staff endpoint.
+ * @summary Get dunning recovery metrics (admin)
+ */
+export const getDunningMetrics = async (params?: GetDunningMetricsParams, options?: RequestInit): Promise<DunningMetricsResult> => {
+
+  return customFetch<DunningMetricsResult>(getGetDunningMetricsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDunningMetricsQueryKey = (params?: GetDunningMetricsParams,) => {
+    return [
+    `/api/admin/dunning-metrics`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDunningMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getDunningMetrics>>, TError = ErrorType<ErrorResponse>>(params?: GetDunningMetricsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDunningMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDunningMetricsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDunningMetrics>>> = ({ signal }) => getDunningMetrics(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDunningMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDunningMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getDunningMetrics>>>
+export type GetDunningMetricsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get dunning recovery metrics (admin)
+ */
+
+export function useGetDunningMetrics<TData = Awaited<ReturnType<typeof getDunningMetrics>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetDunningMetricsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDunningMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDunningMetricsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetCreatorPersonaUrl = () => {
 
@@ -1402,5 +3925,233 @@ export const useSetKillSwitch = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getSetKillSwitchMutationOptions(options));
+    }
+
+export const getGetCreditBalanceUrl = (params: GetCreditBalanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/credits/balance?${stringifiedParams}` : `/api/credits/balance`
+}
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const getCreditBalance = async (params: GetCreditBalanceParams, options?: RequestInit): Promise<CreditBalanceResult> => {
+
+  return customFetch<CreditBalanceResult>(getGetCreditBalanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditBalanceQueryKey = (params?: GetCreditBalanceParams,) => {
+    return [
+    `/api/credits/balance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCreditBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditBalanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditBalance>>> = ({ signal }) => getCreditBalance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditBalance>>>
+export type GetCreditBalanceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get fan credit balance
+ */
+
+export function useGetCreditBalance<TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditBalanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePaymentIntentUrl = () => {
+
+
+
+
+  return `/api/payments/create-payment-intent`
+}
+
+/**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const createPaymentIntent = async (createPaymentIntentInput: CreatePaymentIntentInput, options?: RequestInit): Promise<PaymentIntentResult> => {
+
+  return customFetch<PaymentIntentResult>(getCreatePaymentIntentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createPaymentIntentInput,)
+  }
+);}
+
+
+
+
+export const getCreatePaymentIntentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext> => {
+
+const mutationKey = ['createPaymentIntent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPaymentIntent>>, {data: BodyType<CreatePaymentIntentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPaymentIntent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createPaymentIntent>>>
+    export type CreatePaymentIntentMutationBody = BodyType<CreatePaymentIntentInput>
+    export type CreatePaymentIntentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create Stripe PaymentIntent
+ */
+export const useCreatePaymentIntent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPaymentIntent>>,
+        TError,
+        {data: BodyType<CreatePaymentIntentInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePaymentIntentMutationOptions(options));
+    }
+
+export const getPaymentsWebhookUrl = () => {
+
+
+
+
+  return `/api/payments/webhook`
+}
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const paymentsWebhook = async ( options?: RequestInit): Promise<WebhookResponse> => {
+
+  return customFetch<WebhookResponse>(getPaymentsWebhookUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPaymentsWebhookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext> => {
+
+const mutationKey = ['paymentsWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof paymentsWebhook>>, void> = () => {
+
+
+          return  paymentsWebhook(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PaymentsWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof paymentsWebhook>>>
+
+    export type PaymentsWebhookMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Stripe PaymentIntent webhook
+ */
+export const usePaymentsWebhook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof paymentsWebhook>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPaymentsWebhookMutationOptions(options));
     }
 
