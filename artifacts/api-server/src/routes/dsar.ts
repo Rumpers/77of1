@@ -47,19 +47,21 @@ async function collectFanData(authUserId: string) {
   let usageRows = { data: [] as unknown[] };
 
   if (fanIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbAny = db as any;
     [subRows, creditRows, txRows, usageRows] = await Promise.all([
-      db
+      dbAny
         .from("fan_subscriptions")
         .select("id, creator_id, status, current_period_start, current_period_end, created_at")
         .in("fan_id", fanIds),
-      db.from("fan_credits").select("fan_id, creator_id, balance, updated_at").in("fan_id", fanIds),
-      db
+      dbAny.from("fan_credits").select("fan_id, creator_id, balance, updated_at").in("fan_id", fanIds),
+      dbAny
         .from("credit_transactions")
         .select("id, fan_id, creator_id, kind, amount, created_at")
         .in("fan_id", fanIds)
         .order("created_at", { ascending: false })
         .limit(500),
-      db
+      dbAny
         .from("usage_counters")
         .select("fan_id, creator_id, billing_period, messages, credits_used")
         .in("fan_id", fanIds),
