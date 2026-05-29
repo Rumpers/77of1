@@ -8,6 +8,7 @@ import {
   getCreatorPreferences,
   setPaused,
   getKycRow,
+  setMaskReviewed,
 } from "./db.js";
 import { triggerPersonaRagIngest } from "./onboarding.js";
 import {
@@ -16,11 +17,13 @@ import {
   writeAssetModerationAudit,
   insertApprovedAsset,
 } from "./asset-moderator.js";
+import { t } from "./i18n.js";
 import { sessionMiddleware } from "./session.js";
 import { consentWizard } from "./scenes/consent.scene.js";
 import { personaWizard } from "./scenes/persona.scene.js";
 import { voiceWizard } from "./scenes/voice.scene.js";
 import { dsarWizard } from "./scenes/dsar.scene.js";
+import { reviewMasksWizard } from "./scenes/review-masks.scene.js";
 import { revokeVoice } from "./revoke-voice.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
@@ -36,7 +39,25 @@ const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
 // command handler that calls ctx.scene.enter(...). Order matters:
 //   1. sessionMiddleware (@telegraf/session/pg) — provides ctx.session
 //   2. stage.middleware() — provides ctx.scene with wizard-context support
-const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard, voiceWizard, dsarWizard]);
+// Founder gate — protects /review_masks and mask callback handlers.
+// FOUNDER_TELEGRAM_USER_ID is a comma-separated list of allowed Telegram user_ids.
+const FOUNDER_IDS = new Set(
+  (process.env.FOUNDER_TELEGRAM_USER_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map(Number),
+);
+if (FOUNDER_IDS.size === 0) {
+  console.warn("[hermes] WARN FOUNDER_TELEGRAM_USER_ID not set — /review_masks is inaccessible");
+}
+function isFounder(tgUserId: number): boolean {
+  return FOUNDER_IDS.has(tgUserId);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard, voiceWizard, dsarWizard, reviewMasksWizard]);
 bot.use(sessionMiddleware);
 bot.use(stage.middleware());
 
@@ -239,6 +260,48 @@ bot.command("voice", async (ctx) => {
 
   console.log(`[hermes] /voice started creator_id=${creator.id} (scene)`);
   await ctx.scene.enter("voice-wizard", { creatorId: creator.id });
+});
+
+// /review_masks — ONBOARD-04. Founder-only inline review queue for fan-name masks.
+bot.command("review_masks", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+  const creator = await findCreatorByTelegramId(tgUserId);
+  const prefs = creator ? await getCreatorPreferences(creator.id) : null;
+  const hermesLang = prefs?.hermes_language ?? "en";
+  const lang: "en" | "ja" | "zh-tw" =
+    hermesLang === "ja" || hermesLang === "zh-tw" ? hermesLang : "en";
+  if (!isFounder(tgUserId)) {
+    await ctx.reply(t(lang).reviewMasksUnauthorized);
+    return;
+  }
+  await ctx.scene.enter("review-masks-wizard", { lang });
+});
+
+// mask:(approve|reject):<uuid> — callback from review-masks inline buttons.
+bot.action(/^mask:(approve|reject):(.+)$/, async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId || !isFounder(tgUserId)) {
+    await ctx.answerCbQuery("Forbidden");
+    return;
+  }
+  const decision = ctx.match[1];
+  const id = ctx.match[2];
+  if (!UUID_RE.test(id)) {
+    await ctx.answerCbQuery("Invalid id");
+    return;
+  }
+  await setMaskReviewed(id, decision === "approve");
+  const creator = await findCreatorByTelegramId(tgUserId);
+  const prefs = creator ? await getCreatorPreferences(creator.id) : null;
+  const hermesLang = prefs?.hermes_language ?? "en";
+  const lang: "en" | "ja" | "zh-tw" =
+    hermesLang === "ja" || hermesLang === "zh-tw" ? hermesLang : "en";
+  await ctx.answerCbQuery(
+    decision === "approve" ? t(lang).reviewMasksApprovedAck : t(lang).reviewMasksRejectedAck,
+  );
+  try { await ctx.editMessageReplyMarkup({ inline_keyboard: [] }); } catch { /* message may be old */ }
+  await ctx.scene.enter("review-masks-wizard", { lang });
 });
 
 // /dsar — COMPLY-04. Creator requests full data deletion; twin goes offline

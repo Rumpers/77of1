@@ -357,8 +357,51 @@ export async function writeVoiceReferenceUrl(
 // clearVoiceReferenceUrl: NULL out twins.voice_reference_url AFTER revocation
 //   so the L2/L3 voice-synth path stops finding a reference clip.
 
-import { consentGrantsTable } from "@workspace/db";
+import { consentGrantsTable, fanNameMasksTable } from "@workspace/db";
 import { and, isNull } from "drizzle-orm";
+
+// ─── Fan-name mask review helpers (ONBOARD-04) ───────────────────────────────
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface PendingMask {
+  id: string;
+  creatorId: string;
+  creatorHandle: string;
+  handle: string;
+  candidate: string;
+  source: string | null;
+  createdAt: Date;
+}
+
+export async function getNextPendingMask(): Promise<PendingMask | null> {
+  const rows = await db
+    .select({
+      id: fanNameMasksTable.id,
+      creatorId: fanNameMasksTable.creatorId,
+      creatorHandle: creatorsTable.handle,
+      handle: fanNameMasksTable.handle,
+      candidate: fanNameMasksTable.candidate,
+      source: fanNameMasksTable.source,
+      createdAt: fanNameMasksTable.createdAt,
+    })
+    .from(fanNameMasksTable)
+    .innerJoin(creatorsTable, eq(creatorsTable.id, fanNameMasksTable.creatorId))
+    .where(eq(fanNameMasksTable.reviewed, false))
+    .orderBy(fanNameMasksTable.createdAt)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function setMaskReviewed(id: string, approved: boolean): Promise<void> {
+  if (!UUID_REGEX.test(id)) {
+    throw new Error(`[hermes] setMaskReviewed: invalid UUID id=${id}`);
+  }
+  await db
+    .update(fanNameMasksTable)
+    .set({ reviewed: true, approved, reviewedAt: new Date() })
+    .where(eq(fanNameMasksTable.id, id));
+}
 
 export async function findActiveVoiceConsentGrant(
   creatorId: string,

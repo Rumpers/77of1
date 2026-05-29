@@ -46,6 +46,14 @@ const strings = {
     dsarCancelled: "Cancelled. Send /dsar again if you change your mind.",
     dsarConfirmedTemplate: "Confirmed. Your twin is now offline. Audit ID: {auditId}\n\nAll data will be deleted within 24 hours. You'll receive a final confirmation when complete.",
     dsarError: "Could not process DSAR right now. Please contact support if this persists.",
+
+    reviewMasksEmpty: "No masks pending review. ✅",
+    reviewMasksRowTemplate: "Mask candidate {n} (creator: @{creatorHandle}):\n\n*Handle:* {handle}\n*Detected name:* {candidate}\n*Source:* {source}\n\nApprove this mask?",
+    reviewMasksApproveButton: "✅ Approve",
+    reviewMasksRejectButton: "❌ Reject",
+    reviewMasksApprovedAck: "Approved",
+    reviewMasksRejectedAck: "Rejected",
+    reviewMasksUnauthorized: "Mask review is founder-only. If this is in error, contact support.",
   },
 
   ja: {
@@ -89,6 +97,14 @@ const strings = {
     dsarCancelled: "キャンセルしました。気が変わったら /dsar を再送してください。",
     dsarConfirmedTemplate: "確認が取れました。あなたのツインはオフラインになりました。監査 ID: {auditId}\n\n24時間以内にすべてのデータが削除されます。完了したらご連絡します。",
     dsarError: "現在 DSAR を処理できませんでした。問題が続く場合はサポートにお問い合わせください。",
+
+    reviewMasksEmpty: "レビュー待ちのマスクはありません。✅",
+    reviewMasksRowTemplate: "マスク候補 {n}（クリエイター: @{creatorHandle}）:\n\n*ハンドル:* {handle}\n*検出名:* {candidate}\n*ソース:* {source}\n\nこのマスクを承認しますか？",
+    reviewMasksApproveButton: "✅ 承認",
+    reviewMasksRejectButton: "❌ 却下",
+    reviewMasksApprovedAck: "承認しました",
+    reviewMasksRejectedAck: "却下しました",
+    reviewMasksUnauthorized: "マスクレビューはファウンダーのみ利用可能です。お心当たりがない場合はサポートにお問い合わせください。",
   },
 
   'zh-tw': {
@@ -132,6 +148,14 @@ const strings = {
     dsarCancelled: "已取消。如果您改變主意，請再次傳送 /dsar。",
     dsarConfirmedTemplate: "已確認。您的數位分身現已下線。審計 ID：{auditId}\n\n所有資料將於 24 小時內刪除。完成後我們將通知您。",
     dsarError: "目前無法處理 DSAR 請求。如問題持續，請聯繫客服。",
+
+    reviewMasksEmpty: "目前沒有待審核的遮罩。✅",
+    reviewMasksRowTemplate: "遮罩候選 {n}（創作者: @{creatorHandle}）:\n\n*帳號:* {handle}\n*偵測名稱:* {candidate}\n*來源:* {source}\n\n批准此遮罩？",
+    reviewMasksApproveButton: "✅ 批准",
+    reviewMasksRejectButton: "❌ 拒絕",
+    reviewMasksApprovedAck: "已批准",
+    reviewMasksRejectedAck: "已拒絕",
+    reviewMasksUnauthorized: "遮罩審核僅限創辦人使用。如有疑問，請聯繫客服。",
   },
 } as const satisfies Record<Lang, Record<string, unknown>>;
 
