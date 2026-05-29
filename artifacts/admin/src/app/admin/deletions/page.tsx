@@ -6,26 +6,27 @@
 
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getAdminSupabase } from '@/lib/supabase';
+import { getDb, deletionRequestsTable } from '@/lib/db';
+import { ne, asc } from 'drizzle-orm';
 
 type SlaStatus = 'on_track' | 'at_risk' | 'overdue' | 'complete' | 'cancelled';
 
 interface DeletionRow {
   id: string;
-  auth_user_id: string;
-  account_type: string;
+  authUserId: string;
+  accountType: string;
   status: string;
-  requested_at: string;
-  grace_period_expires_at: string;
-  sla_deadline_at: string;
-  cascade_complete_at: string | null;
-  deletion_reference: string | null;
-  verified_at: string | null;
-  verification_result: {
+  requestedAt: Date;
+  gracePeriodExpiresAt: Date | null;
+  slaDeadlineAt: Date | null;
+  cascadeCompleteAt: Date | null;
+  deletionReference: string | null;
+  verifiedAt: Date | null;
+  verificationResult: {
     overall?: string;
     checks?: Array<{ table: string; found_rows: number; status: string; note?: string }>;
   } | null;
-  sla_status: SlaStatus;
+  slaStatus: SlaStatus;
 }
 
 const SLA_BADGES: Record<SlaStatus, { label: string; bg: string; color: string }> = {
@@ -36,20 +37,21 @@ const SLA_BADGES: Record<SlaStatus, { label: string; bg: string; color: string }
   cancelled: { label: 'Cancelled', bg: '#f3f4f6', color: '#6b7280' },
 };
 
-function deriveSlaStatus(row: Omit<DeletionRow, 'sla_status'>): SlaStatus {
+function deriveSlaStatus(row: Omit<DeletionRow, 'slaStatus'>): SlaStatus {
   if (row.status === 'cancelled') return 'cancelled';
   if (row.status === 'complete') return 'complete';
   const now = new Date();
-  const deadline = new Date(row.sla_deadline_at);
+  const deadline = row.slaDeadlineAt;
+  if (!deadline) return 'on_track';
   const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
   if (now > deadline) return 'overdue';
   if (hoursRemaining <= 12) return 'at_risk';
   return 'on_track';
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-US', {
+function formatDate(date: Date | null): string {
+  if (!date) return '—';
+  return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -79,23 +81,30 @@ function SlaTag({ status }: { status: SlaStatus }) {
 
 async function fetchDeletions(): Promise<DeletionRow[]> {
   try {
-    const db = getAdminSupabase();
-    const { data, error } = await db
-      .from('deletion_requests')
-      .select(
-        'id, auth_user_id, account_type, status, requested_at, ' +
-          'grace_period_expires_at, sla_deadline_at, cascade_complete_at, ' +
-          'deletion_reference, verified_at, verification_result',
-      )
-      .neq('status', 'cancelled')
-      .order('sla_deadline_at', { ascending: true })
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: deletionRequestsTable.id,
+        authUserId: deletionRequestsTable.authUserId,
+        accountType: deletionRequestsTable.accountType,
+        status: deletionRequestsTable.status,
+        requestedAt: deletionRequestsTable.requestedAt,
+        gracePeriodExpiresAt: deletionRequestsTable.gracePeriodExpiresAt,
+        slaDeadlineAt: deletionRequestsTable.slaDeadlineAt,
+        cascadeCompleteAt: deletionRequestsTable.cascadeCompleteAt,
+        deletionReference: deletionRequestsTable.deletionReference,
+        verifiedAt: deletionRequestsTable.verifiedAt,
+        verificationResult: deletionRequestsTable.verificationResult,
+      })
+      .from(deletionRequestsTable)
+      .where(ne(deletionRequestsTable.status, 'cancelled'))
+      .orderBy(asc(deletionRequestsTable.slaDeadlineAt))
       .limit(100);
 
-    if (error) throw error;
-    return (data ?? []).map((row) => ({
-      ...(row as Omit<DeletionRow, 'sla_status'>),
-      sla_status: deriveSlaStatus(row as Omit<DeletionRow, 'sla_status'>),
-    }));
+    return rows.map((row) => {
+      const base = row as Omit<DeletionRow, 'slaStatus'>;
+      return { ...base, slaStatus: deriveSlaStatus(base) };
+    });
   } catch {
     return [];
   }
@@ -117,10 +126,10 @@ export default async function DeletionsPage() {
 
   const rows = await fetchDeletions();
 
-  const overdue = rows.filter((r) => r.sla_status === 'overdue');
-  const atRisk = rows.filter((r) => r.sla_status === 'at_risk');
-  const pending = rows.filter((r) => r.sla_status === 'on_track');
-  const complete = rows.filter((r) => r.sla_status === 'complete');
+  const overdue = rows.filter((r) => r.slaStatus === 'overdue');
+  const atRisk = rows.filter((r) => r.slaStatus === 'at_risk');
+  const pending = rows.filter((r) => r.slaStatus === 'on_track');
+  const complete = rows.filter((r) => r.slaStatus === 'complete');
 
   return (
     <div style={{ fontFamily: 'sans-serif' }}>
@@ -167,23 +176,23 @@ export default async function DeletionsPage() {
                 key={row.id}
                 style={{
                   borderBottom: '1px solid #f3f4f6',
-                  background: row.sla_status === 'overdue' ? '#fff5f5' : undefined,
+                  background: row.slaStatus === 'overdue' ? '#fff5f5' : undefined,
                 }}
               >
                 <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12 }}>
-                  {row.deletion_reference ?? row.id.slice(0, 8)}
+                  {row.deletionReference ?? row.id.slice(0, 8)}
                 </td>
-                <td style={{ padding: '8px 12px' }}>{row.account_type}</td>
-                <td style={{ padding: '8px 12px' }}>{formatDate(row.requested_at)}</td>
-                <td style={{ padding: '8px 12px' }}>{formatDate(row.grace_period_expires_at)}</td>
-                <td style={{ padding: '8px 12px' }}>{formatDate(row.sla_deadline_at)}</td>
+                <td style={{ padding: '8px 12px' }}>{row.accountType}</td>
+                <td style={{ padding: '8px 12px' }}>{formatDate(row.requestedAt)}</td>
+                <td style={{ padding: '8px 12px' }}>{formatDate(row.gracePeriodExpiresAt)}</td>
+                <td style={{ padding: '8px 12px' }}>{formatDate(row.slaDeadlineAt)}</td>
                 <td style={{ padding: '8px 12px' }}>
-                  <SlaTag status={row.sla_status} />
+                  <SlaTag status={row.slaStatus} />
                 </td>
-                <td style={{ padding: '8px 12px', color: row.verified_at ? '#065f46' : '#6b7280' }}>
-                  {row.verified_at ? (
-                    <span title={formatDate(row.verified_at)}>
-                      ✓ {row.verification_result?.overall ?? 'done'}
+                <td style={{ padding: '8px 12px', color: row.verifiedAt ? '#065f46' : '#6b7280' }}>
+                  {row.verifiedAt ? (
+                    <span title={formatDate(row.verifiedAt)}>
+                      ✓ {row.verificationResult?.overall ?? 'done'}
                     </span>
                   ) : (
                     '—'
@@ -204,7 +213,7 @@ export default async function DeletionsPage() {
                           fontSize: 12,
                         }}
                       >
-                        {row.verified_at ? 'Re-verify' : 'Verify now'}
+                        {row.verifiedAt ? 'Re-verify' : 'Verify now'}
                       </button>
                     </form>
                   )}
@@ -215,11 +224,11 @@ export default async function DeletionsPage() {
         </table>
       )}
 
-      {rows.some((r) => r.verification_result?.checks) && (
+      {rows.some((r) => r.verificationResult?.checks) && (
         <div style={{ marginTop: 32 }}>
           <h2 style={{ fontSize: 16, marginBottom: 12 }}>Last verification detail</h2>
           {rows
-            .filter((r) => r.verification_result?.checks)
+            .filter((r) => r.verificationResult?.checks)
             .slice(0, 3)
             .map((row) => (
               <div
@@ -227,18 +236,18 @@ export default async function DeletionsPage() {
                 style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 16, marginBottom: 12 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                  {row.deletion_reference ?? row.id.slice(0, 8)} — {row.account_type} —{' '}
+                  {row.deletionReference ?? row.id.slice(0, 8)} — {row.accountType} —{' '}
                   <span
                     style={{
                       color:
-                        row.verification_result?.overall === 'verified'
+                        row.verificationResult?.overall === 'verified'
                           ? '#065f46'
-                          : row.verification_result?.overall === 'failed'
+                          : row.verificationResult?.overall === 'failed'
                             ? '#991b1b'
                             : '#92400e',
                     }}
                   >
-                    {row.verification_result?.overall}
+                    {row.verificationResult?.overall}
                   </span>
                 </div>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -251,7 +260,7 @@ export default async function DeletionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {row.verification_result?.checks?.map((check, i) => (
+                    {row.verificationResult?.checks?.map((check, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '4px 8px', fontFamily: 'monospace' }}>{check.table}</td>
                         <td style={{ padding: '4px 8px' }}>{check.found_rows}</td>

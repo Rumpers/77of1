@@ -6,125 +6,106 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getAdminSupabase } from '@/lib/supabase';
+import { getDb, getMainPool, deletionRequestsTable, type CheckResult, type VerificationResult } from '@/lib/db';
 import { AuditClient } from '@7of1/admin-sdk';
+import { eq } from 'drizzle-orm';
+import type pg from 'pg';
 
 const ALLOWED_ROLES = ['ops', 'engineering'] as const;
 
-interface CheckResult {
-  table: string;
-  description: string;
-  found_rows: number;
-  status: 'clear' | 'residual' | 'retained_per_policy' | 'not_applicable';
-  note?: string;
+async function sqlCount(pool: pg.Pool, query: string, params: unknown[]): Promise<number> {
+  const result = await pool.query<{ count: number }>(query, params);
+  return result.rows[0]?.count ?? 0;
 }
 
-interface DeletionRow {
-  id: string;
-  auth_user_id: string;
-  account_type: 'fan' | 'creator';
-  entity_ids: string[];
-  status: string;
-}
-
-async function runCreatorChecks(
-  db: ReturnType<typeof getAdminSupabase>,
-  creatorId: string,
-): Promise<CheckResult[]> {
+async function runCreatorChecks(pool: pg.Pool, creatorId: string): Promise<CheckResult[]> {
   const checks: CheckResult[] = [];
 
-  // creators row — should be gone after cascade
-  const { count: creatorCount } = await db
-    .from('creators')
-    .select('id', { count: 'exact', head: true })
-    .eq('id', creatorId);
+  const creatorCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM creators WHERE id = $1',
+    [creatorId],
+  );
   checks.push({
     table: 'creators',
     description: 'Creator profile row',
-    found_rows: creatorCount ?? 0,
-    status: (creatorCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: creatorCount,
+    status: creatorCount === 0 ? 'clear' : 'residual',
   });
 
-  // creator_assets — should be gone (ON DELETE CASCADE from creators)
-  const { count: assetCount } = await db
-    .from('creator_assets')
-    .select('id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId);
+  const assetCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM creator_assets WHERE creator_id = $1',
+    [creatorId],
+  );
   checks.push({
     table: 'creator_assets',
     description: 'Creator assets (photos, videos, audio)',
-    found_rows: assetCount ?? 0,
-    status: (assetCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: assetCount,
+    status: assetCount === 0 ? 'clear' : 'residual',
   });
 
-  // consent_grants — §8.3 requires retention of revocation records.
-  // All remaining rows must have revoked_at set (not active grants).
-  const { count: totalConsent } = await db
-    .from('consent_grants')
-    .select('id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId);
-  const { count: activeConsent } = await db
-    .from('consent_grants')
-    .select('id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId)
-    .is('revoked_at', null);
+  const totalConsent = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM consent_grants WHERE creator_id = $1',
+    [creatorId],
+  );
+  const activeConsent = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM consent_grants WHERE creator_id = $1 AND revoked_at IS NULL',
+    [creatorId],
+  );
   checks.push({
     table: 'consent_grants',
     description: 'Consent grant records (§8.3: revoked records retained)',
-    found_rows: totalConsent ?? 0,
-    status:
-      (activeConsent ?? 0) === 0
-        ? 'retained_per_policy'
-        : 'residual',
+    found_rows: totalConsent,
+    status: activeConsent === 0 ? 'retained_per_policy' : 'residual',
     note:
-      (activeConsent ?? 0) > 0
+      activeConsent > 0
         ? `${activeConsent} active (non-revoked) grants remain — expected 0 after deletion`
-        : `${totalConsent ?? 0} revocation records retained per §8.3 audit requirement`,
+        : `${totalConsent} revocation records retained per §8.3 audit requirement`,
   });
 
-  // generation_jobs — should be gone (cascade or anonymized)
-  const { count: jobCount } = await db
-    .from('generation_jobs')
-    .select('id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId);
+  const jobCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM generation_jobs WHERE creator_id = $1',
+    [creatorId],
+  );
   checks.push({
     table: 'generation_jobs',
     description: 'Generation job records',
-    found_rows: jobCount ?? 0,
-    status: (jobCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: jobCount,
+    status: jobCount === 0 ? 'clear' : 'residual',
   });
 
-  // fans belonging to this creator — should be gone (cascade)
-  const { count: fanCount } = await db
-    .from('fans')
-    .select('id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId);
+  const fanCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM fans WHERE creator_id = $1',
+    [creatorId],
+  );
   checks.push({
     table: 'fans',
     description: 'Fan accounts under this creator',
-    found_rows: fanCount ?? 0,
-    status: (fanCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: fanCount,
+    status: fanCount === 0 ? 'clear' : 'residual',
   });
 
-  // usage_counters — should be gone (cascade)
-  const { count: usageCount } = await db
-    .from('usage_counters')
-    .select('creator_id', { count: 'exact', head: true })
-    .eq('creator_id', creatorId);
+  const usageCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM usage_counters WHERE creator_id = $1',
+    [creatorId],
+  );
   checks.push({
     table: 'usage_counters',
     description: 'Usage counter rows',
-    found_rows: usageCount ?? 0,
-    status: (usageCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: usageCount,
+    status: usageCount === 0 ? 'clear' : 'residual',
   });
 
   return checks;
 }
 
-async function runFanChecks(
-  db: ReturnType<typeof getAdminSupabase>,
-  fanIds: string[],
-): Promise<CheckResult[]> {
+async function runFanChecks(pool: pg.Pool, fanIds: string[]): Promise<CheckResult[]> {
   if (fanIds.length === 0) {
     return [
       {
@@ -139,59 +120,63 @@ async function runFanChecks(
 
   const checks: CheckResult[] = [];
 
-  const { count: fanCount } = await db
-    .from('fans')
-    .select('id', { count: 'exact', head: true })
-    .in('id', fanIds);
+  const fanCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM fans WHERE id = ANY($1)',
+    [fanIds],
+  );
   checks.push({
     table: 'fans',
     description: 'Fan profile rows',
-    found_rows: fanCount ?? 0,
-    status: (fanCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: fanCount,
+    status: fanCount === 0 ? 'clear' : 'residual',
   });
 
-  const { count: subCount } = await db
-    .from('fan_subscriptions')
-    .select('id', { count: 'exact', head: true })
-    .in('fan_id', fanIds);
+  const subCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM fan_subscriptions WHERE fan_id = ANY($1)',
+    [fanIds],
+  );
   checks.push({
     table: 'fan_subscriptions',
     description: 'Active fan subscriptions',
-    found_rows: subCount ?? 0,
-    status: (subCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: subCount,
+    status: subCount === 0 ? 'clear' : 'residual',
   });
 
-  const { count: creditCount } = await db
-    .from('fan_credits')
-    .select('fan_id', { count: 'exact', head: true })
-    .in('fan_id', fanIds);
+  const creditCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM fan_credits WHERE fan_id = ANY($1)',
+    [fanIds],
+  );
   checks.push({
     table: 'fan_credits',
     description: 'Fan credit balance rows',
-    found_rows: creditCount ?? 0,
-    status: (creditCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: creditCount,
+    status: creditCount === 0 ? 'clear' : 'residual',
   });
 
-  const { count: usageCount } = await db
-    .from('usage_counters')
-    .select('fan_id', { count: 'exact', head: true })
-    .in('fan_id', fanIds);
+  const usageCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM usage_counters WHERE fan_id = ANY($1)',
+    [fanIds],
+  );
   checks.push({
     table: 'usage_counters',
     description: 'Usage counter rows for fan',
-    found_rows: usageCount ?? 0,
-    status: (usageCount ?? 0) === 0 ? 'clear' : 'residual',
+    found_rows: usageCount,
+    status: usageCount === 0 ? 'clear' : 'residual',
   });
 
-  // credit_transactions are financial records — retained for accounting.
-  const { count: txCount } = await db
-    .from('credit_transactions')
-    .select('id', { count: 'exact', head: true })
-    .in('fan_id', fanIds);
+  const txCount = await sqlCount(
+    pool,
+    'SELECT COUNT(*)::int AS count FROM credit_transactions WHERE fan_id = ANY($1)',
+    [fanIds],
+  );
   checks.push({
     table: 'credit_transactions',
     description: 'Credit transaction ledger (financial records retained)',
-    found_rows: txCount ?? 0,
+    found_rows: txCount,
     status: 'retained_per_policy',
     note: 'Financial transaction records retained per accounting requirements',
   });
@@ -213,72 +198,76 @@ export async function POST(
 
   const deletionId = params.id;
 
-  let db: ReturnType<typeof getAdminSupabase>;
+  let db: ReturnType<typeof getDb>;
+  let pool: pg.Pool;
   try {
-    db = getAdminSupabase();
+    db = getDb();
+    pool = getMainPool();
   } catch {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  const { data: deletion, error: fetchErr } = await db
-    .from('deletion_requests')
-    .select('id, auth_user_id, account_type, entity_ids, status')
-    .eq('id', deletionId)
-    .maybeSingle();
+  let deletion: typeof deletionRequestsTable.$inferSelect | undefined;
+  try {
+    [deletion] = await db
+      .select()
+      .from(deletionRequestsTable)
+      .where(eq(deletionRequestsTable.id, deletionId))
+      .limit(1);
+  } catch (fetchErr) {
+    console.error('[admin/deletions/verify] fetch error', fetchErr);
+    return NextResponse.json({ error: 'Failed to fetch deletion request' }, { status: 500 });
+  }
 
-  if (fetchErr || !deletion) {
+  if (!deletion) {
     return NextResponse.json({ error: 'Deletion request not found' }, { status: 404 });
   }
 
-  const row = deletion as DeletionRow;
-
-  if (row.status === 'cancelled') {
+  if (deletion.status === 'cancelled') {
     return NextResponse.json({ error: 'Cannot verify a cancelled request' }, { status: 409 });
   }
 
-  // Run appropriate checks based on account type
-  const entityIds: string[] = Array.isArray(row.entity_ids) ? row.entity_ids : [];
+  const entityIds: string[] = Array.isArray(deletion.entityIds) ? deletion.entityIds : [];
   const checks: CheckResult[] =
-    row.account_type === 'creator'
-      ? await runCreatorChecks(db, entityIds[0] ?? '')
-      : await runFanChecks(db, entityIds);
+    deletion.accountType === 'creator'
+      ? await runCreatorChecks(pool, entityIds[0] ?? '')
+      : await runFanChecks(pool, entityIds);
 
   const hasResidual = checks.some((c) => c.status === 'residual');
-  const overall: 'verified' | 'failed' | 'partial' = hasResidual
+  const overall: VerificationResult['overall'] = hasResidual
     ? checks.every((c) => c.status !== 'clear' && c.status !== 'retained_per_policy')
       ? 'failed'
       : 'partial'
     : 'verified';
 
-  const verificationResult = {
+  const verificationResult: VerificationResult = {
     checked_at: new Date().toISOString(),
     checked_by: session.user.id,
     checks,
     overall,
   };
 
-  // Write verification result back to deletion_requests
   const newStatus =
-    overall === 'verified' && row.status !== 'complete' ? 'complete' : row.status;
+    overall === 'verified' && deletion.status !== 'complete' ? 'complete' : deletion.status;
+  const now = new Date();
 
-  const { error: updateErr } = await db
-    .from('deletion_requests')
-    .update({
-      verification_result: verificationResult,
-      verified_by: session.user.id,
-      verified_at: new Date().toISOString(),
-      status: newStatus,
-      cascade_complete_at: overall === 'verified' ? new Date().toISOString() : undefined,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', deletionId);
-
-  if (updateErr) {
+  try {
+    await db
+      .update(deletionRequestsTable)
+      .set({
+        verificationResult,
+        verifiedBy: session.user.id,
+        verifiedAt: now,
+        status: newStatus,
+        cascadeCompleteAt: overall === 'verified' ? now : undefined,
+        updatedAt: now,
+      })
+      .where(eq(deletionRequestsTable.id, deletionId));
+  } catch (updateErr) {
     console.error('[admin/deletions/verify] update error', updateErr);
     return NextResponse.json({ error: 'Failed to save verification result' }, { status: 500 });
   }
 
-  // Write audit log entry
   try {
     const auditClient = new AuditClient({
       connectionString: process.env.ADMIN_DATABASE_URL!,
@@ -291,7 +280,7 @@ export async function POST(
       resourceType: 'deletion_request',
       resourceId: deletionId,
       metadata: {
-        account_type: row.account_type,
+        account_type: deletion.accountType,
         overall,
         residual_tables: checks
           .filter((c) => c.status === 'residual')
@@ -299,7 +288,6 @@ export async function POST(
       },
     });
   } catch (auditErr) {
-    // Log but don't fail — verification result is already saved
     console.error('[admin/deletions/verify] audit log error', auditErr);
   }
 

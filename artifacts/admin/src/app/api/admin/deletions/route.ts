@@ -4,7 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getAdminSupabase } from '@/lib/supabase';
+import { getDb, deletionRequestsTable } from '@/lib/db';
+import { eq, ne, count, asc } from 'drizzle-orm';
 
 const ALLOWED_ROLES = ['ops', 'engineering'] as const;
 
@@ -12,17 +13,18 @@ type SlaStatus = 'on_track' | 'at_risk' | 'overdue' | 'complete' | 'cancelled';
 
 function deriveSlaStatus(row: {
   status: string;
-  sla_deadline_at: string;
-  cascade_complete_at: string | null;
-  verified_at: string | null;
+  slaDeadlineAt: Date | null;
+  cascadeCompleteAt: Date | null;
+  verifiedAt: Date | null;
 }): SlaStatus {
   if (row.status === 'cancelled') return 'cancelled';
   if (row.status === 'complete') return 'complete';
 
   const now = new Date();
-  const deadline = new Date(row.sla_deadline_at);
-  const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+  const deadline = row.slaDeadlineAt;
+  if (!deadline) return 'on_track';
 
+  const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
   if (now > deadline) return 'overdue';
   if (hoursRemaining <= 12) return 'at_risk';
   return 'on_track';
@@ -42,45 +44,57 @@ export async function GET(req: NextRequest) {
   const limit = 50;
   const offset = (page - 1) * limit;
 
-  // Filter by status if provided; default to active (non-cancelled)
   const statusFilter = url.searchParams.get('status');
 
-  let db: ReturnType<typeof getAdminSupabase>;
+  let db: ReturnType<typeof getDb>;
   try {
-    db = getAdminSupabase();
+    db = getDb();
   } catch {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  let query = db
-    .from('deletion_requests')
-    .select(
-      'id, auth_user_id, account_type, entity_ids, status, requested_at, ' +
-        'grace_period_expires_at, sla_deadline_at, cascade_started_at, ' +
-        'cascade_complete_at, deletion_reference, verified_by, verified_at, ' +
-        'verification_result, notes',
-      { count: 'exact' },
-    )
-    .order('sla_deadline_at', { ascending: true })
-    .range(offset, offset + limit - 1);
+  const whereClause = statusFilter
+    ? eq(deletionRequestsTable.status, statusFilter)
+    : ne(deletionRequestsTable.status, 'cancelled');
 
-  if (statusFilter) {
-    query = query.eq('status', statusFilter);
-  } else {
-    query = query.neq('status', 'cancelled');
-  }
+  const [countResult] = await db
+    .select({ total: count() })
+    .from(deletionRequestsTable)
+    .where(whereClause);
 
-  const { data, count, error } = await query;
+  const rows = await db
+    .select({
+      id: deletionRequestsTable.id,
+      auth_user_id: deletionRequestsTable.authUserId,
+      account_type: deletionRequestsTable.accountType,
+      entity_ids: deletionRequestsTable.entityIds,
+      status: deletionRequestsTable.status,
+      requested_at: deletionRequestsTable.requestedAt,
+      grace_period_expires_at: deletionRequestsTable.gracePeriodExpiresAt,
+      sla_deadline_at: deletionRequestsTable.slaDeadlineAt,
+      cascade_started_at: deletionRequestsTable.cascadeStartedAt,
+      cascade_complete_at: deletionRequestsTable.cascadeCompleteAt,
+      deletion_reference: deletionRequestsTable.deletionReference,
+      verified_by: deletionRequestsTable.verifiedBy,
+      verified_at: deletionRequestsTable.verifiedAt,
+      verification_result: deletionRequestsTable.verificationResult,
+      notes: deletionRequestsTable.notes,
+    })
+    .from(deletionRequestsTable)
+    .where(whereClause)
+    .orderBy(asc(deletionRequestsTable.slaDeadlineAt))
+    .limit(limit)
+    .offset(offset);
 
-  if (error) {
-    console.error('[admin/deletions] fetch error', error);
-    return NextResponse.json({ error: 'Failed to fetch deletion requests' }, { status: 500 });
-  }
-
-  const rows = (data ?? []).map((row) => ({
+  const result = rows.map((row) => ({
     ...row,
-    sla_status: deriveSlaStatus(row as Parameters<typeof deriveSlaStatus>[0]),
+    sla_status: deriveSlaStatus({
+      status: row.status,
+      slaDeadlineAt: row.sla_deadline_at,
+      cascadeCompleteAt: row.cascade_complete_at,
+      verifiedAt: row.verified_at,
+    }),
   }));
 
-  return NextResponse.json({ rows, total: count ?? 0, page, limit });
+  return NextResponse.json({ rows: result, total: countResult?.total ?? 0, page, limit });
 }
