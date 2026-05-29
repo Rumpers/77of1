@@ -54,11 +54,8 @@ export function getReplitUser(req: Request): ReplitUser | null {
   };
 }
 
-// ── Cookie/session helpers (relocated from deleted supabase.ts) ─────────────────
-// COOKIE_ACCESS_TOKEN value stays "sb-access-token" for Phase 1 backwards-compat.
-// Rename deferred to Phase 2 per PATTERNS.md.
-export const COOKIE_ACCESS_TOKEN = "sb-access-token";
-export const COOKIE_REFRESH_TOKEN = "sb-refresh-token";
+export const COOKIE_ACCESS_TOKEN = "lala-access-token";
+export const COOKIE_REFRESH_TOKEN = "lala-refresh-token";
 
 export function sessionCookieOptions(maxAge: number): CookieOptions {
   return {

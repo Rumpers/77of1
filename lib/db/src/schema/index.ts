@@ -73,7 +73,6 @@ export const crisisLevelEnum = pgEnum("crisis_level", [
 ]);
 
 // ─── Table 1: creators ────────────────────────────────────────────────────────
-// Source: supabase/migrations/20260524000001_schema_v1.sql
 // Added: telegram_user_id (needed by hermes findCreatorByTelegramId)
 // Added: kill_switch_active (per ARCHITECTURE.md)
 
@@ -109,7 +108,6 @@ export type Creator = typeof creatorsTable.$inferSelect;
 export type InsertCreator = z.infer<typeof insertCreatorSchema>;
 
 // ─── Table 2: twins ───────────────────────────────────────────────────────────
-// No existing Supabase migration. Created fresh per PERSONA-03.
 // visibility: twin_visibility pgEnum default 'private' (PERSONA-03)
 
 export const twinsTable = pgTable("twins", {
@@ -143,7 +141,6 @@ export type Twin = typeof twinsTable.$inferSelect;
 export type InsertTwin = z.infer<typeof insertTwinSchema>;
 
 // ─── Table 3: creator_kyc ─────────────────────────────────────────────────────
-// Source: supabase/migrations/20260525000001_creator_kyc.sql
 // Collapsed from 8-state enum to 3-state per D-05.
 // status is NOT NULL DEFAULT 'pending' — prevents null bypass (Pitfall #4).
 // Added: voice_synthesis_consent_granted per D-07.
@@ -208,7 +205,6 @@ export type CreatorConfig = typeof creatorConfigTable.$inferSelect;
 export type InsertCreatorConfig = z.infer<typeof insertCreatorConfigSchema>;
 
 // ─── Table 5: consent_grants ──────────────────────────────────────────────────
-// Source: supabase/migrations/20260524000001_schema_v1.sql
 // Modified: consentGrantModality pgEnum (was free text); added retention_category per D-14.
 // Added: consentVersion, channel, ipHash per hermes/consent.ts commitConsent.
 
@@ -252,7 +248,6 @@ export type ConsentGrant = typeof consentGrantsTable.$inferSelect;
 export type InsertConsentGrant = z.infer<typeof insertConsentGrantSchema>;
 
 // ─── Table 6: conversation_messages ──────────────────────────────────────────
-// Not in existing Supabase schema. Created fresh per D-03.
 // Stores plaintext content with retentionCategory = 'transcript'.
 // 90-day TTL applied in Phase 4 cleanup cron.
 
@@ -294,7 +289,6 @@ export type InsertConversationMessage = z.infer<
 >;
 
 // ─── Table 7: generation_jobs ─────────────────────────────────────────────────
-// Source: supabase/migrations/20260524000001_schema_v1.sql
 // Modified: generationJobStatus pgEnum; added consent_grant_id FK per D-04;
 // added retention_category per D-14; removed fan_id FK (out of scope per D-01).
 // job_type replaces modality (broader: text|voice|video|moderation).
@@ -343,7 +337,6 @@ export type GenerationJob = typeof generationJobsTable.$inferSelect;
 export type InsertGenerationJob = z.infer<typeof insertGenerationJobSchema>;
 
 // ─── Table 8: safety_audit_log ────────────────────────────────────────────────
-// Source: supabase/migrations/20260525000001_safety_audit_log.sql
 // NO raw fan_id or message_text column — hashes only (COMPLY-03, D-02).
 // Added: retention_category per D-14, default 'audit'.
 
@@ -412,13 +405,11 @@ export type CreatorTotp = typeof creatorTotpTable.$inferSelect;
 export type InsertCreatorTotp = z.infer<typeof insertCreatorTotpSchema>;
 
 // ─── Table: fans ─────────────────────────────────────────────────────────────
-// Fan users who chat with AI twins. Authenticated via Supabase (magic-link OTP).
+// Fan users who chat with AI twins. Authenticated via email OTP (custom, no Supabase).
 // trial_count tracks free interactions before a credit pack is required.
 
 export const fansTable = pgTable("fans", {
   id: uuid("id").primaryKey().defaultRandom(),
-  // nullable: custom OTP auth doesn't use Supabase; field preserved for future Supabase migration path
-  supabaseUid: uuid("supabase_uid").unique(),
   email: text("email").notNull().unique(),
   locale: text("locale").notNull().default("en"),
   trialCount: integer("trial_count").notNull().default(0),
@@ -462,7 +453,7 @@ export type FanEmailOtp = typeof fanEmailOtpsTable.$inferSelect;
 export type InsertFanEmailOtp = z.infer<typeof insertFanEmailOtpSchema>;
 
 // ─── Table: sessions ─────────────────────────────────────────────────────────
-// Supabase JWT sessions for fans and creators. Exactly one of fan_id / creator_id
+// App sessions for fans and creators. Exactly one of fan_id / creator_id
 // is non-null per row — the other is null.
 
 export const sessionsTable = pgTable(
@@ -475,8 +466,8 @@ export const sessionsTable = pgTable(
     creatorId: uuid("creator_id").references(() => creatorsTable.id, {
       onDelete: "cascade",
     }),
-    supabaseAccessToken: text("supabase_access_token").notNull(),
-    supabaseRefreshToken: text("supabase_refresh_token").notNull(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
     device: text("device"),
     lastActive: timestamp("last_active", { withTimezone: true })
       .notNull()

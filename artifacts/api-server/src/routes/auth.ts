@@ -1,5 +1,5 @@
 // Fan and creator auth routes — email OTP + session management
-// Phase 2: custom OTP (no Supabase). Signed httpOnly cookies. Trial cookie tracking.
+// Custom OTP. Signed httpOnly cookies. Trial cookie tracking.
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
