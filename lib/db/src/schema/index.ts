@@ -15,6 +15,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+<<<<<<< HEAD
 // ─── Re-exports ──────────────────────────────────────────────────────────────
 // Character Card V2 Zod schema + type (PERSONA-01). Persona spec stored in
 // twins.character_card JSONB — see ./character-card.ts.
@@ -648,3 +649,6 @@ export const insertTwinConfigSchema = createInsertSchema(
 ).omit({ id: true, createdAt: true });
 export type TwinConfig = typeof twinConfigsTable.$inferSelect;
 export type InsertTwinConfig = z.infer<typeof insertTwinConfigSchema>;
+=======
+export * from "./personas.js";
+>>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
