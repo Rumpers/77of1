@@ -1,4 +1,5 @@
 // Hermes DB helpers — Drizzle + Replit PG (migrated from Supabase, Phase 1)
+import { createHash } from "node:crypto";
 import { db } from "@workspace/db";
 import {
   creatorsTable,
@@ -6,6 +7,7 @@ import {
   creatorKycTable,
   creatorTotpTable,
   twinsTable,
+  creatorDeletionLogTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
@@ -52,6 +54,50 @@ export async function setPaused(
     );
   }
   return { elapsed };
+}
+
+// Sets creators.kill_switch_active — used by DSAR scene to take the twin
+// offline immediately before the 24h deletion grace window begins (Pitfall 8).
+export async function setKillSwitchActive(
+  creatorId: string,
+  active: boolean,
+): Promise<{ elapsed: number }> {
+  const t0 = Date.now();
+  await db
+    .update(creatorsTable)
+    .set({ killSwitchActive: active, updatedAt: new Date() })
+    .where(eq(creatorsTable.id, creatorId));
+  const elapsed = Date.now() - t0;
+  console.log(
+    `[hermes] kill-switch-active creator_id=${creatorId} active=${active} db_write_ms=${elapsed}`,
+  );
+  if (elapsed > 4000) {
+    console.error(
+      `[hermes] WARN kill-switch-active db write took ${elapsed}ms — approaching ≤5s SLA`,
+    );
+  }
+  return { elapsed };
+}
+
+// Opens a creator_deletion_log row for DSAR audit trail.
+// Returns the auditId sent to the creator as their deletion receipt.
+export async function recordDsarRequest(
+  creatorId: string,
+): Promise<{ auditId: string }> {
+  const auditId = createHash("sha256")
+    .update(`${creatorId}.${Date.now()}`)
+    .digest("hex")
+    .slice(0, 16);
+  const creatorIdHash = createHash("sha256")
+    .update(creatorId)
+    .digest("hex")
+    .slice(0, 32);
+  await db.insert(creatorDeletionLogTable).values({
+    auditId,
+    creatorIdHash,
+    requestedAt: new Date(),
+  });
+  return { auditId };
 }
 
 // ─── Creator stats (partial — fan count is out-of-scope in Phase 1) ──────────

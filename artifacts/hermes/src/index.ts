@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import {
   findCreatorByTelegramId,
   getCreatorStats,
+  getCreatorPreferences,
   setPaused,
   getKycRow,
 } from "./db.js";
@@ -19,6 +20,7 @@ import { sessionMiddleware } from "./session.js";
 import { consentWizard } from "./scenes/consent.scene.js";
 import { personaWizard } from "./scenes/persona.scene.js";
 import { voiceWizard } from "./scenes/voice.scene.js";
+import { dsarWizard } from "./scenes/dsar.scene.js";
 import { revokeVoice } from "./revoke-voice.js";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_LALA;
@@ -34,7 +36,7 @@ const bot = new Telegraf<Scenes.WizardContext>(BOT_TOKEN);
 // command handler that calls ctx.scene.enter(...). Order matters:
 //   1. sessionMiddleware (@telegraf/session/pg) — provides ctx.session
 //   2. stage.middleware() — provides ctx.scene with wizard-context support
-const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard, voiceWizard]);
+const stage = new Scenes.Stage<Scenes.WizardContext>([consentWizard, personaWizard, voiceWizard, dsarWizard]);
 bot.use(sessionMiddleware);
 bot.use(stage.middleware());
 
@@ -237,6 +239,27 @@ bot.command("voice", async (ctx) => {
 
   console.log(`[hermes] /voice started creator_id=${creator.id} (scene)`);
   await ctx.scene.enter("voice-wizard", { creatorId: creator.id });
+});
+
+// /dsar — COMPLY-04. Creator requests full data deletion; twin goes offline
+// immediately and a 24h-delayed worker sweep clears all data.
+bot.command("dsar", async (ctx) => {
+  const tgUserId = ctx.from?.id;
+  if (!tgUserId) return;
+
+  const creator = await findCreatorByTelegramId(tgUserId);
+  if (!creator) {
+    await ctx.reply("Use /start to link first.");
+    return;
+  }
+
+  const prefs = await getCreatorPreferences(creator.id);
+  const hermesLang = prefs?.hermes_language ?? 'en';
+  const lang: 'en' | 'ja' | 'zh-tw' =
+    hermesLang === 'ja' || hermesLang === 'zh-tw' ? hermesLang : 'en';
+
+  console.log(`[hermes] /dsar started creator_id=${creator.id} lang=${lang}`);
+  await ctx.scene.enter("dsar-wizard", { creatorId: creator.id, lang });
 });
 
 // /revoke_voice — ONBOARD-03. Revoke voice consent; cancel in-flight voice

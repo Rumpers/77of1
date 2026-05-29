@@ -39,6 +39,13 @@ const strings = {
       `❌ Unknown language: *${input}*.\n\nChoose from:\n• \`en\` — English\n• \`ja\` — 日本語\n• \`zh-tw\` — 繁體中文\n\nSend /language to see your current setting.`,
     langCurrent: (lang: string) =>
       `Your current Hermes language is *${lang}*.\n\nTo change it: /language <lang> (e.g. /language ja)`,
+
+    dsarHeader: "⚠️ Data Deletion Request",
+    dsarWarning: "This will permanently delete:\n  • All fan conversation history with your twin\n  • Your voice reference sample\n  • Your persona / constitution\n  • All generated voice files\n\nYour twin will go offline IMMEDIATELY. Deletion completes within 24 hours.",
+    dsarConfirmPrompt: "Type CONFIRM to proceed, or /cancel to abort.",
+    dsarCancelled: "Cancelled. Send /dsar again if you change your mind.",
+    dsarConfirmedTemplate: "Confirmed. Your twin is now offline. Audit ID: {auditId}\n\nAll data will be deleted within 24 hours. You'll receive a final confirmation when complete.",
+    dsarError: "Could not process DSAR right now. Please contact support if this persists.",
   },
 
   ja: {
@@ -75,6 +82,13 @@ const strings = {
       `❌ 不明な言語: *${input}*\n\n以下から選択してください:\n• \`en\` — English\n• \`ja\` — 日本語\n• \`zh-tw\` — 繁體中文\n\n現在の設定を確認するには /language を送信してください。`,
     langCurrent: (lang: string) =>
       `現在の Hermes 言語: *${lang}*\n\n変更するには: /language <lang>（例: /language ja）`,
+
+    dsarHeader: "⚠️ データ削除リクエスト",
+    dsarWarning: "以下のデータが完全に削除されます：\n  • ファンとのツインでの会話履歴すべて\n  • ボイスリファレンスサンプル\n  • ペルソナ / コンスティテューション\n  • 生成されたすべてのボイスファイル\n\nあなたのツインは直ちにオフラインになります。削除は24時間以内に完了します。",
+    dsarConfirmPrompt: "続行するには CONFIRM と入力してください。中断するには /cancel を送信してください。",
+    dsarCancelled: "キャンセルしました。気が変わったら /dsar を再送してください。",
+    dsarConfirmedTemplate: "確認が取れました。あなたのツインはオフラインになりました。監査 ID: {auditId}\n\n24時間以内にすべてのデータが削除されます。完了したらご連絡します。",
+    dsarError: "現在 DSAR を処理できませんでした。問題が続く場合はサポートにお問い合わせください。",
   },
 
   'zh-tw': {
@@ -111,6 +125,13 @@ const strings = {
       `❌ 未知語言: *${input}*\n\n請從以下選擇:\n• \`en\` — English\n• \`ja\` — 日本語\n• \`zh-tw\` — 繁體中文\n\n傳送 /language 查看目前設定。`,
     langCurrent: (lang: string) =>
       `目前 Hermes 語言: *${lang}*\n\n修改方式: /language <lang>（例如 /language zh-tw）`,
+
+    dsarHeader: "⚠️ 資料刪除請求",
+    dsarWarning: "以下資料將被永久刪除：\n  • 粉絲與您數位分身的所有對話紀錄\n  • 聲音參考樣本\n  • 人物設定 / 個性說明\n  • 所有已生成的語音檔案\n\n您的數位分身將立即下線。刪除將於 24 小時內完成。",
+    dsarConfirmPrompt: "輸入 CONFIRM 以繼續，或傳送 /cancel 中止。",
+    dsarCancelled: "已取消。如果您改變主意，請再次傳送 /dsar。",
+    dsarConfirmedTemplate: "已確認。您的數位分身現已下線。審計 ID：{auditId}\n\n所有資料將於 24 小時內刪除。完成後我們將通知您。",
+    dsarError: "目前無法處理 DSAR 請求。如問題持續，請聯繫客服。",
   },
 } as const satisfies Record<Lang, Record<string, unknown>>;
 

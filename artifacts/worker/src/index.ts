@@ -16,6 +16,8 @@ import { eq } from "drizzle-orm";
 import Redis from "ioredis";
 import { handleDlqEvent } from "./dlq-handler.js";
 import { startSlaAlertCron } from "./crons/sla-alert.js";
+import { createDsarDeletionWorker } from "./workers/dsar-deletion.js";
+import type { ProviderRegistry } from "@workspace/queue";
 
 const QUEUE_NAME = "generation-jobs";
 
@@ -157,12 +159,15 @@ worker.on("failed", async (job, err) => {
 const alertRedis = new Redis(REDIS_URL, { lazyConnect: false, maxRetriesPerRequest: null });
 const slaAlertTimer = startSlaAlertCron(alertRedis);
 
+const dsarWorker = createDsarDeletionWorker({} as ProviderRegistry, REDIS_URL);
+
 // ── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown() {
   console.log("[worker] shutting down…");
   clearInterval(slaAlertTimer);
   await alertRedis.quit();
   await worker.close();
+  await dsarWorker.close();
   await queueEvents.close();
   process.exit(0);
 }
