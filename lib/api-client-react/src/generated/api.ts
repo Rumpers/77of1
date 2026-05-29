@@ -23,6 +23,9 @@ import type {
   AuthSession,
   CheckoutInput,
   CheckoutResponse,
+  ConsentInput,
+  ConsentResult,
+  ConsentRevokeResult,
   CreatorLinkParams,
   CreditDeductResult,
   DeductCreditsInput,
@@ -30,6 +33,14 @@ import type {
   FanSignupInput,
   FanSignupResult,
   HealthStatus,
+  KillSwitchInput,
+  KillSwitchResponse,
+  KillSwitchResult,
+  PersonaCreateResponse,
+  PersonaGetResponse,
+  PersonaInput,
+  PersonaPatchInput,
+  PersonaPatchResponse,
   QueueHealth,
   SessionResponse,
   WebhookResponse
@@ -651,5 +662,513 @@ export const useStripeWebhook = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getStripeWebhookMutationOptions(options));
+    }
+
+export const getRevokeConsentUrl = (modalityId: 'text' | 'voice' | 'video' | 'image',) => {
+
+
+
+
+  return `/api/creator/consent/${modalityId}`
+}
+
+/**
+ * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator Replit Auth session.
+
+ * @summary Revoke a consent grant
+ */
+export const revokeConsent = async (modalityId: 'text' | 'voice' | 'video' | 'image', options?: RequestInit): Promise<ConsentRevokeResult> => {
+
+  return customFetch<ConsentRevokeResult>(getRevokeConsentUrl(modalityId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext> => {
+
+const mutationKey = ['revokeConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeConsent>>, {modalityId: 'text' | 'voice' | 'video' | 'image'}> = (props) => {
+          const {modalityId} = props ?? {};
+
+          return  revokeConsent(modalityId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeConsentMutationResult = NonNullable<Awaited<ReturnType<typeof revokeConsent>>>
+
+    export type RevokeConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Revoke a consent grant
+ */
+export const useRevokeConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeConsent>>, TError,{modalityId: 'text' | 'voice' | 'video' | 'image'}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeConsent>>,
+        TError,
+        {modalityId: 'text' | 'voice' | 'video' | 'image'},
+        TContext
+      > => {
+      return useMutation(getRevokeConsentMutationOptions(options));
+    }
+
+export const getTriggerKillSwitchUrl = () => {
+
+
+
+
+  return `/api/creator/kill-switch`
+}
+
+/**
+ * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator Replit Auth session.
+
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const triggerKillSwitch = async ( options?: RequestInit): Promise<KillSwitchResult> => {
+
+  return customFetch<KillSwitchResult>(getTriggerKillSwitchUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerKillSwitchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerKillSwitch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerKillSwitch>>, void> = () => {
+
+
+          return  triggerKillSwitch(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerKillSwitchMutationResult = NonNullable<Awaited<ReturnType<typeof triggerKillSwitch>>>
+
+    export type TriggerKillSwitchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const useTriggerKillSwitch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerKillSwitch>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerKillSwitch>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerKillSwitchMutationOptions(options));
+    }
+
+export const getSubmitConsentUrl = () => {
+
+
+
+
+  return `/api/onboarding/consent`
+}
+
+/**
+ * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator Replit Auth session.
+
+ * @summary Submit Step 3 consent grants
+ */
+export const submitConsent = async (consentInput: ConsentInput, options?: RequestInit): Promise<ConsentResult> => {
+
+  return customFetch<ConsentResult>(getSubmitConsentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      consentInput,)
+  }
+);}
+
+
+
+
+export const getSubmitConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext> => {
+
+const mutationKey = ['submitConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitConsent>>, {data: BodyType<ConsentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitConsentMutationResult = NonNullable<Awaited<ReturnType<typeof submitConsent>>>
+    export type SubmitConsentMutationBody = BodyType<ConsentInput>
+    export type SubmitConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Submit Step 3 consent grants
+ */
+export const useSubmitConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitConsent>>, TError,{data: BodyType<ConsentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitConsent>>,
+        TError,
+        {data: BodyType<ConsentInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitConsentMutationOptions(options));
+    }
+
+export const getGetCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Get creator persona and twin config
+ */
+export const getCreatorPersona = async ( options?: RequestInit): Promise<PersonaGetResponse> => {
+
+  return customFetch<PersonaGetResponse>(getGetCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreatorPersonaQueryKey = () => {
+    return [
+    `/api/creator/persona`
+    ] as const;
+    }
+
+
+export const getGetCreatorPersonaQueryOptions = <TData = Awaited<ReturnType<typeof getCreatorPersona>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreatorPersonaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreatorPersona>>> = ({ signal }) => getCreatorPersona({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreatorPersonaQueryResult = NonNullable<Awaited<ReturnType<typeof getCreatorPersona>>>
+export type GetCreatorPersonaQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get creator persona and twin config
+ */
+
+export function useGetCreatorPersona<TData = Awaited<ReturnType<typeof getCreatorPersona>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreatorPersonaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Create or replace creator persona
+ */
+export const createCreatorPersona = async (personaInput: PersonaInput, options?: RequestInit): Promise<PersonaCreateResponse> => {
+
+  return customFetch<PersonaCreateResponse>(getCreateCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      personaInput,)
+  }
+);}
+
+
+
+
+export const getCreateCreatorPersonaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext> => {
+
+const mutationKey = ['createCreatorPersona'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCreatorPersona>>, {data: BodyType<PersonaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCreatorPersona(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCreatorPersonaMutationResult = NonNullable<Awaited<ReturnType<typeof createCreatorPersona>>>
+    export type CreateCreatorPersonaMutationBody = BodyType<PersonaInput>
+    export type CreateCreatorPersonaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create or replace creator persona
+ */
+export const useCreateCreatorPersona = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCreatorPersona>>,
+        TError,
+        {data: BodyType<PersonaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCreatorPersonaMutationOptions(options));
+    }
+
+export const getUpdateCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Partially update creator persona fields
+ */
+export const updateCreatorPersona = async (personaPatchInput: PersonaPatchInput, options?: RequestInit): Promise<PersonaPatchResponse> => {
+
+  return customFetch<PersonaPatchResponse>(getUpdateCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      personaPatchInput,)
+  }
+);}
+
+
+
+
+export const getUpdateCreatorPersonaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext> => {
+
+const mutationKey = ['updateCreatorPersona'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCreatorPersona>>, {data: BodyType<PersonaPatchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCreatorPersona(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCreatorPersonaMutationResult = NonNullable<Awaited<ReturnType<typeof updateCreatorPersona>>>
+    export type UpdateCreatorPersonaMutationBody = BodyType<PersonaPatchInput>
+    export type UpdateCreatorPersonaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Partially update creator persona fields
+ */
+export const useUpdateCreatorPersona = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCreatorPersona>>,
+        TError,
+        {data: BodyType<PersonaPatchInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateCreatorPersonaMutationOptions(options));
+    }
+
+export const getSetKillSwitchUrl = () => {
+
+
+
+
+  return `/api/creator/twin-config/kill-switch`
+}
+
+/**
+ * Pauses or resumes twin responses within 1 API call.
+ * @summary Enable or disable twin kill switch
+ */
+export const setKillSwitch = async (killSwitchInput: KillSwitchInput, options?: RequestInit): Promise<KillSwitchResponse> => {
+
+  return customFetch<KillSwitchResponse>(getSetKillSwitchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      killSwitchInput,)
+  }
+);}
+
+
+
+
+export const getSetKillSwitchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext> => {
+
+const mutationKey = ['setKillSwitch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setKillSwitch>>, {data: BodyType<KillSwitchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setKillSwitch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetKillSwitchMutationResult = NonNullable<Awaited<ReturnType<typeof setKillSwitch>>>
+    export type SetKillSwitchMutationBody = BodyType<KillSwitchInput>
+    export type SetKillSwitchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Enable or disable twin kill switch
+ */
+export const useSetKillSwitch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setKillSwitch>>,
+        TError,
+        {data: BodyType<KillSwitchInput>},
+        TContext
+      > => {
+      return useMutation(getSetKillSwitchMutationOptions(options));
     }
 

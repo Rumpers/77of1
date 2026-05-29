@@ -132,3 +132,177 @@ export const StripeWebhookResponse = zod.object({
 })
 
 
+/**
+ * Revokes the active consent grant for a specific modality and cancels all pending and processing generation jobs for that grant within ≤60s (PRD §8/§16 SLA). Primary path uses BullMQ; falls back to inline DB sweep if Redis is unavailable. Requires creator Replit Auth session.
+
+ * @summary Revoke a consent grant
+ */
+export const RevokeConsentParams = zod.object({
+  "modalityId": zod.enum(['text', 'voice', 'video', 'image']).describe('The AI modality to revoke consent for')
+})
+
+export const RevokeConsentResponse = zod.object({
+  "ok": zod.boolean(),
+  "modalityId": zod.string(),
+  "consentGrantId": zod.string(),
+  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
+})
+
+
+/**
+ * Cancels ALL pending and processing generation jobs for the creator regardless of modality, within ≤60s SLA (PRD §16). Same pipeline as consent revocation but scoped to the whole creator. Requires creator Replit Auth session.
+
+ * @summary Kill switch — cancel all in-flight jobs
+ */
+export const TriggerKillSwitchResponse = zod.object({
+  "ok": zod.boolean(),
+  "killSwitch": zod.boolean(),
+  "queued": zod.boolean().describe('true if job was enqueued to BullMQ; false if DB fallback was used')
+})
+
+
+/**
+ * Creator submits yes/no for each AI modality. Writes consent_grants rows, transitions creator_assets from pending_consent to released (if persona_text granted), and advances creator_onboarding.status to STEP_3_COMPLETE. Requires creator Replit Auth session.
+
+ * @summary Submit Step 3 consent grants
+ */
+export const SubmitConsentBody = zod.object({
+  "answers": zod.object({
+  "persona_text": zod.boolean(),
+  "voice": zod.boolean(),
+  "image": zod.boolean(),
+  "talking_video": zod.boolean(),
+  "fullbody_video": zod.boolean()
+})
+})
+
+export const SubmitConsentResponse = zod.object({
+  "ok": zod.boolean(),
+  "persona_text_granted": zod.boolean()
+})
+
+
+/**
+ * @summary Get creator persona and twin config
+ */
+export const GetCreatorPersonaResponse = zod.object({
+  "persona": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "creator_id": zod.string(),
+  "greeting_style": zod.string(),
+  "fan_endearment": zod.string(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']),
+  "hard_stops": zod.array(zod.string()),
+  "treatment_style": zod.string(),
+  "personality_traits": zod.array(zod.string()),
+  "message_style": zod.string(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+}),zod.null()]),
+  "twin_config": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "kill_switch": zod.boolean(),
+  "kill_switch_activated_at": zod.coerce.date().nullish(),
+  "updated_at": zod.coerce.date().optional()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Create or replace creator persona
+ */
+export const createCreatorPersonaBodyGreetingStyleMax = 500;
+
+export const createCreatorPersonaBodyFanEndearmentMax = 100;
+
+export const createCreatorPersonaBodyHardStopsItemMax = 200;
+
+export const createCreatorPersonaBodyHardStopsMax = 50;
+
+export const createCreatorPersonaBodyTreatmentStyleMax = 500;
+
+export const createCreatorPersonaBodyPersonalityTraitsItemMax = 100;
+
+export const createCreatorPersonaBodyPersonalityTraitsMax = 20;
+
+export const createCreatorPersonaBodyMessageStyleMax = 500;
+
+
+
+export const CreateCreatorPersonaBody = zod.object({
+  "greeting_style": zod.string().max(createCreatorPersonaBodyGreetingStyleMax).optional(),
+  "fan_endearment": zod.string().max(createCreatorPersonaBodyFanEndearmentMax).optional(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']).optional(),
+  "hard_stops": zod.array(zod.string().max(createCreatorPersonaBodyHardStopsItemMax)).max(createCreatorPersonaBodyHardStopsMax).optional(),
+  "treatment_style": zod.string().max(createCreatorPersonaBodyTreatmentStyleMax).optional(),
+  "personality_traits": zod.array(zod.string().max(createCreatorPersonaBodyPersonalityTraitsItemMax)).max(createCreatorPersonaBodyPersonalityTraitsMax).optional(),
+  "message_style": zod.string().max(createCreatorPersonaBodyMessageStyleMax).optional(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']).optional()
+})
+
+
+/**
+ * @summary Partially update creator persona fields
+ */
+export const updateCreatorPersonaBodyGreetingStyleMax = 500;
+
+export const updateCreatorPersonaBodyFanEndearmentMax = 100;
+
+export const updateCreatorPersonaBodyHardStopsItemMax = 200;
+
+export const updateCreatorPersonaBodyHardStopsMax = 50;
+
+export const updateCreatorPersonaBodyTreatmentStyleMax = 500;
+
+export const updateCreatorPersonaBodyPersonalityTraitsItemMax = 100;
+
+export const updateCreatorPersonaBodyPersonalityTraitsMax = 20;
+
+export const updateCreatorPersonaBodyMessageStyleMax = 500;
+
+
+
+export const UpdateCreatorPersonaBody = zod.object({
+  "greeting_style": zod.string().max(updateCreatorPersonaBodyGreetingStyleMax).optional(),
+  "fan_endearment": zod.string().max(updateCreatorPersonaBodyFanEndearmentMax).optional(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']).optional(),
+  "hard_stops": zod.array(zod.string().max(updateCreatorPersonaBodyHardStopsItemMax)).max(updateCreatorPersonaBodyHardStopsMax).optional(),
+  "treatment_style": zod.string().max(updateCreatorPersonaBodyTreatmentStyleMax).optional(),
+  "personality_traits": zod.array(zod.string().max(updateCreatorPersonaBodyPersonalityTraitsItemMax)).max(updateCreatorPersonaBodyPersonalityTraitsMax).optional(),
+  "message_style": zod.string().max(updateCreatorPersonaBodyMessageStyleMax).optional(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']).optional()
+})
+
+export const UpdateCreatorPersonaResponse = zod.object({
+  "persona": zod.object({
+  "id": zod.string().uuid(),
+  "creator_id": zod.string(),
+  "greeting_style": zod.string(),
+  "fan_endearment": zod.string(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']),
+  "hard_stops": zod.array(zod.string()),
+  "treatment_style": zod.string(),
+  "personality_traits": zod.array(zod.string()),
+  "message_style": zod.string(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})
+})
+
+
+/**
+ * Pauses or resumes twin responses within 1 API call.
+ * @summary Enable or disable twin kill switch
+ */
+export const SetKillSwitchBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const SetKillSwitchResponse = zod.object({
+  "kill_switch": zod.boolean(),
+  "kill_switch_activated_at": zod.coerce.date().nullish()
+})
+
+

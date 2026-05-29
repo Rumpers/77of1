@@ -5,6 +5,21 @@
  * 7of1 API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ConsentRevokeResult {
+  ok: boolean;
+  modalityId: string;
+  consentGrantId: string;
+  /** true if job was enqueued to BullMQ; false if DB fallback was used */
+  queued: boolean;
+}
+
+export interface KillSwitchResult {
+  ok: boolean;
+  killSwitch: boolean;
+  /** true if job was enqueued to BullMQ; false if DB fallback was used */
+  queued: boolean;
+}
+
 export interface HealthStatus {
   status: string;
   service?: string;
@@ -89,6 +104,134 @@ export interface CheckoutResponse {
 
 export interface WebhookResponse {
   received: boolean;
+}
+
+export type ConsentGrantType = typeof ConsentGrantType[keyof typeof ConsentGrantType];
+
+
+export const ConsentGrantType = {
+  persona_text: 'persona_text',
+  voice: 'voice',
+  image: 'image',
+  talking_video: 'talking_video',
+  fullbody_video: 'fullbody_video',
+} as const;
+
+export interface ConsentAnswers {
+  persona_text: boolean;
+  voice: boolean;
+  image: boolean;
+  talking_video: boolean;
+  fullbody_video: boolean;
+}
+
+export interface ConsentInput {
+  answers: ConsentAnswers;
+}
+
+export interface ConsentResult {
+  ok: boolean;
+  persona_text_granted: boolean;
+}
+
+export type EmojiUsage = typeof EmojiUsage[keyof typeof EmojiUsage];
+
+
+export const EmojiUsage = {
+  none: 'none',
+  minimal: 'minimal',
+  moderate: 'moderate',
+  heavy: 'heavy',
+} as const;
+
+export type IntensityLevel = typeof IntensityLevel[keyof typeof IntensityLevel];
+
+
+export const IntensityLevel = {
+  warm: 'warm',
+  intimate: 'intimate',
+  explicit: 'explicit',
+} as const;
+
+export interface Persona {
+  id: string;
+  creator_id: string;
+  greeting_style: string;
+  fan_endearment: string;
+  emoji_usage: EmojiUsage;
+  hard_stops: string[];
+  treatment_style: string;
+  personality_traits: string[];
+  message_style: string;
+  intensity_level: IntensityLevel;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TwinConfigSummary {
+  id: string;
+  kill_switch: boolean;
+  /** @nullable */
+  kill_switch_activated_at?: string | null;
+  updated_at?: string;
+}
+
+export interface PersonaInput {
+  /** @maxLength 500 */
+  greeting_style?: string;
+  /** @maxLength 100 */
+  fan_endearment?: string;
+  emoji_usage?: EmojiUsage;
+  /** @maxItems 50 */
+  hard_stops?: string[];
+  /** @maxLength 500 */
+  treatment_style?: string;
+  /** @maxItems 20 */
+  personality_traits?: string[];
+  /** @maxLength 500 */
+  message_style?: string;
+  intensity_level?: IntensityLevel;
+}
+
+export interface PersonaPatchInput {
+  /** @maxLength 500 */
+  greeting_style?: string;
+  /** @maxLength 100 */
+  fan_endearment?: string;
+  emoji_usage?: EmojiUsage;
+  /** @maxItems 50 */
+  hard_stops?: string[];
+  /** @maxLength 500 */
+  treatment_style?: string;
+  /** @maxItems 20 */
+  personality_traits?: string[];
+  /** @maxLength 500 */
+  message_style?: string;
+  intensity_level?: IntensityLevel;
+}
+
+export interface PersonaGetResponse {
+  persona: Persona | null;
+  twin_config: TwinConfigSummary | null;
+}
+
+export interface PersonaCreateResponse {
+  persona: Persona;
+  twin_config: TwinConfigSummary;
+}
+
+export interface PersonaPatchResponse {
+  persona: Persona;
+}
+
+export interface KillSwitchInput {
+  enabled: boolean;
+}
+
+export interface KillSwitchResponse {
+  kill_switch: boolean;
+  /** @nullable */
+  kill_switch_activated_at?: string | null;
 }
 
 export interface ErrorResponse {
