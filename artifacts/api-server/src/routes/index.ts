@@ -15,6 +15,7 @@ import accountRouter from "./account.js";
 import emailWebhooksRouter from "./email-webhooks.js";
 import dsarRouter from "./dsar.js";
 import reportsRouter from "./reports.js";
+import taxRouter from "./tax.js";
 import linksRouter from "./links.js";
 import oauthRouter from "./oauth.js";
 
@@ -37,6 +38,7 @@ router.use(dsarRouter);
 // Email webhook must be before express.json() middleware — see email-webhooks.ts
 router.use(emailWebhooksRouter);
 router.use(reportsRouter);
+router.use(taxRouter);
 router.use(oauthRouter);
 // Link tracker last — /:handle catches all unmatched GET paths
 router.use(linksRouter);

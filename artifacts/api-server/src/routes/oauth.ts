@@ -135,7 +135,7 @@ async function exchangeCodeForTokens(
 // Redirects the creator to the external OAuth authorization page.
 // Requires creator to be authenticated (Supabase cookie).
 router.get("/oauth/:platform/connect", requireCreatorAuth, (req: Request, res: Response) => {
-  const platform = parsePlatform(req.params.platform ?? "");
+  const platform = parsePlatform((req.params["platform"] ?? "") as string);
   if (!platform) {
     res.status(400).json({ error: "Unsupported platform" });
     return;
@@ -161,7 +161,7 @@ router.get("/oauth/:platform/connect", requireCreatorAuth, (req: Request, res: R
 // Handles the redirect from the external OAuth provider.
 // Verifies state, exchanges code for tokens, stores encrypted tokens.
 router.get("/oauth/:platform/callback", async (req: Request, res: Response) => {
-  const platform = parsePlatform(req.params.platform ?? "");
+  const platform = parsePlatform((req.params["platform"] ?? "") as string);
   if (!platform) {
     res.status(400).send("Unsupported platform");
     return;
@@ -229,7 +229,7 @@ router.get("/oauth/:platform/callback", async (req: Request, res: Response) => {
 // GET /api/oauth/:platform/status
 // Returns connection status for the authenticated creator (no token values exposed).
 router.get("/oauth/:platform/status", requireCreatorAuth, async (req: Request, res: Response) => {
-  const platform = parsePlatform(req.params.platform ?? "");
+  const platform = parsePlatform((req.params["platform"] ?? "") as string);
   if (!platform) {
     res.status(400).json({ error: "Unsupported platform" });
     return;
@@ -248,7 +248,7 @@ router.get("/oauth/:platform/status", requireCreatorAuth, async (req: Request, r
 // DELETE /api/oauth/:platform
 // Revokes and deletes stored tokens for the authenticated creator.
 router.delete("/oauth/:platform", requireCreatorAuth, async (req: Request, res: Response) => {
-  const platform = parsePlatform(req.params.platform ?? "");
+  const platform = parsePlatform((req.params["platform"] ?? "") as string);
   if (!platform) {
     res.status(400).json({ error: "Unsupported platform" });
     return;

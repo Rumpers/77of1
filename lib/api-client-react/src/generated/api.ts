@@ -27,7 +27,9 @@ import type {
   ConsentInput,
   ConsentResult,
   ConsentRevokeResult,
+  CreatePaymentIntentInput,
   CreatorNotifications,
+  CreditBalanceResult,
   CreditDeductResult,
   DeductCreditsInput,
   DismissNotificationResult,
@@ -43,8 +45,11 @@ import type {
   FanRecoverIdResult,
   FanRecoverInput,
   FanRecoverResult,
+  GetCreditBalanceParams,
   GetDunningMetricsParams,
   HealthStatus,
+  KillSwitchInput,
+  KillSwitchResponse,
   KillSwitchResult,
   KycIdentityInput,
   KycInitiateSigningInput,
@@ -60,7 +65,12 @@ import type {
   OAuthStatusResult,
   OauthCallbackParams,
   OkResponse,
+  PaymentIntentResult,
+  PersonaCreateResponse,
+  PersonaGetResponse,
   PersonaInput,
+  PersonaPatchInput,
+  PersonaPatchResponse,
   PersonaResult,
   QueueHealth,
   RefundDecisionInput,
@@ -3625,4 +3635,523 @@ export function useGetDunningMetrics<TData = Awaited<ReturnType<typeof getDunnin
 
 
 
+
+export const getGetCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Get creator persona and twin config
+ */
+export const getCreatorPersona = async ( options?: RequestInit): Promise<PersonaGetResponse> => {
+
+  return customFetch<PersonaGetResponse>(getGetCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreatorPersonaQueryKey = () => {
+    return [
+    `/api/creator/persona`
+    ] as const;
+    }
+
+
+export const getGetCreatorPersonaQueryOptions = <TData = Awaited<ReturnType<typeof getCreatorPersona>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreatorPersonaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreatorPersona>>> = ({ signal }) => getCreatorPersona({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreatorPersonaQueryResult = NonNullable<Awaited<ReturnType<typeof getCreatorPersona>>>
+export type GetCreatorPersonaQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get creator persona and twin config
+ */
+
+export function useGetCreatorPersona<TData = Awaited<ReturnType<typeof getCreatorPersona>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreatorPersona>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreatorPersonaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Create or replace creator persona
+ */
+export const createCreatorPersona = async (personaInput: PersonaInput, options?: RequestInit): Promise<PersonaCreateResponse> => {
+
+  return customFetch<PersonaCreateResponse>(getCreateCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      personaInput,)
+  }
+);}
+
+
+
+
+export const getCreateCreatorPersonaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext> => {
+
+const mutationKey = ['createCreatorPersona'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCreatorPersona>>, {data: BodyType<PersonaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCreatorPersona(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCreatorPersonaMutationResult = NonNullable<Awaited<ReturnType<typeof createCreatorPersona>>>
+    export type CreateCreatorPersonaMutationBody = BodyType<PersonaInput>
+    export type CreateCreatorPersonaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create or replace creator persona
+ */
+export const useCreateCreatorPersona = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCreatorPersona>>, TError,{data: BodyType<PersonaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCreatorPersona>>,
+        TError,
+        {data: BodyType<PersonaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCreatorPersonaMutationOptions(options));
+    }
+
+export const getUpdateCreatorPersonaUrl = () => {
+
+
+
+
+  return `/api/creator/persona`
+}
+
+/**
+ * @summary Partially update creator persona fields
+ */
+export const updateCreatorPersona = async (personaPatchInput: PersonaPatchInput, options?: RequestInit): Promise<PersonaPatchResponse> => {
+
+  return customFetch<PersonaPatchResponse>(getUpdateCreatorPersonaUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      personaPatchInput,)
+  }
+);}
+
+
+
+
+export const getUpdateCreatorPersonaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext> => {
+
+const mutationKey = ['updateCreatorPersona'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCreatorPersona>>, {data: BodyType<PersonaPatchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCreatorPersona(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCreatorPersonaMutationResult = NonNullable<Awaited<ReturnType<typeof updateCreatorPersona>>>
+    export type UpdateCreatorPersonaMutationBody = BodyType<PersonaPatchInput>
+    export type UpdateCreatorPersonaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Partially update creator persona fields
+ */
+export const useUpdateCreatorPersona = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCreatorPersona>>, TError,{data: BodyType<PersonaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCreatorPersona>>,
+        TError,
+        {data: BodyType<PersonaPatchInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateCreatorPersonaMutationOptions(options));
+    }
+
+export const getSetKillSwitchUrl = () => {
+
+
+
+
+  return `/api/creator/twin-config/kill-switch`
+}
+
+/**
+ * Pauses or resumes twin responses within 1 API call.
+ * @summary Enable or disable twin kill switch
+ */
+export const setKillSwitch = async (killSwitchInput: KillSwitchInput, options?: RequestInit): Promise<KillSwitchResponse> => {
+
+  return customFetch<KillSwitchResponse>(getSetKillSwitchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      killSwitchInput,)
+  }
+);}
+
+
+
+
+export const getSetKillSwitchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext> => {
+
+const mutationKey = ['setKillSwitch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setKillSwitch>>, {data: BodyType<KillSwitchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setKillSwitch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetKillSwitchMutationResult = NonNullable<Awaited<ReturnType<typeof setKillSwitch>>>
+    export type SetKillSwitchMutationBody = BodyType<KillSwitchInput>
+    export type SetKillSwitchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Enable or disable twin kill switch
+ */
+export const useSetKillSwitch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setKillSwitch>>, TError,{data: BodyType<KillSwitchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setKillSwitch>>,
+        TError,
+        {data: BodyType<KillSwitchInput>},
+        TContext
+      > => {
+      return useMutation(getSetKillSwitchMutationOptions(options));
+    }
+
+export const getGetCreditBalanceUrl = (params: GetCreditBalanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/credits/balance?${stringifiedParams}` : `/api/credits/balance`
+}
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const getCreditBalance = async (params: GetCreditBalanceParams, options?: RequestInit): Promise<CreditBalanceResult> => {
+
+  return customFetch<CreditBalanceResult>(getGetCreditBalanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditBalanceQueryKey = (params?: GetCreditBalanceParams,) => {
+    return [
+    `/api/credits/balance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCreditBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditBalanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditBalance>>> = ({ signal }) => getCreditBalance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditBalance>>>
+export type GetCreditBalanceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get fan credit balance
+ */
+
+export function useGetCreditBalance<TData = Awaited<ReturnType<typeof getCreditBalance>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCreditBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditBalanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePaymentIntentUrl = () => {
+
+
+
+
+  return `/api/payments/create-payment-intent`
+}
+
+/**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const createPaymentIntent = async (createPaymentIntentInput: CreatePaymentIntentInput, options?: RequestInit): Promise<PaymentIntentResult> => {
+
+  return customFetch<PaymentIntentResult>(getCreatePaymentIntentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createPaymentIntentInput,)
+  }
+);}
+
+
+
+
+export const getCreatePaymentIntentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext> => {
+
+const mutationKey = ['createPaymentIntent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPaymentIntent>>, {data: BodyType<CreatePaymentIntentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPaymentIntent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createPaymentIntent>>>
+    export type CreatePaymentIntentMutationBody = BodyType<CreatePaymentIntentInput>
+    export type CreatePaymentIntentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create Stripe PaymentIntent
+ */
+export const useCreatePaymentIntent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPaymentIntent>>, TError,{data: BodyType<CreatePaymentIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPaymentIntent>>,
+        TError,
+        {data: BodyType<CreatePaymentIntentInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePaymentIntentMutationOptions(options));
+    }
+
+export const getPaymentsWebhookUrl = () => {
+
+
+
+
+  return `/api/payments/webhook`
+}
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const paymentsWebhook = async ( options?: RequestInit): Promise<WebhookResponse> => {
+
+  return customFetch<WebhookResponse>(getPaymentsWebhookUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPaymentsWebhookMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext> => {
+
+const mutationKey = ['paymentsWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof paymentsWebhook>>, void> = () => {
+
+
+          return  paymentsWebhook(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PaymentsWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof paymentsWebhook>>>
+
+    export type PaymentsWebhookMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Stripe PaymentIntent webhook
+ */
+export const usePaymentsWebhook = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paymentsWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof paymentsWebhook>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPaymentsWebhookMutationOptions(options));
+    }
 

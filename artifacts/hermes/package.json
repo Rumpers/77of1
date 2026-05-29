@@ -16,7 +16,6 @@
     "@workspace/queue": "workspace:*",
     "bullmq": "^5.56.1",
     "drizzle-orm": "catalog:",
-    "kysely": "^0.27.6",
     "pg": "^8.20.0",
     "telegraf": "^4.16.3"
   },

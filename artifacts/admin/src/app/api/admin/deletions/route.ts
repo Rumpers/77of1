@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch deletion requests' }, { status: 500 });
   }
 
-  const rows = (data ?? []).map((row) => ({
+  const rows = ((data ?? []) as any[]).map((row) => ({
     ...row,
     sla_status: deriveSlaStatus(row as Parameters<typeof deriveSlaStatus>[0]),
   }));

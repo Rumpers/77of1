@@ -261,7 +261,9 @@ export async function POST(
   const newStatus =
     overall === 'verified' && row.status !== 'complete' ? 'complete' : row.status;
 
-  const { error: updateErr } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dbAny = db as any;
+  const { error: updateErr } = await dbAny
     .from('deletion_requests')
     .update({
       verification_result: verificationResult,

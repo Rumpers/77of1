@@ -586,6 +586,106 @@ export interface KycTaxFormInput {
   storagePath: string;
 }
 
+export type EmojiUsage = typeof EmojiUsage[keyof typeof EmojiUsage];
+
+
+export const EmojiUsage = {
+  none: 'none',
+  minimal: 'minimal',
+  moderate: 'moderate',
+  heavy: 'heavy',
+} as const;
+
+export type IntensityLevel = typeof IntensityLevel[keyof typeof IntensityLevel];
+
+
+export const IntensityLevel = {
+  warm: 'warm',
+  intimate: 'intimate',
+  explicit: 'explicit',
+} as const;
+
+export interface PersonaPatchInput {
+  /** @maxLength 500 */
+  greeting_style?: string;
+  /** @maxLength 100 */
+  fan_endearment?: string;
+  emoji_usage?: EmojiUsage;
+  /** @maxItems 50 */
+  hard_stops?: string[];
+  /** @maxLength 500 */
+  treatment_style?: string;
+  /** @maxItems 20 */
+  personality_traits?: string[];
+  /** @maxLength 500 */
+  message_style?: string;
+  intensity_level?: IntensityLevel;
+}
+
+export interface Persona {
+  id: string;
+  creator_id: string;
+  greeting_style: string;
+  fan_endearment: string;
+  emoji_usage: EmojiUsage;
+  hard_stops: string[];
+  treatment_style: string;
+  personality_traits: string[];
+  message_style: string;
+  intensity_level: IntensityLevel;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TwinConfigSummary {
+  id: string;
+  kill_switch: boolean;
+  /** @nullable */
+  kill_switch_activated_at?: string | null;
+  updated_at?: string;
+}
+
+export interface PersonaGetResponse {
+  persona: Persona | null;
+  twin_config: TwinConfigSummary | null;
+}
+
+export interface PersonaCreateResponse {
+  persona: Persona;
+  twin_config: TwinConfigSummary;
+}
+
+export interface PersonaPatchResponse {
+  persona: Persona;
+}
+
+export interface KillSwitchInput {
+  enabled: boolean;
+}
+
+export interface KillSwitchResponse {
+  kill_switch: boolean;
+  /** @nullable */
+  kill_switch_activated_at?: string | null;
+}
+
+export interface CreatePaymentIntentInput {
+  fanId: string;
+  creatorId: string;
+  packId: string;
+}
+
+export interface PaymentIntentResult {
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
+export interface CreditBalanceResult {
+  balance: number;
+  fanId: string;
+  creatorId: string;
+}
+
 export type UploadAssetsBody = {
   files: Blob[];
 };
@@ -631,4 +731,9 @@ export const GetDunningMetricsWindow = {
   '30d': '30d',
   '90d': '90d',
 } as const;
+
+export type GetCreditBalanceParams = {
+fanId: string;
+creatorId: string;
+};
 

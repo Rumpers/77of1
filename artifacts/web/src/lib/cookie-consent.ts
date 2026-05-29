@@ -151,6 +151,7 @@ function _loadPostHog(): void {
   if (!key) return;
 
   // Dynamic import avoids bundling posthog-js unless actually needed
+  // @ts-expect-error posthog-js is an optional runtime dep; omit from devDependencies to disable
   import("posthog-js")
     .then(({ default: posthog }) => {
       posthog.init(key, {

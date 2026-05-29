@@ -146,6 +146,7 @@ export default function DashboardSecurity() {
   const [setupBusy, setSetupBusy] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
 
   // Disable flow
   const [disableStep, setDisableStep] = useState<DisableStep>("idle");

@@ -747,3 +747,146 @@ export const GetDunningMetricsResponse = zod.object({
 })
 
 
+/**
+ * @summary Get creator persona and twin config
+ */
+export const GetCreatorPersonaResponse = zod.object({
+  "persona": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "creator_id": zod.string(),
+  "greeting_style": zod.string(),
+  "fan_endearment": zod.string(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']),
+  "hard_stops": zod.array(zod.string()),
+  "treatment_style": zod.string(),
+  "personality_traits": zod.array(zod.string()),
+  "message_style": zod.string(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+}),zod.null()]),
+  "twin_config": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "kill_switch": zod.boolean(),
+  "kill_switch_activated_at": zod.coerce.date().nullish(),
+  "updated_at": zod.coerce.date().optional()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Create or replace creator persona
+ */
+export const CreateCreatorPersonaBody = zod.object({
+  "responses": zod.array(zod.object({
+  "prompt": zod.string(),
+  "answer": zod.string()
+}))
+})
+
+
+/**
+ * @summary Partially update creator persona fields
+ */
+export const updateCreatorPersonaBodyGreetingStyleMax = 500;
+
+export const updateCreatorPersonaBodyFanEndearmentMax = 100;
+
+export const updateCreatorPersonaBodyHardStopsItemMax = 200;
+
+export const updateCreatorPersonaBodyHardStopsMax = 50;
+
+export const updateCreatorPersonaBodyTreatmentStyleMax = 500;
+
+export const updateCreatorPersonaBodyPersonalityTraitsItemMax = 100;
+
+export const updateCreatorPersonaBodyPersonalityTraitsMax = 20;
+
+export const updateCreatorPersonaBodyMessageStyleMax = 500;
+
+
+
+export const UpdateCreatorPersonaBody = zod.object({
+  "greeting_style": zod.string().max(updateCreatorPersonaBodyGreetingStyleMax).optional(),
+  "fan_endearment": zod.string().max(updateCreatorPersonaBodyFanEndearmentMax).optional(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']).optional(),
+  "hard_stops": zod.array(zod.string().max(updateCreatorPersonaBodyHardStopsItemMax)).max(updateCreatorPersonaBodyHardStopsMax).optional(),
+  "treatment_style": zod.string().max(updateCreatorPersonaBodyTreatmentStyleMax).optional(),
+  "personality_traits": zod.array(zod.string().max(updateCreatorPersonaBodyPersonalityTraitsItemMax)).max(updateCreatorPersonaBodyPersonalityTraitsMax).optional(),
+  "message_style": zod.string().max(updateCreatorPersonaBodyMessageStyleMax).optional(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']).optional()
+})
+
+export const UpdateCreatorPersonaResponse = zod.object({
+  "persona": zod.object({
+  "id": zod.string().uuid(),
+  "creator_id": zod.string(),
+  "greeting_style": zod.string(),
+  "fan_endearment": zod.string(),
+  "emoji_usage": zod.enum(['none', 'minimal', 'moderate', 'heavy']),
+  "hard_stops": zod.array(zod.string()),
+  "treatment_style": zod.string(),
+  "personality_traits": zod.array(zod.string()),
+  "message_style": zod.string(),
+  "intensity_level": zod.enum(['warm', 'intimate', 'explicit']),
+  "created_at": zod.coerce.date(),
+  "updated_at": zod.coerce.date()
+})
+})
+
+
+/**
+ * Pauses or resumes twin responses within 1 API call.
+ * @summary Enable or disable twin kill switch
+ */
+export const SetKillSwitchBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const SetKillSwitchResponse = zod.object({
+  "kill_switch": zod.boolean(),
+  "kill_switch_activated_at": zod.coerce.date().nullish()
+})
+
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const GetCreditBalanceQueryParams = zod.object({
+  "fanId": zod.coerce.string(),
+  "creatorId": zod.coerce.string()
+})
+
+export const GetCreditBalanceResponse = zod.object({
+  "balance": zod.number(),
+  "fanId": zod.string(),
+  "creatorId": zod.string()
+})
+
+
+/**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const CreatePaymentIntentBody = zod.object({
+  "fanId": zod.string(),
+  "creatorId": zod.string(),
+  "packId": zod.string()
+})
+
+export const CreatePaymentIntentResponse = zod.object({
+  "clientSecret": zod.string(),
+  "paymentIntentId": zod.string()
+})
+
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const PaymentsWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+

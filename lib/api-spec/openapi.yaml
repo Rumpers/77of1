@@ -22,6 +22,8 @@ tags:
     description: Creator onboarding operations
   - name: creator
     description: Creator management and consent operations
+  - name: persona
+    description: Creator persona setup and twin configuration
   - name: kyc
     description: Creator KYC and tax-form intake (OF-124, HID-062)
   - name: subscriptions
@@ -1635,6 +1637,248 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /creator/persona:
+    get:
+      operationId: getCreatorPersona
+      tags: [persona]
+      summary: Get creator persona and twin config
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Persona and twin config (null if not configured)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaGetResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createCreatorPersona
+      tags: [persona]
+      summary: Create or replace creator persona
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonaInput"
+      responses:
+        "201":
+          description: Persona created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaCreateResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCreatorPersona
+      tags: [persona]
+      summary: Partially update creator persona fields
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonaPatchInput"
+      responses:
+        "200":
+          description: Persona updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaPatchResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No persona configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /creator/twin-config/kill-switch:
+    post:
+      operationId: setKillSwitch
+      tags: [persona]
+      summary: Enable or disable twin kill switch
+      description: Pauses or resumes twin responses within 1 API call.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KillSwitchInput"
+      responses:
+        "200":
+          description: Kill switch state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KillSwitchResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /credits/balance:
+    get:
+      operationId: getCreditBalance
+      tags: [credits]
+      summary: Get fan credit balance
+      description: Returns the fan's total remaining credits across all purchased packs
+      parameters:
+        - name: fanId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: creatorId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Balance returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditBalanceResult"
+        "400":
+          description: Missing required query params
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Fan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/create-payment-intent:
+    post:
+      operationId: createPaymentIntent
+      tags: [payments]
+      summary: Create Stripe PaymentIntent
+      description: Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentIntentInput"
+      responses:
+        "200":
+          description: PaymentIntent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentIntentResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pack not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Stripe or DB not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/webhook:
+    post:
+      operationId: paymentsWebhook
+      tags: [payments]
+      summary: Stripe PaymentIntent webhook
+      description: Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Invalid signature or missing header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     # ── Shared primitives ───────────────────────────────────────────────────
@@ -2599,3 +2843,201 @@ components:
       required:
         - taxFormType
         - storagePath
+
+    PersonaPatchInput:
+      type: object
+      properties:
+        greeting_style:
+          type: string
+          maxLength: 500
+        fan_endearment:
+          type: string
+          maxLength: 100
+        emoji_usage:
+          $ref: "#/components/schemas/EmojiUsage"
+        hard_stops:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+          maxItems: 50
+        treatment_style:
+          type: string
+          maxLength: 500
+        personality_traits:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+          maxItems: 20
+        message_style:
+          type: string
+          maxLength: 500
+        intensity_level:
+          $ref: "#/components/schemas/IntensityLevel"
+
+    PersonaGetResponse:
+      type: object
+      properties:
+        persona:
+          oneOf:
+            - $ref: "#/components/schemas/Persona"
+            - type: "null"
+        twin_config:
+          oneOf:
+            - $ref: "#/components/schemas/TwinConfigSummary"
+            - type: "null"
+      required:
+        - persona
+        - twin_config
+
+    PersonaCreateResponse:
+      type: object
+      properties:
+        persona:
+          $ref: "#/components/schemas/Persona"
+        twin_config:
+          $ref: "#/components/schemas/TwinConfigSummary"
+      required:
+        - persona
+        - twin_config
+
+    PersonaPatchResponse:
+      type: object
+      properties:
+        persona:
+          $ref: "#/components/schemas/Persona"
+      required:
+        - persona
+
+    TwinConfigSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kill_switch:
+          type: boolean
+        kill_switch_activated_at:
+          type: ["string", "null"]
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - kill_switch
+
+    KillSwitchInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    KillSwitchResponse:
+      type: object
+      properties:
+        kill_switch:
+          type: boolean
+        kill_switch_activated_at:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - kill_switch
+
+    CreatePaymentIntentInput:
+      type: object
+      properties:
+        fanId:
+          type: string
+        creatorId:
+          type: string
+        packId:
+          type: string
+      required:
+        - fanId
+        - creatorId
+        - packId
+
+    PaymentIntentResult:
+      type: object
+      properties:
+        clientSecret:
+          type: string
+        paymentIntentId:
+          type: string
+      required:
+        - clientSecret
+        - paymentIntentId
+
+    CreditBalanceResult:
+      type: object
+      properties:
+        balance:
+          type: integer
+        fanId:
+          type: string
+        creatorId:
+          type: string
+      required:
+        - balance
+        - fanId
+        - creatorId
+
+    EmojiUsage:
+      type: string
+      enum: [none, minimal, moderate, heavy]
+
+    IntensityLevel:
+      type: string
+      enum: [warm, intimate, explicit]
+
+    Persona:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+        greeting_style:
+          type: string
+        fan_endearment:
+          type: string
+        emoji_usage:
+          $ref: "#/components/schemas/EmojiUsage"
+        hard_stops:
+          type: array
+          items:
+            type: string
+        treatment_style:
+          type: string
+        personality_traits:
+          type: array
+          items:
+            type: string
+        message_style:
+          type: string
+        intensity_level:
+          $ref: "#/components/schemas/IntensityLevel"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - creator_id
+        - greeting_style
+        - fan_endearment
+        - emoji_usage
+        - hard_stops
+        - treatment_style
+        - personality_traits
+        - message_style
+        - intensity_level
+        - created_at
+        - updated_at
