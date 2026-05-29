@@ -53,7 +53,7 @@ function composeCardBody(card: CharacterCardV2): string {
 function composePersonaStyle(persona: Persona): string | null {
   const parts: string[] = [];
   if (persona.greetingStyle) parts.push(`Greeting style: ${persona.greetingStyle}`);
-  if (persona.fanTerms) parts.push(`Address fans as: ${persona.fanTerms}`);
+  if (persona.fanEndearment) parts.push(`Address fans as: ${persona.fanEndearment}`);
   if (persona.emojiUsage) parts.push(`Emoji usage: ${persona.emojiUsage}`);
   if (persona.treatmentStyle) parts.push(`Treatment style: ${persona.treatmentStyle}`);
   if (persona.messageStyle) parts.push(`Message style: ${persona.messageStyle}`);

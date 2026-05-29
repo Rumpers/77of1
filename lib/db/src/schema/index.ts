@@ -15,7 +15,6 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-<<<<<<< HEAD
 // ─── Re-exports ──────────────────────────────────────────────────────────────
 // Character Card V2 Zod schema + type (PERSONA-01). Persona spec stored in
 // twins.character_card JSONB — see ./character-card.ts.
@@ -592,63 +591,56 @@ export type Message = typeof messagesTable.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 // ─── Table: personas ─────────────────────────────────────────────────────────
-// Per-creator persona configuration: tone, language style, fan relationship terms.
-// One row per creator (unique constraint). bounds/traits are flexible JSONB blobs.
+// Per-creator persona configuration: 7-field OFA-11 config + intensity dial.
+
+export const EmojiUsage = z.enum(["none", "minimal", "moderate", "heavy"]);
+export const IntensityLevel = z.enum(["warm", "intimate", "explicit"]);
 
 export const personasTable = pgTable("personas", {
   id: uuid("id").primaryKey().defaultRandom(),
-  creatorId: uuid("creator_id")
-    .notNull()
-    .unique()
-    .references(() => creatorsTable.id, { onDelete: "cascade" }),
-  greetingStyle: text("greeting_style"),
-  fanTerms: text("fan_terms"),
-  emojiUsage: text("emoji_usage"),
-  bounds: jsonb("bounds"),
-  treatmentStyle: text("treatment_style"),
-  traits: jsonb("traits"),
-  messageStyle: text("message_style"),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdateFn(() => new Date()),
+  creatorId: text("creator_id").notNull(),
+  greetingStyle: text("greeting_style").notNull().default(""),
+  fanEndearment: text("fan_endearment").notNull().default("fan"),
+  emojiUsage: text("emoji_usage").notNull().default("minimal"),
+  hardStops: jsonb("hard_stops").notNull().default([]),
+  treatmentStyle: text("treatment_style").notNull().default(""),
+  personalityTraits: jsonb("personality_traits").notNull().default([]),
+  messageStyle: text("message_style").notNull().default(""),
+  intensityLevel: text("intensity_level").notNull().default("warm"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertPersonaSchema = createInsertSchema(personasTable).omit({
   id: true,
+  createdAt: true,
   updatedAt: true,
 });
 export type Persona = typeof personasTable.$inferSelect;
 export type InsertPersona = z.infer<typeof insertPersonaSchema>;
 
 // ─── Table: twin_configs ──────────────────────────────────────────────────────
-// Per-creator AI twin behaviour config: locale allowlist, response length cap,
-// enabled modalities, and outbound moderation flag.
-// One row per creator (unique constraint). outbound_mod_enabled defaults true
-// — moderation must be explicitly disabled, never silently off.
+// Per-creator AI twin behaviour config: kill switch, active persona FK, locale
+// allowlist, response length cap, enabled modalities, outbound moderation flag.
 
 export const twinConfigsTable = pgTable("twin_configs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  creatorId: uuid("creator_id")
-    .notNull()
-    .unique()
-    .references(() => creatorsTable.id, { onDelete: "cascade" }),
+  creatorId: text("creator_id").notNull().unique(),
+  personaId: uuid("persona_id").references(() => personasTable.id, { onDelete: "set null" }),
+  killSwitch: boolean("kill_switch").notNull().default(false),
+  killSwitchActivatedAt: timestamp("kill_switch_activated_at", { withTimezone: true }),
   allowedLocales: text("allowed_locales").array().notNull().default(["en"]),
-  responseLength: varchar("response_length", { length: 50 })
-    .notNull()
-    .default("medium"),
+  responseLength: varchar("response_length", { length: 50 }).notNull().default("medium"),
   modalities: text("modalities").array().notNull().default(["text"]),
   outboundModEnabled: boolean("outbound_mod_enabled").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertTwinConfigSchema = createInsertSchema(
-  twinConfigsTable
-).omit({ id: true, createdAt: true });
+export const insertTwinConfigSchema = createInsertSchema(twinConfigsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type TwinConfig = typeof twinConfigsTable.$inferSelect;
 export type InsertTwinConfig = z.infer<typeof insertTwinConfigSchema>;
-=======
-export * from "./personas.js";
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)

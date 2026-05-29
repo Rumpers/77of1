@@ -52,6 +52,12 @@ CREATE TABLE IF NOT EXISTS twin_configs (
   kill_switch               BOOLEAN     NOT NULL DEFAULT false,
   kill_switch_activated_at  TIMESTAMPTZ,
 
+  -- Twin behaviour config (locale, response length, modalities, moderation)
+  allowed_locales           TEXT[]      NOT NULL DEFAULT ARRAY['en'],
+  response_length           VARCHAR(50) NOT NULL DEFAULT 'medium',
+  modalities                TEXT[]      NOT NULL DEFAULT ARRAY['text'],
+  outbound_mod_enabled      BOOLEAN     NOT NULL DEFAULT true,
+
   created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 );

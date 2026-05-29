@@ -473,23 +473,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-<<<<<<< HEAD
-  /kyc/status:
-    get:
-      operationId: getKycStatus
-      tags: [kyc]
-      summary: Get KYC status
-      description: Returns the current KYC gate status for the authenticated creator.
-      responses:
-        "200":
-          description: KYC status
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/KycStatusResponse"
-        "401":
-          description: Not authenticated
-=======
   /creator/persona:
     get:
       operationId: getCreatorPersona
@@ -506,58 +489,27 @@ paths:
                 $ref: "#/components/schemas/PersonaGetResponse"
         "401":
           description: Unauthorized
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-<<<<<<< HEAD
-        "403":
-          description: Not a creator account
-=======
         "503":
           description: Database not configured
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-<<<<<<< HEAD
-
-  /kyc/upload-url:
-    post:
-      operationId: getKycUploadUrl
-      tags: [kyc]
-      summary: Get signed upload URL
-      description: >
-        Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket.
-        Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form
-        with the returned storagePath.
-=======
     post:
       operationId: createCreatorPersona
       tags: [persona]
       summary: Create or replace creator persona
       security:
         - cookieAuth: []
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-<<<<<<< HEAD
-              $ref: "#/components/schemas/KycUploadUrlInput"
-      responses:
-        "200":
-          description: Signed upload URL
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/KycUploadUrlResponse"
-        "400":
-          description: Invalid fileType or mimeType
-=======
               $ref: "#/components/schemas/PersonaInput"
       responses:
         "201":
@@ -568,32 +520,16 @@ paths:
                 $ref: "#/components/schemas/PersonaCreateResponse"
         "400":
           description: Validation error
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-<<<<<<< HEAD
-          description: Not authenticated
-=======
           description: Unauthorized
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-<<<<<<< HEAD
-
-  /kyc/identity:
-    post:
-      operationId: submitKycIdentity
-      tags: [kyc]
-      summary: Submit identity document reference
-      description: >
-        Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url),
-        then submits the storagePath here to advance to id_submitted status.
-=======
         "503":
           description: Database not configured
           content:
@@ -606,24 +542,11 @@ paths:
       summary: Partially update creator persona fields
       security:
         - cookieAuth: []
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-<<<<<<< HEAD
-              $ref: "#/components/schemas/KycIdentityInput"
-      responses:
-        "200":
-          description: Identity doc recorded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/KycOkResponse"
-        "400":
-          description: Missing or invalid fields
-=======
               $ref: "#/components/schemas/PersonaPatchInput"
       responses:
         "200":
@@ -634,15 +557,11 @@ paths:
                 $ref: "#/components/schemas/PersonaPatchResponse"
         "400":
           description: Validation error
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-<<<<<<< HEAD
-          description: Not authenticated
-=======
           description: Unauthorized
           content:
             application/json:
@@ -656,20 +575,11 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Database not configured
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-<<<<<<< HEAD
-  /kyc/initiate-signing:
-    post:
-      operationId: initiateKycSigning
-      tags: [kyc]
-      summary: Initiate personality-rights e-signature
-      description: Creates a SignWell document for the creator to sign their personality-rights agreement.
-=======
   /creator/twin-config/kill-switch:
     post:
       operationId: setKillSwitch
@@ -678,24 +588,11 @@ paths:
       description: Pauses or resumes twin responses within 1 API call.
       security:
         - cookieAuth: []
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-<<<<<<< HEAD
-              $ref: "#/components/schemas/KycInitiateSigningInput"
-      responses:
-        "200":
-          description: Signing URL returned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/KycSigningResponse"
-        "400":
-          description: Identity doc not yet submitted
-=======
               $ref: "#/components/schemas/KillSwitchInput"
       responses:
         "200":
@@ -706,22 +603,149 @@ paths:
                 $ref: "#/components/schemas/KillSwitchResponse"
         "400":
           description: Validation error
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-<<<<<<< HEAD
-          description: Not authenticated
-=======
           description: Unauthorized
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-<<<<<<< HEAD
+        "503":
+          description: Database not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/status:
+    get:
+      operationId: getKycStatus
+      tags: [kyc]
+      summary: Get KYC status
+      description: Returns the current KYC gate status for the authenticated creator.
+      responses:
+        "200":
+          description: KYC status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycStatusResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not a creator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/upload-url:
+    post:
+      operationId: getKycUploadUrl
+      tags: [kyc]
+      summary: Get signed upload URL
+      description: >
+        Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket.
+        Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form
+        with the returned storagePath.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycUploadUrlInput"
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycUploadUrlResponse"
+        "400":
+          description: Invalid fileType or mimeType
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/identity:
+    post:
+      operationId: submitKycIdentity
+      tags: [kyc]
+      summary: Submit identity document reference
+      description: >
+        Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url),
+        then submits the storagePath here to advance to id_submitted status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycIdentityInput"
+      responses:
+        "200":
+          description: Identity doc recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycOkResponse"
+        "400":
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /kyc/initiate-signing:
+    post:
+      operationId: initiateKycSigning
+      tags: [kyc]
+      summary: Initiate personality-rights e-signature
+      description: Creates a SignWell document for the creator to sign their personality-rights agreement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KycInitiateSigningInput"
+      responses:
+        "200":
+          description: Signing URL returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KycSigningResponse"
+        "400":
+          description: Identity doc not yet submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Wrong status
           content:
@@ -766,10 +790,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: KYC already complete or rejected
-=======
-        "503":
-          description: Database not configured
->>>>>>> f1ca82c (feat(db+api): OFA-11 creator persona setup API — 7-field config + intensity dial + kill switch)
           content:
             application/json:
               schema:
