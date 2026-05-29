@@ -41,4 +41,13 @@ export const JOB_OPTIONS: Record<string, JobsOptions> = {
     removeOnComplete,
     removeOnFail: false,
   },
+  dsarDeletion: {
+    // DSAR deletion is idempotent but slow (full creator sweep); backoff starts
+    // at 60s to avoid hammering the DB on transient failures.
+    attempts: 3,
+    backoff: { type: "exponential", delay: 60_000 },
+    priority: 1,
+    removeOnComplete,
+    removeOnFail: false,
+  },
 };

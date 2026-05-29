@@ -45,6 +45,7 @@ export const retentionCategoryEnum = pgEnum("retention_category", [
   "operational",
   "transcript",
   "audit",
+  "ephemeral_30d",
 ]);
 
 export const consentGrantModalityEnum = pgEnum("consent_grant_modality", [
@@ -363,6 +364,7 @@ export const safetyAuditLogTable = pgTable(
     crisisType: text("crisis_type"),
     locale: text("locale").notNull().default("en"),
     confidence: real("confidence"),
+    categoryScores: jsonb("category_scores"),
     responseSent: boolean("response_sent").notNull().default(false),
     twinPaused: boolean("twin_paused").notNull().default(false),
     alerted: boolean("alerted").notNull().default(false),
@@ -644,3 +646,70 @@ export const insertTwinConfigSchema = createInsertSchema(twinConfigsTable).omit(
 });
 export type TwinConfig = typeof twinConfigsTable.$inferSelect;
 export type InsertTwinConfig = z.infer<typeof insertTwinConfigSchema>;
+
+// ─── Table: fan_name_masks ────────────────────────────────────────────────────
+// OCR-extracted candidate fan names awaiting human review (ONBOARD-04).
+// Partial index on (reviewed, created_at) WHERE reviewed=false keeps queue scans O(pending).
+
+export const fanNameMasksTable = pgTable(
+  "fan_name_masks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creatorsTable.id, { onDelete: "cascade" }),
+    handle: text("handle").notNull(),
+    candidate: text("candidate").notNull(),
+    source: text("source"),
+    reviewed: boolean("reviewed").notNull().default(false),
+    approved: boolean("approved"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pendingIdx: index("fan_name_masks_pending_idx").on(
+      t.reviewed,
+      t.createdAt
+    ),
+  })
+);
+
+export const insertFanNameMaskSchema = createInsertSchema(
+  fanNameMasksTable
+).omit({ id: true, createdAt: true });
+export type FanNameMask = typeof fanNameMasksTable.$inferSelect;
+export type InsertFanNameMask = z.infer<typeof insertFanNameMaskSchema>;
+
+// ─── Table: creator_deletion_log ──────────────────────────────────────────────
+// Immutable DSAR deletion audit trail (COMPLY-04).
+// NO FK to creators — the creator row is anonymized in-place, not deleted,
+// so a cascade would destroy the audit record (RESEARCH Pitfall 4).
+
+export const creatorDeletionLogTable = pgTable(
+  "creator_deletion_log",
+  {
+    auditId: text("audit_id").primaryKey(),
+    creatorIdHash: text("creator_id_hash").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    sweepLatencyMs: integer("sweep_latency_ms"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    completedAtIdx: index("creator_deletion_log_completed_at_idx").on(
+      t.completedAt
+    ),
+  })
+);
+
+export const insertCreatorDeletionLogSchema = createInsertSchema(
+  creatorDeletionLogTable
+).omit({ createdAt: true });
+export type CreatorDeletionLog = typeof creatorDeletionLogTable.$inferSelect;
+export type InsertCreatorDeletionLog = z.infer<
+  typeof insertCreatorDeletionLogSchema
+>;

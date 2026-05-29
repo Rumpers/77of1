@@ -5,6 +5,7 @@ export const QUEUE_NAMES = {
   moderation: "moderation",
   consentRevocation: "consent-revocation",
   dunningRetry: "dunning-retry",
+  dsarDeletion: "dsar-deletion",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

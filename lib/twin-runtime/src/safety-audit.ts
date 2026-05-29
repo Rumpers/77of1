@@ -21,6 +21,7 @@ export interface SafetyAuditEntry {
   crisisType?: string;
   locale: string;
   confidence?: number;
+  categoryScores?: Record<string, number>;
   responseSent: boolean;
   twinPaused: boolean;
 }
@@ -88,6 +89,7 @@ export function writeSafetyAuditLog(entry: SafetyAuditEntry): void {
         crisisType: entry.crisisType ?? null,
         locale: entry.locale,
         confidence: entry.confidence ?? null,
+        categoryScores: entry.categoryScores ?? null,
         responseSent: entry.responseSent,
         twinPaused: entry.twinPaused,
         alerted,

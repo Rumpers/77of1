@@ -9,6 +9,7 @@ export interface AllQueues {
   moderation: Queue;
   consentRevocation: Queue;
   dunningRetry: Queue;
+  dsarDeletion: Queue;
 }
 
 export function createAllQueues(redisUrl: string): AllQueues {
@@ -37,6 +38,10 @@ export function createAllQueues(redisUrl: string): AllQueues {
     dunningRetry: new Queue(QUEUE_NAMES.dunningRetry, {
       connection: conn,
       defaultJobOptions: JOB_OPTIONS.dunningRetry,
+    }),
+    dsarDeletion: new Queue(QUEUE_NAMES.dsarDeletion, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.dsarDeletion,
     }),
   };
 }

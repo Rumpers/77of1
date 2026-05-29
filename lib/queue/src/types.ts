@@ -26,6 +26,20 @@ export interface VoiceGenerationPayload extends JobPayloadBase {
   type: "voice-generation";
   transcript: string;
   language: "en" | "ja" | "zh-TW";
+  // ─── Phase 3 Telegram-delivery contract (added in 03-02) ─────────────────
+  // Mirrors TextGenerationPayload delivery fields for Telegram voice dispatch.
+  conversationId: string;
+  deliveryChannel: "web" | "telegram";
+  telegramChatId?: number; // required when deliveryChannel="telegram"
+  twinId?: string;          // optional — worker can resolve via creatorId
+  handle?: string;          // for disclosure footer caption
+}
+
+export interface DsarDeletionPayload {
+  type: "dsar-deletion";
+  creatorId: string;
+  auditId: string;      // sha256(creatorId.requestedAt).slice(0,16)
+  requestedAt: string;  // ISO timestamp
 }
 
 export interface VideoGenerationPayload extends JobPayloadBase {
