@@ -43,7 +43,11 @@ import { QUEUE_NAMES } from "@workspace/queue";
 import {
   runL1Moderation,
   runL3Moderation,
+  writeNonFlaggedScores,
 } from "@workspace/twin-runtime/moderation";
+import { writeSafetyAuditLog } from "@workspace/twin-runtime/safety-audit";
+import { notifyFounderAsync } from "@workspace/twin-runtime/notify-founder";
+import { scoreEscalation } from "@workspace/twin-runtime/escalation";
 import { loadHistory, persistTurn } from "@workspace/twin-runtime/conversation";
 import { buildSystemPrompt } from "@workspace/twin-runtime/system-prompt";
 import { readConstitution } from "@workspace/twin-runtime/constitution";
@@ -249,6 +253,67 @@ export function createWorker(
           logger.info(
             { jobDbId, creatorId, category: l1.primaryCategory },
             "[text-gen] L1 moderation blocked input — delivered helpline+deflection",
+          );
+          if (isUuid(jobDbId)) await markJobComplete(jobDbId);
+          return;
+        }
+
+        // ── MOD-07 Crescendo escalation check ─────────────────────────────
+        const l1Scores = l1.categoryScores ?? {};
+        writeNonFlaggedScores({
+          creatorId,
+          fanIdHash,
+          sessionId: conversationId,
+          messageText: prompt,
+          locale,
+          categoryScores: l1Scores,
+        });
+
+        const escResult = await scoreEscalation({
+          creatorId,
+          fanIdHash,
+          currentTurnCategoryScores: l1Scores,
+        });
+
+        if (escResult.flagged) {
+          const escCategory = escResult.triggeringCategory ?? "self-harm";
+          const escReply = `${getHelpline(locale)}\n\n${getDeflection(locale, escCategory)}`;
+
+          writeSafetyAuditLog({
+            creatorId,
+            fanId: fanIdHash,
+            sessionId: conversationId,
+            messageText: prompt,
+            crisisLevel: "high",
+            crisisType: "escalation_detected",
+            locale,
+            confidence: escResult.cumulativeScore,
+            categoryScores: l1Scores,
+            responseSent: true,
+            twinPaused: false,
+          });
+
+          notifyFounderAsync(
+            `*Safety flag* (escalation/MOD-07) creator=${creatorId} session=${conversationId} cumScore=${escResult.cumulativeScore.toFixed(2)} category=${escCategory}`,
+          );
+
+          await sendFlaggedReplyToTelegram(
+            fanTwinOut,
+            telegramChatId,
+            escReply,
+            escCategory,
+            locale,
+            handle,
+          );
+
+          logger.info(
+            {
+              jobDbId,
+              creatorId,
+              cumulativeScore: escResult.cumulativeScore,
+              triggeringCategory: escCategory,
+            },
+            "[text-gen] Crescendo escalation blocked input — delivered helpline+deflection",
           );
           if (isUuid(jobDbId)) await markJobComplete(jobDbId);
           return;

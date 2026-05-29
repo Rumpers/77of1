@@ -24,6 +24,7 @@ export interface SafetyAuditEntry {
   categoryScores?: Record<string, number>;
   responseSent: boolean;
   twinPaused: boolean;
+  retentionCategory?: "operational" | "transcript" | "audit" | "ephemeral_30d";
 }
 
 function sha256(value: string): string {
@@ -93,7 +94,7 @@ export function writeSafetyAuditLog(entry: SafetyAuditEntry): void {
         responseSent: entry.responseSent,
         twinPaused: entry.twinPaused,
         alerted,
-        retentionCategory: "audit",
+        retentionCategory: entry.retentionCategory ?? "audit",
       });
     } catch (err) {
       console.error(`[safety-audit] DB write failed session=${entry.sessionId}: ${(err as Error).message}`);

@@ -48,3 +48,6 @@ export * from "./hmac-conversation.js";
 
 // Pino structured logger
 export * from "./logger.js";
+
+// MOD-07: Crescendo cross-turn escalation scorer
+export * from "./escalation.js";

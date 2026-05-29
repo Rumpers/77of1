@@ -33,7 +33,16 @@ import { loadHistory, persistTurn } from "../lib/conversation.js";
 import { buildSystemPrompt, type Persona } from "../lib/system-prompt.js";
 import { getDisclosureFooter } from "../lib/disclosure.js";
 import { readConstitution } from "../lib/constitution.js";
-import { runL1Moderation, runL3Moderation } from "../lib/moderation.js";
+import {
+  runL1Moderation,
+  runL3Moderation,
+  writeNonFlaggedScores,
+} from "../lib/moderation.js";
+import { writeSafetyAuditLog } from "../lib/safety-audit.js";
+import { notifyFounderAsync } from "../lib/notify-founder.js";
+import { getHelpline } from "../lib/helplines.js";
+import { getDeflection } from "../lib/deflections.js";
+import { scoreEscalation } from "@workspace/twin-runtime/escalation";
 import { atomicDeductCredit, TRIAL_LIMIT } from "../lib/credits.js";
 import { TRIAL_COOKIE } from "../lib/auth.js";
 import { getTextProvider } from "../providers/registry.js";
@@ -262,6 +271,74 @@ router.post(
       );
       res.json({
         text: l1.reply,
+        disclosure_footer: getDisclosureFooter(locale, handle),
+        monetization_pivot: false,
+        conversation_id: conversationId,
+      });
+      return;
+    }
+
+    // ── MOD-07 Crescendo escalation check ────────────────────────────────────
+    // Record per-turn category scores for the escalation scorer, then check
+    // whether the cumulative cross-turn score crosses the threshold.
+    const l1Scores = l1.categoryScores ?? {};
+    writeNonFlaggedScores({
+      creatorId,
+      fanIdHash,
+      sessionId: conversationId,
+      messageText: message,
+      locale,
+      categoryScores: l1Scores,
+    });
+
+    const escResult = await scoreEscalation({
+      creatorId,
+      fanIdHash,
+      currentTurnCategoryScores: l1Scores,
+    });
+
+    if (escResult.flagged) {
+      const escCategory = escResult.triggeringCategory ?? "self-harm";
+      const escReply = `${getHelpline(locale)}\n\n${getDeflection(locale, escCategory)}`;
+
+      writeSafetyAuditLog({
+        creatorId,
+        fanId: fanIdHash,
+        sessionId: conversationId,
+        messageText: message,
+        crisisLevel: "high",
+        crisisType: "escalation_detected",
+        locale,
+        confidence: escResult.cumulativeScore,
+        categoryScores: l1Scores,
+        responseSent: true,
+        twinPaused: false,
+      });
+
+      notifyFounderAsync(
+        `*Safety flag* (escalation/MOD-07) creator=${creatorId} session=${conversationId} cumScore=${escResult.cumulativeScore.toFixed(2)} category=${escCategory}`,
+      );
+
+      await persistTurn({
+        conversationId,
+        creatorId,
+        twinId: twin?.id ?? null,
+        role: "assistant",
+        content: escReply,
+      });
+
+      logger.info(
+        {
+          event: "twin.chat.escalation_blocked",
+          creatorId,
+          cumulativeScore: escResult.cumulativeScore,
+          triggeringCategory: escCategory,
+        },
+        "[twin/chat] Crescendo escalation blocked input",
+      );
+
+      res.json({
+        text: escReply,
         disclosure_footer: getDisclosureFooter(locale, handle),
         monetization_pivot: false,
         conversation_id: conversationId,

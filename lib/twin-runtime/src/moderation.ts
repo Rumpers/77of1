@@ -68,6 +68,7 @@ export interface ModerationOutcome {
   reply?: string;            // when flagged=true, the deflection (+ helpline) reply to send
   primaryCategory?: string;  // for caller logging
   severity?: Severity;
+  categoryScores?: Record<string, number>; // raw OpenAI category_scores for escalation scorer
 }
 
 /**
@@ -164,7 +165,7 @@ async function runModeration(
   }
 
   if (!mod.flagged) {
-    return { flagged: false };
+    return { flagged: false, categoryScores: mod.scores };
   }
 
   const severity = severityFromCategories(mod.categories);
@@ -180,6 +181,7 @@ async function runModeration(
     crisisLevel: severityToCrisisLevel(severity),
     crisisType: primary,
     locale: ctx.locale,
+    categoryScores: mod.scores,
     responseSent: true,
     twinPaused: false,
   });
@@ -196,7 +198,36 @@ async function runModeration(
     reply,
     primaryCategory: primary,
     severity,
+    categoryScores: mod.scores,
   };
+}
+
+/**
+ * Write a per-turn non-flagged snapshot to safety_audit_log for the escalation
+ * scorer (MOD-07). Called by consumers AFTER runL1Moderation returns flagged=false,
+ * BEFORE the LLM call. Stores raw category_scores with retentionCategory='ephemeral_30d'
+ * so the scorer can accumulate cross-turn signals without inflating the audit log.
+ */
+export function writeNonFlaggedScores(args: {
+  creatorId: string;
+  fanIdHash: string;
+  sessionId: string;
+  messageText: string;
+  locale: string;
+  categoryScores: Record<string, number>;
+}): void {
+  writeSafetyAuditLog({
+    creatorId: args.creatorId,
+    fanId: args.fanIdHash,
+    sessionId: args.sessionId,
+    messageText: args.messageText,
+    crisisLevel: "none",
+    locale: args.locale,
+    categoryScores: args.categoryScores,
+    responseSent: false,
+    twinPaused: false,
+    retentionCategory: "ephemeral_30d",
+  });
 }
 
 /**
