@@ -51,21 +51,23 @@ Roughly a third of `docs/hidden-requirements-tickets.md` (~25-35 tickets) is out
 
 ## Build order
 
-Phased build plan: see `/root/.claude/plans/ok-let-s-break-this-breezy-music.md` (also tracked in repo at the next planning cycle).
+Build plan: see `/root/.claude/plans/ok-let-s-break-this-breezy-music.md`. Block-level breakdowns for Paperclip ticket creation: `docs/breakdown-real-twin.md` and `docs/breakdown-fan-surfaces.md`.
 
-| Phase | Goal | Time |
+> **Naming:** block names (not "Phase N") to avoid colliding with the existing **Slice 1/2/3** vocabulary from PRD §7 and the OF-* commits.
+
+| Block | Goal | Time |
 |---|---|---|
-| 0 | Repositioning (rename, north-star doc, deferred-ticket marking) | 1 wk |
-| 1 | Lala MVP + real twin runtime + agent harness stubs | 3-4 wks |
-| 2 | Funnel page + Telegram fan-twin + conversation tracking | 2-3 wks |
-| 3 | Real background agents (replace founder-as-stub) | 3-4 wks |
-| 4 | Multi-twin + creator-side billing | 2 wks |
-| 5 | First real creator goes live | overlaps end of Phase 4 |
-| 6 | Scale-out (LINE, Patreon connector, IG OAuth, etc.) | post-launch |
+| **Reposition** | Rename Hermes→Lala, north-star doc, deferred-ticket marking | 1 wk · *shipped on PR #1* |
+| **Real Twin** | Lala intake + real twin runtime (wire GMI/RAG) + agent harness stubs | 3-4 wks |
+| **Fan Surfaces** | Funnel page + Claire's per-creator fan-twin bot + conversation tracking | 2-3 wks |
+| **Agent Backbone** | Real background agents (replace founder-as-stub) | 3-4 wks |
+| **Multi-Twin + Billing** | Multi-twin schema + creator-side rev-share billing | 2 wks |
+| **First Creator Live** | Claire goes live | overlaps end of Multi-Twin + Billing |
+| **Scale-out** | LINE, Patreon connector, IG OAuth, more bots | post-launch |
 
 ## The first creator
 
-A warm-lead influencer DM'd this week: *"Morning! Digital twins is something new to me I really want to try it tho 😳✨"*. She is patient (month+ timeline acceptable). Founder-led onboarding, Lala assists, full legal review before her face/voice is trained on. Use her engagement to harden Phase 1-4 against real friction before opening to creator #2.
+A warm-lead influencer DM'd this week: *"Morning! Digital twins is something new to me I really want to try it tho 😳✨"*. **Claire** is the design partner — her per-creator Telegram bot (`@claire_ai_bot` or similar; final handle TBD) is being set up in Replit Secrets. She is patient (month+ timeline acceptable). Founder-led onboarding, Lala assists, full legal review before her face/voice is trained on. Use her engagement to harden Real Twin through Multi-Twin + Billing against real friction before opening to creator #2.
 
 ---
 
