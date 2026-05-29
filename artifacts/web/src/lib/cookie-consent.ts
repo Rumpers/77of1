@@ -151,7 +151,7 @@ function _loadPostHog(): void {
   if (!key) return;
 
   // Dynamic import avoids bundling posthog-js unless actually needed
-  import("posthog-js")
+  import(/* @vite-ignore */ "posthog-js")
     .then(({ default: posthog }) => {
       posthog.init(key, {
         api_host: host,
