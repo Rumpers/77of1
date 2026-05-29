@@ -9,6 +9,44 @@ Derived from a gap-audit of `PRD.md` (Draft v8, 2026-05-24). These are features,
 
 ---
 
+## ⚠ Status update (2026-05-27): Deferred under Option A
+
+The product has pivoted to an **AI agency layer that operates on top of existing fan-monetization platforms** (Fanvue / Patreon / Telegram paid channels / Discord paid roles / creator's own site). See `docs/north-star.md`.
+
+We **never run the fan-payment loop**. Host platforms own fan auth, payments, age-gating, refunds, chargebacks, fan-side DSAR, fan-side crisis intervention, fan-side T&S. The following tickets are therefore **deferred — out of scope** unless we ever revisit the platform-play (Option B):
+
+| Ticket | Why deferred |
+|---|---|
+| HID-004 Fan account recovery | Host platform owns fan accounts |
+| HID-006 Account deletion UX (fan side) | Host platform owns fan accounts; creator-side deletion still applies |
+| HID-008 18+ age verification (fan side) | Host platform enforces; we still gate our own creator-side training on 18+ |
+| HID-011 Manual refund review queue | Fans don't pay us |
+| HID-017 DSAR intake & fulfillment (fan side) | Host platform owns fan PII; creator-side DSAR remains |
+| HID-020 Refund processing engine | Fans don't pay us |
+| HID-021 Convenience-store pending UX | Fans don't pay us |
+| HID-022 Tax collection (fan transactions) | Host platform collects; our own creator-side tax obligations remain |
+| HID-023 Invoice / receipt generation (fan side) | Host platform issues; creator-side invoices remain (Phase 4) |
+| HID-024 Credit expiration policy | No credits |
+| HID-025 Subscription dunning (fan side) | Host platform handles |
+| HID-026 Chargeback handling (fan side) | Host platform handles |
+| HID-027 Multi-currency wallet | No wallet |
+| HID-028 Fan reporting mechanism | Host platform owns |
+| HID-029 Creator-side fan blocking | Host platform owns |
+| HID-030 Crisis intervention (fan side) | Host platform's responsibility — we still need internal escalation if signals reach us via Lala |
+| HID-031 Platform-wide ban list | Host platforms maintain |
+| HID-035 DSAR self-service portal (fan side) | Host platform owns |
+
+That's **18 tickets** dissolved. Remaining tickets still apply (creator-side identity / auth, admin/ops tooling, compliance scaffolding for creators, twin engine, content engine, Hermes/Lala ops, onboarding, operational SLOs).
+
+> **Naming note:** these tickets were drafted before the **Hermes → Lala** rename (Phase 0, 2026-05-27). Wherever the body of a ticket below says "Hermes," read as "Lala" — same agent, new creator-visible name. Internal codename remains Hermes in code/packages.
+
+**Two new tickets** the agency model implies which weren't in the original audit:
+
+- **HID-074 Conversation-credit attribution layer.** `conversation_id` on every twin response; UTM propagation through outbound CTAs; host-platform conversion webhook ingestion; 7-30d attribution window matching. Foundational for rev-share billing. **Priority:** P0 (Phase 2).
+- **HID-075 Host-platform connector layer.** Per-platform adapters (Patreon API first, Telegram Stars, Discord, IG via creator OAuth). Each adapter is one creator-monetization venue unlocked. **Priority:** P0 ongoing; first adapter in Phase 6.
+
+---
+
 ## A. Identity, Auth & Account Management
 
 ### HID-001: Transactional email infrastructure
@@ -18,7 +56,7 @@ Derived from a gap-audit of `PRD.md` (Draft v8, 2026-05-24). These are features,
 - Templated, locale-aware emails (EN / JP / ZH-TW).
 - Bounce/complaint handling + suppression list.
 - Per-template open/click metrics into PostHog.
-- DKIM/SPF/DMARC for `7of1.[tld]`.
+- DKIM/SPF/DMARC for `lala.la`.
 **Acceptance:**
 - [ ] Send magic-link email in <5s p95.
 - [ ] Bounces auto-suppress.
@@ -205,7 +243,7 @@ Derived from a gap-audit of `PRD.md` (Draft v8, 2026-05-24). These are features,
 ### HID-017: DSAR intake & fulfillment workflow
 **Why:** §16 mandates "Fan DSAR within 30 days." No intake channel exists.
 **Scope:**
-- Public DSAR request form on `7of1.[tld]/privacy`.
+- Public DSAR request form on `lala.la/privacy`.
 - Ticketing pipeline → identity verification → data assembly → encrypted delivery.
 - SLA tracker; statutory clocks per jurisdiction (APPI / PDPA / GDPR-residual).
 **Acceptance:**
@@ -572,7 +610,7 @@ Derived from a gap-audit of `PRD.md` (Draft v8, 2026-05-24). These are features,
 
 ### HID-051: Posted-content performance tracking
 **Why:** §5.4 P1 promises "what performed best." Without OAuth scope expansion, no signal.
-**Scope:** Either (a) creator manually pastes metrics, or (b) expanded OAuth scope (re-consent), or (c) link tracking through `7of1.[tld]/[handle]?ref=ig`.
+**Scope:** Either (a) creator manually pastes metrics, or (b) expanded OAuth scope (re-consent), or (c) link tracking through `lala.la/[handle]?ref=ig`.
 **Acceptance:**
 - [ ] At least the link-tracking variant ships P1.
 **Priority:** P1 · **Effort:** M · **PRD ref:** §5.4

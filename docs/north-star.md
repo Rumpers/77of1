@@ -1,127 +1,74 @@
-# lala.la — North Star
+# 7of1 — North Star
 
-The one-screen reference for this project. If something in the codebase disagrees with this doc, this doc wins until the doc is updated.
+*One-screen summary of the agency pivot. If this conflicts with `PRD.md`, this wins until the PRD is rewritten.*
 
-Generated from /plan-ceo-review + /plan-eng-review (2026-05-27).
+## What we are
 
-## What lala.la is
+**7of1 is an AI-native creator-ops agency.** Influencers send us raw material (DM screenshots, voice notes, selfies); we build, run, and evolve a digital twin of them in their voice; we deploy that twin onto whatever monetization platform they already use (Fanvue, Patreon, Telegram paid channels, Discord paid roles, their own site, etc.). We never run the fan-payment loop. We take a rev-share on the revenue our twin attributably drives.
 
-Managed AI digital-twin service for **17 LIVE influencers** (JP / TW / HK). A creator brings her persona; lala.la operates her twin on Telegram and the web; her fans chat with the twin and get nudged to her existing monetization platforms (Fanvue, Patreon, 17 LIVE itself, her personal site).
+**Brands:** Consumer-facing brand is **Lala** (at `lala.la`) — that's the name fans and creators interact with. **7of1** stays as the internal corporate name. Instagram-to-Meta shape: the company doesn't have to share a name with the product.
 
-**lala.la is plumbing, not a destination.** We do not own the relationship. The creator owns her likeness, her LoRA, her voice clone, her conversation history. She can take them back at any time. Non-exclusive license.
+## What we are not
 
-**We are not reinventing AI girlfriend tech.** Commodity providers do the LLM, voice, RAG, and image work. Our custom code is the no-tech creator onboarding (Lala bot), attribution/billing rails, and personality-rights/consent layer.
+- Not a fan marketplace. Fans don't pay 7of1; they pay the host platform.
+- Not a self-serve SaaS. We *operate* the twin for the creator; AI does most of the labor, with thin human leverage.
+- Not an OnlyFans / Fanvue competitor. We ride on top of those platforms, not against them.
 
-## 11 locked strategic decisions
+## The 11 decisions
 
-1. Customer = creator (not fan). Creator pays lala.la from her own platform revenue.
-2. Pure rev-share, target 25-30% of attributable AI-twin-driven revenue on host platforms — but week-4 launch uses **flat fee or manual invoice** until real conversion signal (Patreon webhook, 17 LIVE webhook) lands in Phase 5-6.
-3. **Lala** = creator's single agent (renamed from Hermes). 5 background agents stay deferred; founder is the agents at N=1.
-4. **The Twin** is separate from Lala — fan-facing AI persona on Telegram bot, web funnel, future widget/IG.
-5. Multi-twin per creator (e.g., public + hidden private). Schema column shipped from day 1; security plumbing (`app.current_twin_id`) deferred.
-6. Twin has an evolvable **constitution** stored as a Markdown file v1, DB table later.
-7. Telegram-first for both Lala and fan-twin. LINE / WhatsApp follow in Phase 6.
-8. Languages: parallel EN + JP + ZH-TW first-class from day 1.
-9. Server-side OCR + blur fan-name masking with founder-review queue for uncertain masks. Apple VisionKit on-device deferred.
-10. First fan-facing surfaces: Telegram fan-twin bot + funnel page `lala.la/[handle]` (chat + soft CTA → her monetization). Page stacks alongside her existing Linktree, never replaces it.
-11. No fan payment loop, ever. Fan-payment scaffolding from the prior direction stays dormant in git history.
+1. **Customer = creator** (not fan). Creator pays via rev-share.
+2. **Pure rev-share** — target 25-30% of revenue attributable to twin-driven conversions on host platforms. Higher tier (40-50%, OF-style) on the table once attribution is proven.
+3. **Lala** is the creator's single AI manager. One personality, one relationship. Internally she delegates to 5 background agents (Intake, Content Producer, Distribution, Attribution, Supervisor) — invisible to the creator.
+4. **The Twin** is separate from Lala. Lala is universal across all creators; the Twin *is* the creator (her voice, her style, her brand).
+5. **Multi-twin per creator** is allowed by design (e.g., public twin + hidden private twin, or per-region twins).
+6. **Twin has a constitution** — core values + hard limits, evolvable with creator approval. Replaces the PRD's "intensity dial" abstraction.
+7. **Telegram-first** for both Lala (creator side) and Twin (fan side). LINE Official Account follows for JP/TW launch. WhatsApp / Messenger later.
+8. **EN-first for iteration; JP + ZH-TW required by launch.** Twin engine is language-agnostic; voice quality for JP/TW is the wildcard.
+9. **Fan-name masking on-device** before any DM screenshot is uploaded. Solves the third-party consent problem at the upload layer, not the legal layer.
+10. **First fan-facing surfaces:** Telegram fan-twin bot + funnel page on `lala.la/[handle]` (free chat → CTA to *her* monetization, with `conversation_id` carried through for attribution).
+11. **No fan payment loop, ever.** Resolves the PRD §8.10 vs §5.6 retraction contradiction (host platform owns content delivery and retraction).
 
-## Stack
+## Lala's voice
 
-| Layer | Choice | Why |
+**Lala is the creator's cheerleader with operational competence.** Warm, encouraging, celebrates wins out loud, gentle on setbacks, always in her corner. Less "executive assistant," more "the friend who's hyping her up and also handling her business."
+
+In ZH-TW copy, Lala's name is canonically **啦啦** (cheerleading) — *not* 拉拉. Tilt readers toward the cheerleader meaning by owning it in copy. In JP, ララ. In EN, Lala.
+
+Voice rules of thumb:
+- "✅ Done!" → "✅ Yes! Got it 🎉"
+- "Your twin is ready" → "She's ready and she sounds amazing 💫"
+- "Processing failed" → "Hmm, that one didn't go through — want me to try again?"
+
+## What this dissolves
+
+Roughly a third of `docs/hidden-requirements-tickets.md` (~25-35 tickets) is out of scope under this model. Fan auth, credit packs, conbini pending UX, fan KYC, age-gate infrastructure, fan-side DSAR, fan crisis intervention, fan refund engine, conbini pending UX — all host-platform responsibility now. See that doc's "Deferred under Option A" banner.
+
+## What this makes urgent
+
+- **Conversation-credit attribution** from day 1. Every twin response carries a `conversation_id`; every outbound CTA carries it in the UTM; host-platform conversions match against it within a 7-30d window. Without this, "pure rev-share" is just a vibe.
+- **Platform connector layer.** Adapters for Patreon (API exists), Telegram Stars (native), Discord paid roles, IG via creator OAuth (start Meta approval now — 6-month lead time).
+- **Agent supervisor.** A traditional agency absorbs a bad account manager. An AI-native ops company cannot absorb a runaway agent. Eval / monitoring / circuit-breakers / kill-switches become P0 *operations* infrastructure.
+
+## Build order
+
+Build plan: see `/root/.claude/plans/ok-let-s-break-this-breezy-music.md`. Block-level breakdowns for Paperclip ticket creation: `docs/breakdown-real-twin.md` and `docs/breakdown-fan-surfaces.md`.
+
+> **Naming:** block names (not "Phase N") to avoid colliding with the existing **Slice 1/2/3** vocabulary from PRD §7 and the OF-* commits.
+
+| Block | Goal | Time |
 |---|---|---|
-| Runtime | Replit (everything) | One platform, simple deploys |
-| DB | Replit PostgreSQL | Co-located with api-server |
-| ORM | Drizzle | Type-safe, lightweight, schema-as-code |
-| Object storage | Replit Object Storage | S3-compatible, native |
-| LLM | GMI Cloud (text) | Commodity; provider registry already abstracted |
-| Voice | GMI Cloud XTTS (zero-shot) | No GPU needed on Replit; no ElevenLabs ToS issue |
-| RAG | Plain context window for N=1 | Graphiti+Neo4j upgrade at creator #3-5 horizon |
-| Persona format | SillyTavern Character Card V2 | Industry standard, Zod-validated JSONB |
-| Moderation | OpenAI Moderation API (L1+L3) | Two checks per turn, ~$0.30/day at warm-lead scale |
-| Bots | Telegraf v4 | Already in place |
-| Web | React + Vite | Already in place |
-| Tests | Vitest + Playwright | Vitest project-wide, Playwright for fan-page E2E |
+| **Reposition** | Rename Hermes→Lala, north-star doc, deferred-ticket marking | 1 wk · *shipped on PR #1* |
+| **Real Twin** | Lala intake + real twin runtime (wire GMI/RAG) + agent harness stubs | 3-4 wks |
+| **Fan Surfaces** | Funnel page + Claire's per-creator fan-twin bot + conversation tracking | 2-3 wks |
+| **Agent Backbone** | Real background agents (replace founder-as-stub) | 3-4 wks |
+| **Multi-Twin + Billing** | Multi-twin schema + creator-side rev-share billing | 2 wks |
+| **First Creator Live** | Claire goes live | overlaps end of Multi-Twin + Billing |
+| **Scale-out** | LINE, Patreon connector, IG OAuth, more bots | post-launch |
 
-## What we are NOT building
+## The first creator
 
-- Letta or Graphiti memory (until creator #3-5 lands)
-- Stripe Connect creator-side billing (manual invoice for first creator)
-- AI image generation (Phase 5+ with Illustrious XL + creator LoRA)
-- 17 LIVE / Patreon webhook attribution (Phase 5-6)
-- Multi-twin RLS security plumbing (schema column only)
-- `lib/twin-engine/` bespoke engine (Reframe A — commodity providers)
-- Apple VisionKit on-device masking
-- SSE streaming chat (Phase 5+ polish)
-- `twin_constitutions` DB table (Markdown for v1)
-- Stripe / fan payments / refunds / dunning / fan account recovery (dormant from prior direction)
+A warm-lead influencer DM'd this week: *"Morning! Digital twins is something new to me I really want to try it tho 😳✨"*. **Claire** is the design partner — her per-creator Telegram bot (`@claire_ai_bot` or similar; final handle TBD) is being set up in Replit Secrets. She is patient (month+ timeline acceptable). Founder-led onboarding, Lala assists, full legal review before her face/voice is trained on. Use her engagement to harden Real Twin through Multi-Twin + Billing against real friction before opening to creator #2.
 
-## Compliance baseline
+---
 
-We have real legal exposure on day 1, not just "lawyers will figure it out."
-
-- **California SB 243** — AI disclosure ✓, self-harm detection (OpenAI moderation `self-harm` category), crisis helpline injection per locale, take-a-break nudge.
-- **Federal TAKE IT DOWN Act** — gates Phase 5+ image gen (CSAM filter + non-consent protections).
-- **Texas RAIGA, NY AI Companion Bills** — content limits, human-in-loop oversight.
-- **GDPR / Japan APPI / Taiwan PDPA** — data minimization, encrypted transcripts, fan-side DSAR.
-- **Personality-rights gating** — `creator_kyc.status = 'signed'` required at `/api/twin/[handle]/chat` route entry. Twin returns 423 until signed.
-
-## Six-layer moderation pipeline (minimal form for week 4)
-
-```
-fan message → L1 OpenAI moderation (input) → L2 Character Card V2 system_prompt + post_history_instructions
-            → LLM call → L3 OpenAI moderation (output) → L4 pre-canned safe deflection per locale
-            → L5 founder Sentry alert + Lala notify on high-risk → L6 audit_log on every flagged turn
-            → fan
-```
-
-Eval gate per creator: 30 hand-written cases (10 in-character + 10 boundary + 10 hard-limit). 100% pass on hard-limit before twin goes live. Weekly regression cron.
-
-## 4-week schedule (Approach B — first-creator-first)
-
-```
-Week 1  Baseline repair (clean-slate Replit + Drizzle refactor; ~4 days)
-        Delete apps/web/, apps/hermes/, apps/worker/; strip Supabase; init Drizzle
-        schema from scratch; replace Supabase client; swap Storage; smoke test.
-        LEGAL kicks off personality-rights agreement drafting.
-
-Week 2  Twin runtime core (sync chat, Character Card V2, conversation_id HMAC,
-        entitlement middleware, multi-twin schema column).
-
-Week 3  Voice (GMI XTTS zero-shot), intake handlers (OCR + founder-review queue),
-        both surfaces wiring (web funnel + Telegram fan-twin bot artifact),
-        moderation layers L1-L4 wired.
-
-Week 4  Warm-lead creator personality-rights signed, 30-case eval passes,
-        twin LIVE on both surfaces, first fans chat, first attribution events
-        land. Founder on 2h on-call SLA.
-```
-
-## Parallelization
-
-```
-Lane A (week 1, blocks all):       Drizzle schema + Supabase client replacement
-Lane B (weeks 2-4, api-server):    twin route + entitlement + moderation + voice + attribution
-Lane C (weeks 2-3, web):           fan page paywall→CTA + cookie binding
-Lane D (weeks 2-3, new artifact):  fan-twin Telegram bot
-Lane E (weeks 2-3, hermes):        intake handlers + character card builder + founder-notify
-Lane F (weeks 3-4, launch gate):   30-case eval + native-speaker UX pass per locale
-```
-
-## Open questions tracked
-
-- Replit "Always On" budget (~$20/mo for 3 deploys)
-- pgvector availability on Replit PG — verify week 1 day 1
-- GMI XTTS zero-shot contract — verify reference-audio synth works as documented
-- HMAC signing key rotation + session-refresh flow
-- Founder reachability across JST/CST/HKT vs US time zones during week 3-4
-
-## Review history
-
-- **2026-05-27 — /plan-ceo-review** — REDUCTION mode; Approach B; Reframe A; Pattern A. 33 decisions locked. CEO CLEARED.
-- **2026-05-27 — /codex-plan-review** — 13 substantive issues surfaced (attribution=clicks not revenue, RLS bypassed by service role, ElevenLabs ToS, creator_kyc duality, sync chat lacking timeout/idempotency, etc.). All addressed in eng review.
-- **2026-05-27 — /plan-eng-review** — Supabase dropped for Replit + Drizzle; AllTalk replaced by GMI XTTS; 11 decisions locked. 0 unresolved. ENG CLEARED.
-
-## How to read this doc
-
-Update this file when a locked decision changes. Never silently drift from it. If something in the code disagrees, the code is wrong until the doc is also updated to match.
+*Last updated: 2026-05-27. Owner: founder.*
