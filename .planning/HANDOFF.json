@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-29T23:03:55.309Z",
+  "phase": "03",
+  "phase_name": "voice-hardening",
+  "phase_dir": ".planning/phases/03-voice-hardening",
+  "plan": 5,
+  "task": 2,
+  "total_tasks": 2,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "03-01", "name": "Wave 0: locale normalizer + deps scaffold", "status": "done", "commit": "390c047"},
+    {"id": "03-02", "name": "Wave 1: DB schema + queue scaffolding", "status": "done", "commit": "390c047"},
+    {"id": "03-03", "name": "MOD-07 Crescendo cross-turn escalation scorer", "status": "done", "commit": "031e99c"},
+    {"id": "03-04", "name": "DSAR wizard + deletion worker (COMPLY-04, I18N-01)", "status": "done", "commit": "3fa1b87"},
+    {"id": "03-05", "name": "/review_masks founder queue (ONBOARD-04, I18N-01)", "status": "done", "commit": "47697ea"}
+  ],
+  "remaining_tasks": [
+    {"id": "03-06", "name": "Voice synthesis provider + circuit breaker (VOICE-01/02)", "status": "blocked_founder", "note": "autonomous:false — needs GMI_TTS_ENDPOINT_PATH, GMI_TTS_MODEL_ID, VOICE_URL_SIGNING_SECRET from founder"},
+    {"id": "03-07", "name": "Voice proxy endpoint + fan SPA component (VOICE-03)", "status": "not_started", "note": "depends on 03-06"},
+    {"id": "03-08", "name": "E2E verification (all Phase 3 success criteria)", "status": "not_started", "note": "depends on 03-06, 03-07; autonomous:false human verification"}
+  ],
+  "blockers": [
+    {"description": "GMI TTS endpoint/model not confirmed — 03-06 plan marks this as a BLOCKING founder checkpoint", "type": "human_action", "workaround": "03-06 plan includes [BLOCKING] checkpoint; code skeleton can be written but integration test will fail without real endpoint"},
+    {"description": "VOICE_URL_SIGNING_SECRET not provisioned in Replit Secrets", "type": "human_action", "workaround": "generate with: openssl rand -hex 32"},
+    {"description": "@replit/object-storage not installed in @workspace/worker or @workspace/api-server — 03-01 founder checkpoint was not cleared", "type": "human_action", "workaround": "DSAR worker step 6 uses HTTP REST fallback (no SDK needed). Voice upload in api-server may need it for 03-06/07."}
+  ],
+  "human_actions_pending": [
+    {"action": "Confirm GMI TTS endpoint path + model ID", "context": "Test with: curl -H 'Authorization: Bearer $GMI_API_KEY' https://api.gmi-serving.com/v1/... — document in .planning/phases/03-voice-hardening/03-01-GMI-TTS-CONTRACT.md", "blocking": true},
+    {"action": "Generate VOICE_URL_SIGNING_SECRET and add to Replit Secrets", "context": "openssl rand -hex 32 → Replit dashboard → Secrets", "blocking": true},
+    {"action": "Add FOUNDER_TELEGRAM_USER_ID to Replit Secrets", "context": "Your Telegram user ID — enables /review_masks in Hermes", "blocking": false},
+    {"action": "Set REDIS_URL in Replit Secrets if not already done", "context": "Required for BullMQ (DSAR deletion, consent revocation, voice jobs)", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "DSAR worker step 6 uses HTTP REST (not @replit/object-storage SDK)", "rationale": "SDK not installed in worker; HTTP matches pattern already used in hermes/src/lib/object-storage.ts"},
+    {"decision": "Hermes /dsar and /review_masks use getCreatorPreferences for locale resolution", "rationale": "Consistent with other commands; founders who aren't linked creators fall back to 'en'"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Founder provides GMI TTS contract → new session implements 03-06 (voice provider + circuit breaker)",
+  "context_notes": "Phase 3 is 5 waves. Waves 0-3 complete (03-01 through 03-05). Wave 4 (03-06/07) blocked on GMI TTS endpoint. Wave 5 (03-08) is E2E verification. All typechecks passing. Branch: rio-de-janeiro."
+}
