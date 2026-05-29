@@ -6,6 +6,12 @@ See [`docs/north-star.md`](docs/north-star.md) for product direction, locked arc
 
 ## Run & Operate
 
+**Run button** (`.replit` "Project" workflow) starts three processes in parallel:
+- `api-server` — Express API on port 8080 (external: 80)
+- `web` — fan-page SPA on port 22333 (external: 3000 — Replit preview URL)
+- `hermes` — Telegram creator bot (long-poll / webhook, no browser port)
+
+Manual dev commands:
 - `pnpm --filter @workspace/api-server run dev` — API server (port 8080)
 - `pnpm --filter @workspace/web run dev` — fan-page web app (port 22333)
 - `pnpm run typecheck` — full typecheck across all packages
