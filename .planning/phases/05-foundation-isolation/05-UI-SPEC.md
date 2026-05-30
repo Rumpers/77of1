@@ -226,11 +226,14 @@ The TOKEN NAMES are locked; the values are not.
 
 | Role | Token | Placeholder Value | Weight | Line Height |
 |------|-------|------------------|--------|-------------|
-| Body | `--mkt-text-base` | 16px (1rem) | 400 | `--mkt-leading-body` (1.6) |
-| Label / small | `--mkt-text-sm` | 14px (0.875rem) | 400 | `--mkt-leading-body` (1.6) |
-| Subheading | `--mkt-text-xl` | 20px (1.25rem) | 600 | `--mkt-leading-tight` (1.2) |
+| Body / Label | `--mkt-text-base` | 16px (1rem) | 400 | `--mkt-leading-body` (1.6) |
+| Subheading | `--mkt-text-xl` | 20px (1.25rem) | 700 | `--mkt-leading-tight` (1.2) |
 | Section heading | `--mkt-text-section` | clamp(1.5rem, 3vw, 2.25rem) | 700 | `--mkt-leading-tight` (1.2) |
 | Hero display | `--mkt-text-hero` | clamp(2.25rem, 5vw, 4rem) | 700 | `--mkt-leading-tight` (1.2) |
+
+NOTE: `--mkt-text-sm` (0.875rem) remains in the token vocabulary above as part of the
+Phase 6 type system. It is not an actively-mapped semantic role in Phase 5 — the
+600-vs-700 weight distinction and label/small sizing are Phase 6 brand decisions.
 
 **CJK-specific overrides (non-negotiable; applies in all phases):**
 - All CJK text uses `line-height: var(--mkt-leading-cjk)` (1.8) — not the Latin body
