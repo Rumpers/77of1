@@ -3,8 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Marketing Site
 status: planning
-last_updated: "2026-05-30T14:25:30.580Z"
-last_activity: 2026-05-30
+stopped_at: Phase 5 context gathered
+last_updated: "2026-05-30T22:38:04.191Z"
+last_activity: 2026-05-30 — Milestone v2.0 roadmap created (Phases 5–7)
 progress:
   total_phases: 3
   completed_phases: 0
@@ -110,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-30T06:59:00Z
-Stopped at: Roadmap v2.0 created — Phases 5, 6, 7 defined
-Resume file: None
+Last session: 2026-05-30T22:38:04.160Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-foundation-isolation/05-CONTEXT.md
