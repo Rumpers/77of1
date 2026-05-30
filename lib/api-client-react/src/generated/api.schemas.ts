@@ -91,6 +91,23 @@ export interface CreditDeductResult {
   remainingBalance?: number | null;
 }
 
+export interface CreatePaymentIntentInput {
+  fanId: string;
+  creatorId: string;
+  packId: string;
+}
+
+export interface CreatePaymentIntentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
+export interface CreditBalanceResult {
+  balance: number;
+  fanId: string;
+  creatorId: string;
+}
+
 export interface CheckoutInput {
   creatorId: string;
   fanId: string;
@@ -240,7 +257,135 @@ export interface ErrorResponse {
   remainingBalance?: number | null;
 }
 
+export type KycStatus = typeof KycStatus[keyof typeof KycStatus];
+
+
+export const KycStatus = {
+  pending: 'pending',
+  id_submitted: 'id_submitted',
+  id_verified: 'id_verified',
+  signing_initiated: 'signing_initiated',
+  rights_signed: 'rights_signed',
+  tax_submitted: 'tax_submitted',
+  ops_approved: 'ops_approved',
+  complete: 'complete',
+  rejected: 'rejected',
+} as const;
+
+export interface KycStatusResponse {
+  status: KycStatus;
+  creatorId: string;
+  /** @nullable */
+  idDocSubmittedAt?: string | null;
+  /** @nullable */
+  signwellStatus?: string | null;
+  /** @nullable */
+  personalityRightsSignedAt?: string | null;
+  /** @nullable */
+  taxFormSubmittedAt?: string | null;
+  /** @nullable */
+  opsReviewedAt?: string | null;
+}
+
+export interface KycOkResponse {
+  ok: boolean;
+  status: KycStatus;
+}
+
+export type KycUploadUrlInputFileType = typeof KycUploadUrlInputFileType[keyof typeof KycUploadUrlInputFileType];
+
+
+export const KycUploadUrlInputFileType = {
+  id_doc: 'id_doc',
+  tax_form: 'tax_form',
+} as const;
+
+export type KycUploadUrlInputMimeType = typeof KycUploadUrlInputMimeType[keyof typeof KycUploadUrlInputMimeType];
+
+
+export const KycUploadUrlInputMimeType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/heic': 'image/heic',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface KycUploadUrlInput {
+  fileType: KycUploadUrlInputFileType;
+  mimeType: KycUploadUrlInputMimeType;
+}
+
+export interface KycUploadUrlResponse {
+  uploadUrl: string;
+  storagePath: string;
+  token: string;
+}
+
+export type KycIdentityInputDocType = typeof KycIdentityInputDocType[keyof typeof KycIdentityInputDocType];
+
+
+export const KycIdentityInputDocType = {
+  passport: 'passport',
+  national_id: 'national_id',
+  drivers_license: 'drivers_license',
+} as const;
+
+export interface KycIdentityInput {
+  docType: KycIdentityInputDocType;
+  /** ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US) */
+  region: string;
+  storagePath: string;
+}
+
+export interface KycInitiateSigningInput {
+  email: string;
+  displayName: string;
+}
+
+export interface KycSigningResponse {
+  ok: boolean;
+  signingUrl: string;
+  docId: string;
+}
+
+/**
+ * W9 — US persons and entities (Form W-9). W8BEN — Non-US individuals (Form W-8BEN). W8BENE — Non-US entities (Form W-8BEN-E).
+
+ */
+export type KycTaxFormType = typeof KycTaxFormType[keyof typeof KycTaxFormType];
+
+
+export const KycTaxFormType = {
+  W9: 'W9',
+  W8BEN: 'W8BEN',
+  W8BENE: 'W8BENE',
+} as const;
+
+export interface KycTaxFormInput {
+  taxFormType: KycTaxFormType;
+  /** Supabase Storage path returned by /kyc/upload-url */
+  storagePath: string;
+}
+
 export type CreatorLinkParams = {
 token: string;
+};
+
+export type GetCreditBalanceParams = {
+fanId: string;
+creatorId: string;
+};
+
+export type GetVoiceFileParams = {
+/**
+ * HMAC token returned by signVoiceUrl
+ * @pattern ^[0-9a-f]+$
+ */
+token: string;
+/**
+ * Unix epoch expiry embedded in the signed URL
+ */
+exp: number;
 };
 

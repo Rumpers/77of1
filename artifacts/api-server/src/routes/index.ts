@@ -16,6 +16,7 @@ import emailWebhooksRouter from "./email-webhooks.js";
 import dsarRouter from "./dsar.js";
 import reportsRouter from "./reports.js";
 import adminTwinActivateRouter from "./admin-twin-activate.js";
+import voiceRouter from "./voice.js";
 import linksRouter from "./links.js";
 
 const router: IRouter = Router();
@@ -39,6 +40,8 @@ router.use(emailWebhooksRouter);
 router.use(reportsRouter);
 // Admin: founder-auth-gated routes — must be before the linksRouter catch-all
 router.use(adminTwinActivateRouter);
+// Voice proxy — HMAC-gated mp3 stream (VOICE-03, 03-07)
+router.use(voiceRouter);
 // Link tracker last — /:handle catches all unmatched GET paths
 router.use(linksRouter);
 

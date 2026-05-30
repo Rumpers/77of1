@@ -620,6 +620,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /voice/{jobId}:
+    get:
+      operationId: getVoiceFile
+      tags: [creator]
+      summary: Stream voice audio file (mp3) by job id (HMAC-token gated, 24h TTL)
+      description: >
+        Returns mp3 audio bytes for the given voice-generation job. Access is gated
+        by an HMAC token minted by signVoiceUrl (VOICE-03). Token must not be expired
+        (default 24h TTL) or the request is rejected with 403. Returns 409 when the
+        job has not yet reached "complete" status.
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the voice-generation job
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]+$'
+          description: HMAC token returned by signVoiceUrl
+        - in: query
+          name: exp
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Unix epoch expiry embedded in the signed URL
+      responses:
+        "200":
+          description: Audio bytes (mp3)
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: Invalid or expired token
+        "404":
+          description: Job not found or result not available
+        "409":
+          description: Job not yet complete — fan-page should retry
+
   /kyc/status:
     get:
       operationId: getKycStatus

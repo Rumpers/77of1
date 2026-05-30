@@ -109,6 +109,47 @@ export const DeductCreditsResponse = zod.object({
 
 
 /**
+ * Create a Stripe PaymentIntent for purchasing a credit pack; returns client_secret for client-side confirmation
+ * @summary Create Stripe PaymentIntent
+ */
+export const CreatePaymentIntentBody = zod.object({
+  "fanId": zod.string(),
+  "creatorId": zod.string(),
+  "packId": zod.string()
+})
+
+export const CreatePaymentIntentResponse = zod.object({
+  "clientSecret": zod.string(),
+  "paymentIntentId": zod.string()
+})
+
+
+/**
+ * Handles payment_intent.succeeded events; verifies STRIPE_WEBHOOK_SECRET signature and credits the fan
+ * @summary Stripe PaymentIntent webhook
+ */
+export const PaymentsWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+
+/**
+ * Returns the fan's total remaining credits across all purchased packs
+ * @summary Get fan credit balance
+ */
+export const GetCreditBalanceQueryParams = zod.object({
+  "fanId": zod.coerce.string(),
+  "creatorId": zod.coerce.string()
+})
+
+export const GetCreditBalanceResponse = zod.object({
+  "balance": zod.number(),
+  "fanId": zod.string(),
+  "creatorId": zod.string()
+})
+
+
+/**
  * Create a Stripe checkout session for purchasing credits
  * @summary Create Stripe checkout session
  */
@@ -303,6 +344,105 @@ export const SetKillSwitchBody = zod.object({
 export const SetKillSwitchResponse = zod.object({
   "kill_switch": zod.boolean(),
   "kill_switch_activated_at": zod.coerce.date().nullish()
+})
+
+
+/**
+ * Returns mp3 audio bytes for the given voice-generation job. Access is gated by an HMAC token minted by signVoiceUrl (VOICE-03). Token must not be expired (default 24h TTL) or the request is rejected with 403. Returns 409 when the job has not yet reached "complete" status.
+
+ * @summary Stream voice audio file (mp3) by job id (HMAC-token gated, 24h TTL)
+ */
+export const GetVoiceFileParams = zod.object({
+  "jobId": zod.coerce.string().uuid().describe('UUID of the voice-generation job')
+})
+
+export const getVoiceFileQueryTokenRegExp = new RegExp('^[0-9a-f]+$');
+
+
+export const GetVoiceFileQueryParams = zod.object({
+  "token": zod.coerce.string().regex(getVoiceFileQueryTokenRegExp).describe('HMAC token returned by signVoiceUrl'),
+  "exp": zod.coerce.number().describe('Unix epoch expiry embedded in the signed URL')
+})
+
+
+/**
+ * Returns the current KYC gate status for the authenticated creator.
+ * @summary Get KYC status
+ */
+export const GetKycStatusResponse = zod.object({
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete', 'rejected']),
+  "creatorId": zod.string(),
+  "idDocSubmittedAt": zod.string().nullish(),
+  "signwellStatus": zod.string().nullish(),
+  "personalityRightsSignedAt": zod.string().nullish(),
+  "taxFormSubmittedAt": zod.string().nullish(),
+  "opsReviewedAt": zod.string().nullish()
+})
+
+
+/**
+ * Returns a short-lived (60s) signed upload URL for the private kyc-docs bucket. Creator PUTs the file to that URL, then calls /kyc/identity or /kyc/tax-form with the returned storagePath.
+
+ * @summary Get signed upload URL
+ */
+export const GetKycUploadUrlBody = zod.object({
+  "fileType": zod.enum(['id_doc', 'tax_form']),
+  "mimeType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/webp'])
+})
+
+export const GetKycUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string(),
+  "storagePath": zod.string(),
+  "token": zod.string()
+})
+
+
+/**
+ * Creator uploads their ID document to Supabase Storage first (using /kyc/upload-url), then submits the storagePath here to advance to id_submitted status.
+
+ * @summary Submit identity document reference
+ */
+export const SubmitKycIdentityBody = zod.object({
+  "docType": zod.enum(['passport', 'national_id', 'drivers_license']),
+  "region": zod.string().describe('ISO 3166-1 alpha-2 country code (e.g. JP, TW, HK, SG, US)'),
+  "storagePath": zod.string()
+})
+
+export const SubmitKycIdentityResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete', 'rejected'])
+})
+
+
+/**
+ * Creates a SignWell document for the creator to sign their personality-rights agreement.
+ * @summary Initiate personality-rights e-signature
+ */
+export const InitiateKycSigningBody = zod.object({
+  "email": zod.string().email(),
+  "displayName": zod.string()
+})
+
+export const InitiateKycSigningResponse = zod.object({
+  "ok": zod.boolean(),
+  "signingUrl": zod.string(),
+  "docId": zod.string()
+})
+
+
+/**
+ * Creator uploads their completed W-9, W-8BEN, or W-8BEN-E PDF to Supabase Storage first (using /kyc/upload-url with fileType=tax_form), then submits the storagePath here to advance to tax_submitted status. US persons and entities use W-9; non-US individuals use W-8BEN; non-US entities use W-8BEN-E.
+
+ * @summary Submit tax form reference (HID-062)
+ */
+export const SubmitKycTaxFormBody = zod.object({
+  "taxFormType": zod.enum(['W9', 'W8BEN', 'W8BENE']).describe('W9 — US persons and entities (Form W-9). W8BEN — Non-US individuals (Form W-8BEN). W8BENE — Non-US entities (Form W-8BEN-E).\n'),
+  "storagePath": zod.string().describe('Supabase Storage path returned by \/kyc\/upload-url')
+})
+
+export const SubmitKycTaxFormResponse = zod.object({
+  "ok": zod.boolean(),
+  "status": zod.enum(['pending', 'id_submitted', 'id_verified', 'signing_initiated', 'rights_signed', 'tax_submitted', 'ops_approved', 'complete', 'rejected'])
 })
 
 
