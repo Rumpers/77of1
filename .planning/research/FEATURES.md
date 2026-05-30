@@ -1,205 +1,231 @@
-# Feature Landscape: AI Creator Digital-Twin / Fan Companion Platform
+# Feature Landscape: lala.la Marketing Site (Milestone v2.0)
 
-**Domain:** B2B AI companion service — creator pays, fans interact
-**Product:** lala.la — managed AI digital-twin for live influencers (JP/TW/HK)
-**Researched:** 2026-05-27
-**Overall confidence:** HIGH (compliance features), HIGH (fan UX patterns), MEDIUM (B2B creator dashboard norms)
+**Domain:** B2B2C SaaS marketing site — managed AI digital-twin service for non-technical influencer creators in JP/TW/HK
+**Researched:** 2026-05-30
+**Confidence:** HIGH (SaaS landing page patterns), HIGH (East Asian trust/UX signals), MEDIUM (direct competitor analogues)
 
 ---
 
-## Context: Two Distinct User Groups
+## Scope Reminder
 
-lala.la has two user populations with different feature expectations.
+This file covers the **marketing site only** — the public front door at the locale root that sells lala.la to potential creator customers and routes them into Hermes onboarding. It does NOT cover the twin engine, fan chat page, or Hermes bot (all already shipped).
 
-**Creator (B2B customer, paying):** Wants her brand extended 24/7 without spending her own time. Fears looking fake, losing fan trust, or losing control of her likeness. Success = fans stay engaged with her real platforms.
+**Milestone constraint:** Frontend-only. No backend changes. Single CTA surfaces: the Hermes Telegram deep-link. Existing i18n infrastructure (i18next + react-i18next) must be reused.
 
-**Fan (end user, free):** Wants to feel like they matter to the creator. Expects the experience to feel like "her" — voice, cadence, emoji habits, in-jokes. Success = a real-feeling interaction that leads them to support her monetization channels.
+---
 
-These populations have almost no feature overlap. Almost every feature serves one or the other, not both.
+## Audience Model
+
+**Primary audience:** Non-technical creators (17 LIVE streamers, Fanvue/Patreon creators) in JP/TW/HK. They are:
+- Mobile-first (80%+ of traffic will be mobile)
+- High uncertainty-avoidance (especially JP) — they need thoroughness before action
+- Not developers — any hint of "API" or "setup" language is a trust killer
+- Already using Telegram daily — a Telegram CTA has zero friction for this cohort
+- Strongly relationship/trust-driven — personal social proof outweighs brand authority
+
+**Secondary audience:** Any English-speaking creator or agency stumbling onto the site.
 
 ---
 
 ## Table Stakes
 
-Features where absence causes creators to reject the product or fans to churn immediately.
+Features where absence makes the site feel incomplete, unprofessional, or untrustworthy to a non-technical East Asian creator.
 
-### Creator Side
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| No-code onboarding via familiar channel | Creators are not developers; they expect Telegram DMs or a simple web form, not API keys | Low | PROJECT.md mandates Lala Telegram bot intake flow |
-| Persona consent capture + digital signature | Personality-rights law requires documented consent before deployment; creator expects paper trail | Medium | KYC gate: `creator_kyc.status = 'signed'` blocks twin until complete |
-| Voice sample intake | Voice is table stakes for Asian live-streaming market; fans expect to hear "her" | Medium | 30-second sample clip minimum; GMI Cloud XTTS zero-shot |
-| Character card review before go-live | Creator must approve the persona before fans see it; no surprises | Low | Preview flow + approval gate, then 30-case eval suite |
-| Twin goes dark if creator cancels | Creator owns her IP; lala.la must not run a twin without active consent | Low | Entitlement middleware: 423 on all twin routes if KYC lapses |
-| Creator owns her data | Non-exclusive license; export/delete on request | Medium | GDPR/APPI/PDPA data-minimization baseline; deletion procedure |
-| Clear AI disclosure on every surface | SB 243 mandatory; creator is legally exposed if absent | Low | Banner/header on lala.la/[handle] and Telegram bot bio |
-
-### Fan Side
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Responds in creator's voice + style | Core premise; if the tone is wrong fans notice in the first message | High | Character Card V2 fields: description, personality, mes_example, first_mes |
-| Responds in fan's language | JP/TW/HK fans code-switch; responding in the wrong language kills immersion | Medium | EN + JP + ZH-TW i18n first-class from day 1; detect input language, reply in kind |
-| Voice replies available | Live-streaming fans are accustomed to voice; text-only feels like a downgrade | High | GMI Cloud XTTS per-message audio; async acceptable, <3s target |
-| Conversation feels continuous | Fans reference earlier exchanges; if the twin "forgets" everything each session it feels robotic | Medium | Plain context window for v1 (locked decision); HMAC-signed conversation_id per session |
-| Will not produce harmful content | Fans with mental health struggles exist in every fanbase; harmful output is a crisis + legal event | High | Six-layer moderation pipeline; self-harm detection + crisis helpline injection |
-| Clear "this is AI" notice | SB 243 mandatory; fans who feel deceived become hostile | Low | Conspicuous, non-dismissable banner; not buried in ToS |
-| Fast enough to feel conversational | >5s latency breaks immersion; fans abandon | Medium | GMI Cloud LLM + XTTS pipeline; streaming text in Phase 5+ |
+| Feature | Why Expected | Complexity | Dependencies / Notes |
+|---------|--------------|------------|----------------------|
+| Hero section with headline + value-prop subhead + single primary CTA | Every serious SaaS page opens this way; absence signals "placeholder still up" | LOW | CTA = Hermes deep-link (`https://t.me/LalaBot?start=...`); headline must localize per locale |
+| Product demo visual in hero | Non-technical creators need to *see* a conversation happening, not read about it; motion/screenshot raises comprehension and trust | MEDIUM | A short looping chat animation (fake or real transcript) in the hero card; does not require live API calls — can be a static/animated asset |
+| Value proposition section (above fold or immediately below hero) | Creators need to understand "what do I get" within 5 seconds before they scroll; Japanese UX norm: elaborate, not sparse | LOW | Three-benefit layout (chat / voice / multi-channel) with icons; copy must be outcome-focused, not feature-focused |
+| Four generative pillars section (chat / voice / image / video) | Roadmap mandates this section; creators comparing AI services expect a capability list | LOW | Image + video can be shown as "coming soon" — they are part of the product story even if not live yet; avoids positioning gap vs future |
+| "How it works" — 3-step onboarding flow | Non-technical creators need reassurance that setup is simple; "managed white-glove" must be made concrete | LOW | Three steps: (1) message Lala on Telegram, (2) we build your twin, (3) your fans chat with it; no technical jargon; each step needs a visual |
+| Multi-channel deployment story section | Roadmap mandates this; creators want to know where their twin lives (lala.la + Telegram + their own channels) | LOW | Illustrate the three surfaces with screenshots/icons; "your own channels" = downloadable assets for social (future), described as coming |
+| Primary CTA button — sticky or repeated | Single conversion goal; SaaS pages that have one CTA convert at ~13.5% vs ~10.5% for 5+ CTAs | LOW | Same Hermes deep-link at hero, mid-page, and footer; consistent wording across locales |
+| Responsive / mobile-first layout | 80%+ of JP/TW/HK creator traffic is mobile; Taiwan particularly large-block mobile-oriented design norm | MEDIUM | Mobile-first CSS; Tailwind v4 already in stack; full-bleed blocks on mobile, grid layout on desktop |
+| EN / JA / ZH-TW localization of all copy | JP/TW/HK creators will be skeptical of any service not in their language; Japanese in particular sees language as a trust signal | MEDIUM | Uses existing i18next infrastructure; CTA copy must be culturally adapted, not literal translate (e.g., JA button: 「無料で始める」not "Sign Up") |
+| Footer with basic company info | Japanese users specifically expect company credentials (company name, contact, legal notice) in footer; absence raises fraud suspicion | LOW | Company name, contact email or form link, privacy policy link, AI disclosure notice |
+| Privacy / data notice (linked) | GDPR/APPI/PDPA — Japanese and Taiwanese creators are data-conscious; privacy link in footer is a trust prerequisite | LOW | Links to existing DSAR portal or a static privacy page; does not need to be full GDPR text on marketing site |
+| Page load performance (LCP < 2.5s on mobile) | East Asian mobile networks can be fast but creators will bounce on slow pages; Google PageSpeed matters for SEO too | MEDIUM | Lazy-load images, use WebP/AVIF, preload hero assets; Vite handles this well; no external font blocking |
 
 ---
 
 ## Differentiators
 
-Features that give lala.la a competitive edge specifically in the JP/TW/HK creator market and B2B managed-service positioning.
+Features that set the lala.la marketing site apart from generic "AI chatbot for creators" competitors like Fanvue AI, FanWake, Delphi.ai, and Character.AI's creator tools.
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Managed service (founder operates the AI) | Creators do not want to learn prompt engineering; lala.la handles the ops | Low (ops) | Differentiates from self-serve tools like FanWake or Fanvue AI |
-| Telegram-native fan experience | Asian creators and fans already live in Telegram; no app download friction | Medium | Fan-twin Telegram bot; lala.la/[handle] web fallback |
-| Creator-branded funnel page (lala.la/[handle]) | Creator gets a shareable link pointing to her AI twin; works as a landing page for any traffic source | Low | Web surface with soft CTA to creator's real monetization platforms |
-| Soft CTA to creator's existing monetization stack | Nudges fans toward Fanvue/Patreon/17 LIVE without a competing payment wall | Low | CTA templates in persona constitution; context-aware trigger logic |
-| 30-case eval suite before go-live | Guarantees persona quality and hard-limit compliance before creator sees her twin; removes launch anxiety | Medium | 10 in-character + 10 boundary + 10 hard-limit; 100% hard-limit pass required |
-| Character Card V2 portability | Creator can take her persona to another platform; non-lock-in is a trust signal for sophisticated creators | Low | Industry-standard format; JSON export on request |
-| Multi-locale compliance baseline baked in | JP/TW/HK creators face APPI (Japan), PDPA (Taiwan/HK), plus SB 243 and TRAIGA exposure for US fans | High | Not a differentiator if absent; becomes one because competitors skip it |
-| Fan-name masking in audit logs | Protects fan privacy; creator cannot accidentally see a fan's real-world identity in logs | Medium | OCR intake + review queue for masking; PROJECT.md specifies founder-operated v1 |
-| Public + private twin schema | Creator can have a PG public twin and a private twin with different boundaries | Low (schema) / High (security) | Schema column ships in Phase 1; access-control security deferred to Phase 3+ |
+| Feature | Value Proposition | Complexity | Dependencies / Notes |
+|---------|-------------------|------------|----------------------|
+| "Managed service" messaging framing | Competitors are self-serve tools; lala.la's pitch is "we do the work" — this is a distinct positioning most creator AI sites don't have | LOW | Copy must repeatedly use "we manage", "done for you", "your twin is ready in days"; use founder/concierge framing not "configure your bot" |
+| Social proof section with creator quote(s) | Asian creator market is testimonial-driven; even one authentic quote from Claire (or a placeholder testimonial for launch) dramatically increases trust | LOW | A single named creator testimonial with photo earns more trust than brand stats; use Claire's voice once she is live; placeholder OK for launch |
+| "White-glove onboarding" concreteness block | Competitors are vague about setup; lala.la can differentiate by showing exactly what the onboarding looks like (e.g., a screenshot of the Hermes Telegram DM flow) | MEDIUM | A real or staged screenshot of the Hermes bot conversation; shows non-technical creators it's a simple DM exchange, not a form |
+| Compliance / safety trust badges or paragraph | JP/TW creators care about not embarrassing themselves; showing that lala.la has a moderation pipeline and eval gate (without technical detail) is a conversion differentiator | LOW | "Your twin never goes live without passing our 30-case safety review" — short, plain-language, no need to describe the eval suite architecture |
+| Creator ownership / portability callout | Non-exclusive license + "your data is yours" is a trust signal that sophisticated creators respond to; most competitors don't surface this | LOW | One-liner in the value-prop section or a dedicated "creator rights" callout block |
+| Locale-adaptive CTA copy (not just translated) | Most localized SaaS sites translate; JP/TW creators respond to culturally-tuned CTA language (e.g., JA: 「まずはラーラに話しかけてみて」, not a corporate imperative) | MEDIUM | Requires native copywriting per locale; budget a round of native speaker review |
+| Demo section — sample conversation transcript | Showing a realistic sample conversation (in-locale) lets creators visualize the product; reduces "I don't understand what this does" drop-off | MEDIUM | Static transcript cards (not live API) in each locale language; shows character voice, soft CTA nudge, and AI disclosure footer in the transcript |
+| Animated or video hero visual | Motion captures attention and explains the product faster than text; creator audiences are visually oriented | MEDIUM | Short MP4/WebM loop (10-15s) of a fan chat interaction; autoplay muted; fallback static image for slow connections |
 
 ---
 
 ## Anti-Features
 
-Things to deliberately NOT build — each carries either a locked decision reason or a strategic reason.
+Things to deliberately NOT build in this milestone, even if they seem natural or are commonly requested.
 
-| Anti-Feature | Why Avoid | What to Do Instead | Decision Status |
-|--------------|-----------|-------------------|-----------------|
-| Fan payment loop / fan accounts / Stripe Connect | Adds compliance burden, changes product category from "AI plumbing" to "payment processor"; creates chargeback and dunning liability | Nudge fans to creator's own monetization platforms | Locked — PROJECT.md |
-| Persistent long-term memory (Letta / Graphiti / Neo4j) | Adds significant ops and cost complexity at N=1; overkill until creator #3-5 | Plain context window per session (HMAC conversation_id) | Deferred — PROJECT.md |
-| AI image generation | TAKE IT DOWN Act compliance gates this; non-consensual synthetic imagery is a legal crisis waiting to happen | Phase 5+ with Illustrious XL + LoRA when compliance pathway is clear | Deferred — PROJECT.md |
-| SSE/streaming text responses | Nice-to-have polish; engineering cost exceeds value at N=1 | Async text reply is acceptable; voice reply covers "feels alive" | Deferred to Phase 5+ |
-| LINE / WhatsApp channels | More surface area, more ops, more edge cases | Telegram + web first; expand after product-market fit | Deferred to Phase 6 |
-| Bespoke LLM engine / fine-tuned model | Commodity providers are faster to ship, cheaper to run, and easier to swap; fine-tuning at N=1 is vanity | Character Card V2 + strong system prompt + moderation pipeline | Locked — PROJECT.md |
-| Romantic / intimate relationship framing | Replika was forced to remove it under regulatory pressure (EU, FTC complaint); creates disproportionate safety and legal risk | Parasocial friendship framing; warmth without romantic promises | Strategic |
-| Fan social features (fan-to-fan chat, community) | Scope creep; lala.la is not a social platform | Creator directs engaged fans to her existing community (Discord, etc.) | Strategic |
-| Admin automation agents (5 background AI workers) | Founder is the agents at N=1; automation budget unavailable | Founder operates manually | Deferred |
+| Anti-Feature | Why Requested | Why It's Wrong Here | What to Do Instead |
+|--------------|---------------|---------------------|--------------------|
+| Pricing / billing page | Creators naturally want to know cost | Locked out-of-scope (PROJECT.md); self-serve signup not yet built; a pricing page without a payment flow creates expectation gaps | "Contact us / Start via Hermes" model; pricing is discussed in the onboarding DM |
+| Self-serve signup form or waitlist form | Standard SaaS pattern | No backend to handle signups; adds a broken flow; managed onboarding means Hermes is the intake; a form creates a second funnel that competes with the Telegram CTA | Single CTA to Hermes deep-link; no email capture form on the marketing site |
+| Blog / documentation / help-center | Creators expect support content | Out-of-scope (PROJECT.md, milestone v2.0); content operations cost not justified at N=1 | Defer to a future milestone; FAQs can be answered in the Hermes DM flow |
+| Live demo / interactive chat widget | Shows the product in action | Would require the twin engine to be exposed publicly with an anonymous session — security, moderation, and billing implications; not a frontend-only change | Use a static animated transcript card instead; visually equivalent, zero backend risk |
+| Social media links / community icons | Standard footer element | lala.la has no public social presence at N=1 launch; empty/placeholder links erode trust | Omit until there is content to link to |
+| Creator dashboard / login CTA | Creators who are already onboarded need a dashboard | Authenticated dashboard is a separate surface (admin port 3001); linking to it from the marketing site before it is polished creates bad first impressions | Route existing creators to Hermes directly; dashboard link can be added after admin surface is stable |
+| Popup / exit-intent modal | Common SaaS conversion tactic | JP/TW users have strong aversion to pushy pop-up patterns; creates negative brand signal in high-uncertainty-avoidance cultures | Repeat the CTA natively in the page flow at hero, mid-page, and footer; inline > interruptive |
+| Video autoplay with sound | Eye-catching | Aggressive on mobile, banned by browsers anyway; JP mobile culture values subtle UX | Autoplay muted loop; user initiates sound; or use animated GIF equivalent |
+| Cookie consent banner (heavy EU-style) | GDPR compliance reflex | The marketing site has no analytics/tracking cookies at launch (Vite SPA, no third-party scripts assumed); a heavy banner where none is needed increases bounce | Add only if analytics tools requiring consent are added; start cookie-free or with a lightweight notice |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Creator KYC / consent capture
-  → Entitlement middleware (423 gate)
-    → Twin chat routes (web + Telegram)
-      → AI disclosure banner (required on every surface)
-      → Six-layer moderation pipeline
-        → Self-harm detection + crisis helpline injection
-        → Audit log (with fan-name masking)
+Hermes Telegram deep-link (already exists)
+  └──required by──> Primary CTA button (hero, mid-page, footer)
 
-Character Card V2 persona (description, personality, mes_example, voice sample)
-  → 30-case eval suite (10 in-character + 10 boundary + 10 hard-limit)
-    → Go-live approval (creator signs off, eval 100% pass)
-      → Voice replies (GMI Cloud XTTS — needs voice sample from persona intake)
+Existing i18next infrastructure (already in web artifact)
+  └──required by──> Locale-adaptive copy (EN / JA / ZH-TW)
+                       └──enhances──> Locale-adaptive CTA copy
+                       └──enhances──> Demo conversation transcript (per-locale)
 
-HMAC-signed conversation_id
-  → Session continuity (plain context window)
-  → Rate-limiting / abuse protection
+Static/animated hero visual (new asset)
+  └──required by──> Hero section
+  └──optional enhancement──> Animated demo section
 
-Soft CTA templates (in persona constitution)
-  → Context-aware nudge logic
-    → Telegram bot surfaces
-    → lala.la/[handle] web funnel page
+Net-new marketing design system (new — separate from fan-chat page styles)
+  └──required by──> Every visible section
+  └──must not affect──> Fan page (lala.la/[handle]) styles (separate Vite entry or scoped CSS)
 
-i18n (EN + JP + ZH-TW)
-  → Fan-facing chat UI
-  → Crisis helpline injection (locale-specific hotlines differ)
-  → AI disclosure text
+Native-speaker copywriting review (ops dependency)
+  └──required by──> JA + ZH-TW locale-adaptive CTA copy
+  └──recommended for──> "How it works" step copy (plain language in locale)
+
+Claire creator testimonial (ops dependency — available after she goes live)
+  └──enhances──> Social proof section
+  └──placeholder OK at launch──> Use anonymized quote or launch without social proof block
 ```
 
 ---
 
-## MVP Feature Set (Week 4 Launch Target)
+## MVP Definition
 
-The following is the minimum set that makes a real creator go live and a real fan have a meaningful interaction.
+### Launch With (v2.0 — this milestone)
 
-**Must ship (creator-blocking if absent):**
-1. Creator KYC onboarding via Lala Telegram bot — consent, persona, voice sample, character card
-2. AI disclosure banner (SB 243 compliance — legally required)
-3. Self-harm detection + crisis helpline injection (SB 243 compliance — legally required)
-4. Six-layer moderation pipeline with audit log
-5. 30-case eval suite — 100% hard-limit pass before go-live
-6. Entitlement middleware — 423 until KYC signed
+The minimum set that turns "placeholder page" into a real public front door.
 
-**Must ship (fan experience):**
-1. AI twin chat on lala.la/[handle] web funnel page
-2. AI twin chat via Telegram fan-twin bot
-3. Voice reply via GMI Cloud XTTS
-4. i18n: EN + JP + ZH-TW first-class
-5. Soft CTA to creator's monetization platforms
-6. HMAC-signed conversation_id per session
+- [ ] Hero: localized headline + sub-head + single Hermes CTA button + hero visual (static or looping animation)
+- [ ] Value proposition: three-benefit block (chat / voice / multi-channel)
+- [ ] Four generative pillars section (chat / voice / image-coming-soon / video-coming-soon)
+- [ ] "How it works" — 3-step managed onboarding flow with visuals
+- [ ] Multi-channel deployment story (lala.la + Telegram + own socials)
+- [ ] Demo transcript card (static, per-locale, shows the AI in action)
+- [ ] Social proof block (even a single quote; placeholder acceptable at launch if Claire not yet live)
+- [ ] Compliance / safety one-liner ("all twins pass a 30-case safety review before going live")
+- [ ] Creator ownership callout (non-exclusive license, data portability)
+- [ ] Repeated CTA (mid-page + footer version of Hermes deep-link)
+- [ ] Responsive / mobile-first layout throughout
+- [ ] EN / JA / ZH-TW full copy localization (all sections)
+- [ ] Footer: company info + privacy policy link + AI disclosure notice
+- [ ] Net-new design system (typography, color, motion — separate from fan-chat page)
+- [ ] lala.la/[handle] fan route unaffected (routing guard already in place)
 
-**Defer (documented above as out of scope):**
-- Persistent memory / Letta / Graphiti
-- AI image generation
-- Fan payment loop
-- SSE streaming text
-- LINE / WhatsApp
+### Add After Validation (v2.x — when Claire is live and generating signal)
 
----
+- [ ] Real Claire creator testimonial (replaces placeholder)
+- [ ] Hermes DM screenshot in "white-glove onboarding" block (requires Claire permission)
+- [ ] Light analytics (Plausible / self-hosted, no third-party cookies) to measure CTA click-through
+- [ ] OG/Twitter card meta tags per locale for social sharing
 
-## Compliance Feature Map
+### Future Consideration (v3+)
 
-SB 243 (California, effective 2026-01-01) and TRAIGA (Texas, effective 2026-01-01) create hard legal requirements that are not optional features. They are gate conditions.
-
-| Compliance Requirement | Source Law | Required Feature | Severity |
-|------------------------|------------|-----------------|----------|
-| AI disclosure at interaction start | SB 243 §1 | Conspicuous banner on all chat surfaces | BLOCKER — private right of action, $1,000/violation |
-| No content promoting suicidal ideation | SB 243 §2 | Self-harm classifier (Replika-style L1-L5 pipeline) | BLOCKER |
-| Crisis service referral when user expresses self-harm | SB 243 §2 | Locale-aware crisis helpline injection | BLOCKER |
-| Minor-specific break reminders every 3 hours | SB 243 §3 | Age detection OR blanket application; 3-hour timer | HIGH — applies if any minor users plausible |
-| Suitability warning re: minors | SB 243 §1 | In-app notice that service "may not be suitable for some minors" | HIGH |
-| Publish safety protocols on website | SB 243 §4 | Safety policy page at lala.la/safety | MEDIUM |
-| Annual crisis interaction reporting (from 2027-07-01) | SB 243 §5 | Audit log with crisis event counts | LOW now, HIGH by 2027 |
-| AI disclosure before or at interaction start | TRAIGA | Same banner covers this | MEDIUM — Texas user exposure only |
-| GDPR / APPI / PDPA data minimization | GDPR Art. 5, APPI, PDPA | Fan-name masking, short log retention (30-90 days), no unnecessary PII in LLM prompts | HIGH |
+- [ ] Animated/video hero (MP4/WebM product demo loop) — high production value, deferred until budget
+- [ ] Blog / FAQ / help content — requires content operations
+- [ ] Pricing page — requires self-serve billing to be built first
+- [ ] Creator portal CTA — requires admin dashboard to be polished
 
 ---
 
-## What Creators in the JP/TW/HK Market Specifically Expect
+## Feature Prioritization Matrix
 
-Based on the live-streaming creator market context (17 LIVE, NicoNico, TikTok Live):
-
-- **Speed of setup**: JP/TW creators are accustomed to third-party tools that "just work" over Telegram or LINE. A no-code Telegram bot intake matches their existing workflow.
-- **Voice is non-negotiable**: In live-streaming culture, voice messages carry emotional weight that text cannot replicate. Voice AI is a product requirement, not a nice-to-have.
-- **Polite register awareness**: Japanese keigo (formal speech register) and Traditional Chinese politeness conventions must be handled correctly in character cards. A wrong register instantly signals "bot."
-- **Creator owns the narrative**: Asian creator culture emphasizes strong personal brand control. The non-exclusive license and immediate twin shutdown on consent withdrawal are trust prerequisites.
-- **No embarrassing outputs**: In tight-knit JP/TW creator communities, a single inappropriate twin output can go viral and destroy a creator's career. The 30-case eval suite and hard-limit moderation exist for this reason.
+| Feature | Creator Value | Implementation Cost | Priority |
+|---------|---------------|---------------------|----------|
+| Hero + primary CTA | HIGH | LOW | P1 |
+| "How it works" 3-step | HIGH | LOW | P1 |
+| Value proposition block | HIGH | LOW | P1 |
+| EN/JA/ZH-TW localization | HIGH | MEDIUM | P1 |
+| Mobile-first responsive layout | HIGH | MEDIUM | P1 |
+| Four generative pillars | HIGH | LOW | P1 |
+| Multi-channel deployment story | HIGH | LOW | P1 |
+| Demo transcript card (static) | HIGH | MEDIUM | P1 |
+| Net-new design system | HIGH | HIGH | P1 (milestone prerequisite) |
+| Footer + privacy + compliance notice | MEDIUM | LOW | P1 |
+| Social proof block | HIGH | LOW | P2 (depends on Claire going live) |
+| Creator ownership callout | MEDIUM | LOW | P2 |
+| Repeated CTA (mid + footer) | HIGH | LOW | P1 |
+| Locale-adaptive CTA copy | MEDIUM | MEDIUM | P2 (native speaker review needed) |
+| Page performance (LCP < 2.5s) | MEDIUM | MEDIUM | P2 |
+| OG meta tags per locale | LOW | LOW | P3 |
+| Analytics integration | LOW | LOW | P3 |
 
 ---
 
-## What Fans Expect (Cross-Platform Research)
+## East Asian Market-Specific Considerations
 
-Based on Replika, Character.AI, and Fanvue AI usage patterns:
+These are requirements born from the JP/TW/HK creator audience, not generic SaaS wisdom. Ignoring them produces a site that reads as culturally foreign to the exact audience it is targeting.
 
-- **Personality consistency across sessions**: Fans notice when tone shifts. Character Card V2's `mes_example` field is critical for training consistent voice.
-- **Remembers something**: Even shallow context continuity (within-session) matters enormously. The HMAC conversation_id + plain context window covers this adequately at N=1.
-- **Responds to emotional investment**: Fans share personal things. The system must respond warmly without escalating into parasocial dependency territory. Soft deflection protocol for boundary cases.
-- **Does not feel like a form**: Fans have strong radar for templated responses. The character card's `first_mes` and `scenario` fields must be crafted by a human who knows the creator.
-- **The CTA feels natural**: Fans accept being pointed toward the creator's Patreon/Fanvue IF it comes after genuine engagement. Premature or robotic CTAs drive churn. Context-aware nudge logic (not every N messages) is required.
-- **Language parity**: A ZH-TW fan who writes in Traditional Chinese expects a Traditional Chinese reply, not a Simplified Chinese reply or an English one. Language auto-detection + locale-appropriate response is expected.
+### Japan (JA)
+
+- **Information density norm:** Japanese users equate thoroughness with trustworthiness. A sparse, ultra-minimal page signals that lala.la is hiding something. Each section should elaborate; use structured bullet lists inside feature blocks rather than single-line claims.
+- **CTA copy tone:** Use 敬語 (keigo) register — respectful, not commanding. "まずは話しかけてみてください" (Please try talking to it first) converts better than "Start Now." Avoid imperative-mood buttons.
+- **Company credentials:** The footer must have a visible company/service name and contact email. Japanese users do a background check before acting; missing credentials = scam signal.
+- **Testimonial format:** A real name + photo testimonial from a JP creator would be extremely high-value. An anonymized testimonial ("A creator on 17 LIVE Japan") is acceptable but lower trust.
+- **Font:** Use a JP-optimized web font (Noto Sans JP or Hiragino fallback); system default CJK rendering on non-Mac is poor.
+
+### Taiwan (ZH-TW)
+
+- **Mobile-first large blocks:** Taiwanese mobile UX norm is full-width content blocks with larger imagery and less text density than JP. Avoid the information-dense JP pattern on ZH-TW locale.
+- **Traditional Chinese only:** Use ZH-TW (Traditional) throughout; Simplified Chinese (ZH-CN) signals mainland China product and is actively off-putting to Taiwanese creators.
+- **Trust via familiarity:** Taiwan's creator market trusts products that feel embedded in their existing daily life (Telegram, Instagram). Showing that lala.la works *within* Telegram (not requiring a new app) is critical.
+- **Social referral over brand authority:** Taiwanese creators respond to peer recommendations. A testimonial from another TW creator outweighs any brand stat.
+
+### Hong Kong (ZH-HK / EN)
+
+- **Bilingual by default:** HK creators often switch between Traditional Chinese and English in the same sentence. Consider offering ZH-TW and EN, and noting ZH-HK differences are minimal (ZH-TW covers HK adequately for launch).
+- **Skepticism of mainland-origin AI products:** HK creators are particularly sensitive to data sovereignty. A clear "your data stays yours, non-exclusive license, delete any time" callout is high-value in HK.
+
+---
+
+## Competitor Reference
+
+No direct competitor markets themselves specifically to JP/TW/HK managed AI twin services at this positioning. Closest analogues:
+
+| Competitor | What They Show | What lala.la Should Do Differently |
+|------------|---------------|-------------------------------------|
+| Delphi.ai | Self-serve "clone yourself" SaaS; simple hero, pricing page, feature list | Managed service framing ("we build it for you") vs self-serve; no pricing page; Telegram CTA |
+| Fanvue AI | Embedded feature within Fanvue; no standalone marketing site | Standalone brand; not tied to any specific monetization platform |
+| FanWake | Simple hero + "request access" form; EN-only | Full locale support; Telegram intake vs email form |
+| Character.AI creator tools | Developer-focused; technical docs front-and-center | Non-technical onboarding story; zero developer framing |
 
 ---
 
 ## Sources
 
-- Fanvue AI features: [Fanvue AI](https://www.fanvue.com/pages/fanvue-ai)
-- FanWake creator chatbot patterns: [FanWake](https://fanwake.app/guide)
-- California SB 243 compliance requirements: [Gunderson Dettmer analysis](https://www.gunder.com/en/news-insights/insights/client-insight-california-sb-243-new-compliance-requirements-for-operators-of-ai-companion-chatbots), [Jones Walker analysis](https://www.joneswalker.com/en/insights/blogs/ai-law-blog/ai-regulatory-update-californias-sb-243-mandates-companion-ai-safety-and-accoun.html)
-- TRAIGA (Texas): [Baker Botts analysis](https://www.bakerbotts.com/thought-leadership/publications/2025/july/texas-enacts-responsible-ai-governance-act-what-companies-need-to-know)
-- Replika safety pipeline: [Replika Blog — Safe Experience](https://blog.replika.com/posts/creating-a-safe-replika-experience)
-- Character.AI self-harm safety: [CNN Business](https://www.cnn.com/2025/04/03/tech/ai-chat-apps-safety-concerns-senators-character-ai-replika)
-- Character Card V2 spec: [GitHub spec](https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md), [SillyTavern docs](https://docs.sillytavern.app/usage/core-concepts/characterdesign/)
-- Persona jailbreak / multi-turn attack patterns: [Repello AI DAN analysis](https://repello.ai/blog/dan-jailbreak-personas-evil-confidant-antigpt)
-- AI companion market data: [AI Companions Statistics 2025](https://electroiq.com/stats/ai-companions-statistics/), [Market Clarity](https://mktclarity.com/blogs/news/ai-companion-market)
-- Creator digital twin IP / portability: [Herbert Smith Freehills — Khaby Lame deal](https://www.hsfkramer.com/notes/ip/2026-02/selling-your-ai-digital-twin-the-brave-new-world-of-identity-led-ip-transactions-the-khaby-lame-deal-analysed)
-- GDPR data minimization for chatbots: [Quickchat AI GDPR guide](https://quickchat.ai/post/gdpr-compliant-chatbot-guide)
+- SaaS landing page best practices: [Webflow Blog](https://webflow.com/blog/saas-landing-page), [Lollypop Design SaaS anatomy](https://lollypop.design/blog/2025/june/saas-landing-page-design/)
+- Japanese web design and trust patterns: [Humble Bunny](https://www.humblebunny.com/japanese-web-design-trends-in-japan/), [iCrossing Japan](https://www.icrossborderjapan.com/en/blog/website-design/japanese-web-design-trends/), [IGNITE Japan UX](https://igni7e.com/blog/navigating-japanese-website-design-and-ui-ux)
+- East Asia influencer market: [AnyMind Group 2026 East Asia Playbook](https://anymindgroup.com/blog/2026-east-asia-influencer-marketing/)
+- Cultural localization conversion: [Blend Localization](https://www.getblend.com/blog/localization-in-marketing-how-global-brands-drive-3x-conversion-with-cultural-adaptation/)
+- CTA conversion research: [KlientBoost SaaS Landing Pages](https://www.klientboost.com/landing-pages/saas-landing-page/), single CTA vs multiple CTA conversion delta
+- "How it works" section patterns: [Cortes.design SaaS breakdown](https://www.cortes.design/post/saas-landing-page-breakdown-example)
+- White-glove onboarding positioning: [Bootstrapped Founder](https://thebootstrappedfounder.com/white-glove-onboarding/)
+- Managed service / creator platform comparison: [Passion.io white label case studies](https://passion.io/blog/white-label-app-case-studies-creator-revenue-results)
+- Internal project context: `.planning/PROJECT.md`, `docs/roadmap.md` — HIGH confidence (locked decisions)
+
+---
+*Feature research for: lala.la marketing site (milestone v2.0)*
+*Researched: 2026-05-30*

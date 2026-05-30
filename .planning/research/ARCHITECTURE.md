@@ -1,425 +1,552 @@
-# Architecture Patterns
+# Architecture Research
 
-**Domain:** AI digital-twin creator monetization service (lala.la)
-**Researched:** 2026-05-27
-**Confidence:** HIGH — derived from direct codebase inspection, not inference
-
----
-
-## Recommended Architecture
-
-The system is a five-process monorepo on a single Replit deployment. Each process is a separate artifact with a shared library layer underneath. Processes communicate through a PostgreSQL database (authoritative state) and a Redis-backed BullMQ queue (async job dispatch). There is no internal service mesh; processes share the same host and communicate via shared DB + queue.
-
-```
-Fan surfaces          Creator surfaces         Ops
-─────────────         ────────────────         ───
-Telegram fan-twin     Telegram Lala bot         Admin dashboard
-bot (TBD artifact)    (hermes, port 3001)       (artifacts/admin)
-lala.la/[handle]
-(artifacts/web,             │                       │
- port 22333)                │                       │
-        │                   │                       │
-        └───────────────────┴───────────────────────┘
-                            │
-                   ┌────────▼────────┐
-                   │   api-server    │  Express, port 8080
-                   │  (artifacts/    │  All REST routes
-                   │   api-server)   │  Twin chat, KYC, consent,
-                   └────────┬────────┘  persona, assets, moderation
-                            │
-               ┌────────────┴────────────┐
-               │                         │
-        ┌──────▼──────┐           ┌──────▼──────┐
-        │  PostgreSQL  │           │    Redis     │
-        │ (Replit PG)  │           │  (BullMQ)    │
-        │ authoritative│           │ job dispatch │
-        │    state     │           │  + retries   │
-        └─────────────┘           └──────┬───────┘
-                                         │
-                                  ┌──────▼───────┐
-                                  │    worker    │
-                                  │ (artifacts/  │
-                                  │   worker)    │
-                                  │ text/voice/  │
-                                  │ video/mod/   │
-                                  │ revocation   │
-                                  └──────┬───────┘
-                                         │
-                               ┌─────────▼─────────┐
-                               │  GMI Cloud (LLM +  │
-                               │  XTTS voice)       │
-                               │  OpenAI Moderation │
-                               │  GMI Embeddings    │
-                               └───────────────────┘
-```
+**Domain:** Marketing site integration into existing artifacts/web SPA (lala.la)
+**Researched:** 2026-05-30
+**Confidence:** HIGH — derived from direct codebase inspection of artifacts/web/src/, App.tsx, lib/i18n.ts, vite.config.ts, index.html, and package.json
 
 ---
 
-## Component Boundaries
+## Integration Overview
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `artifacts/hermes` | Creator management Telegram bot (Lala). Onboarding steps 1-3, asset upload with inline moderation, consent collection state machine, pause/resume kill-switch. Single bot token, multi-tenant by `creator_id`. | PostgreSQL directly; Telegraf webhook/long-poll for Telegram API. |
-| `artifacts/api-server` | All REST API routes on port 8080. Twin chat (stub→real), KYC intake + ops review queue, persona storage, asset management, consent recording, DSAR, link tracking. Entitlement middleware (KYC gate, fan dunning gate). | PostgreSQL via Supabase client (being replaced with Drizzle); enqueues jobs to Redis/BullMQ. |
-| `artifacts/worker` | Async job processor. Workers: text-generation, voice-generation, video-generation, moderation, consent-revocation, dunning-retry. DLQ handler writes to audit log and creator_notifications. | PostgreSQL for job state; Redis/BullMQ for queue; GMI Cloud + OpenAI for AI calls. |
-| `artifacts/web` | Fan-facing web funnel `lala.la/[handle]`. Chat interface, CTA to creator's platforms, locale detection, SB 243 AI disclosure footer. Port 22333. | api-server REST API. |
-| `artifacts/admin` | Founder/ops dashboard. KYC review queue, audit pack export, DLQ job monitoring, creator_notifications display. Port 3001. | api-server REST API (ops routes behind OPS_USER_IDS allowlist). |
-| `lib/db` | Drizzle schema definitions and migration config. Shared type source of truth. Currently a placeholder — schema lives in Supabase migrations; full Drizzle schema is Week 1 work. | Imported by api-server, worker, hermes. |
-| `lib/providers` | Provider registry: text, voice, video, moderator adapters. `createRegistry()` selects mock vs GMI by env var. GmiClient handles auth, Helicone proxy routing, 5xx retry. | Injected into worker `createWorker()` calls. |
-| `lib/queue` | BullMQ queue definitions, job payload types, job options (retry policy, backoff). `createAllQueues()` returns all six queues. | Imported by api-server (enqueue) and worker (consume). |
-| `lib/api-spec` | OpenAPI YAML. Source of truth for API contract. | Generates `lib/api-zod/` and `lib/api-client-react/` via orval — do not hand-edit generated files. |
-| `lib/api-zod` | Generated Zod validators from openapi.yaml. | Imported by api-server for request validation. |
-| `lib/api-client-react` | Generated React Query hooks from openapi.yaml. | Imported by artifacts/web and artifacts/admin. |
-| `lib/admin-sdk` | Admin audit client shared between admin dashboard and api-server ops routes. | Imported by artifacts/admin. |
+The marketing site is NOT a new artifact. It lives entirely inside `artifacts/web` — the existing React 19 + Vite SPA on port 22333. The "placeholder" at the locale root is `src/pages/home.tsx` (8 lines of unstyled HTML). The entire milestone is replacing that file and adding supporting modules around it.
+
+### What MUST NOT change
+
+- The fan route `/:locale/:handle` (the `FanPage` component and its registration in `App.tsx`)
+- Port 22333
+- `artifacts/api-server` (Express, port 8080) — no backend changes
+- `artifacts/hermes` — the marketing CTA deep-links to it; no changes to the bot
+- `lib/api-zod/` and `lib/api-client-react/` — generated; not touched by this milestone
+- The `/:locale/onboard/*`, `/:locale/account/data-request`, `/:locale/dashboard`, `/payment/*` routes — all remain registered as-is
 
 ---
 
-## Data Flow: Six-Layer Moderation Pipeline
-
-This is the critical request-response path for every fan chat turn. Based on the north-star spec and existing code shape.
+## System Overview
 
 ```
-Fan → POST /api/twin/[handle]/chat
-       │
-       ├─ [Gate 0] creator_kyc.status = 'signed' check
-       │    └─ NOT signed → 423 Locked
-       │
-       ├─ [Gate 1] creator.paused check (hermes /pause writes this)
-       │    └─ paused → 503
-       │
-       ├─ L1: OpenAI Moderation API — input fan message
-       │    └─ flagged (hard categories) → safe deflection response, log L6
-       │
-       ├─ Persona resolution
-       │    └─ load Character Card V2 JSONB from creators.config (or character_cards table)
-       │    └─ build system prompt: system_prompt + post_history_instructions fields
-       │
-       ├─ Conversation history assembly
-       │    └─ load last N turns from conversation_messages (keyed by HMAC-signed conversation_id)
-       │
-       ├─ [RAG, N=1 plain context] append persona embeddings as context chunks
-       │
-       ├─ LLM call → GMI Cloud (text completion)
-       │    └─ provider registry .text.generate(prompt, { systemPrompt, ragChunks })
-       │
-       ├─ L3: OpenAI Moderation API — output LLM response
-       │    └─ flagged → substitute pre-canned safe deflection (per locale), log L6
-       │
-       ├─ L4: Self-harm / crisis detection
-       │    └─ crisis_level=high → inject crisis helpline (locale-aware), write safety_audit_log
-       │    └─ fires Slack webhook (SAFETY_ALERT_WEBHOOK_URL) for founder, does NOT block response
-       │
-       ├─ L5: Sentry alert + Lala bot notify for any high-risk event
-       │    └─ fire-and-forget, never blocks fan response path
-       │
-       ├─ L6: audit_log append for every flagged turn
-       │    └─ stores fan_id_hash + message_hash (no raw PII), creator_id, session_id
-       │
-       ├─ SB 243 AI disclosure footer appended to every response
-       │    └─ "[AI twin] · @{handle}_ai" (localized)
-       │
-       └─ Fan receives: { text, disclosure_footer }
-```
-
-Voice path (async, triggered after text response delivered):
-
-```
-api-server → enqueue VoiceGenerationPayload to BullMQ voiceGeneration queue
-               │
-               └─ worker picks up job (concurrency: 5)
-                    ├─ mark generation_jobs.status = 'processing'
-                    ├─ call ProviderRegistry.voice.generate(transcript, creatorId, language)
-                    │    └─ GMI Cloud XTTS zero-shot (reference audio per creator)
-                    ├─ mark generation_jobs.status = 'complete', store audioUrl
-                    └─ on exhausted retries → DLQ handler
-                         ├─ mark generation_jobs.status = 'dlq'
-                         ├─ audit_log insert
-                         ├─ upsert creator_notifications.has_dlq_jobs = true
-                         └─ Sentry capture (PII-stripped)
+artifacts/web/src/
+├── App.tsx                  MODIFY: import MarketingPage; replace HomePage in /:locale route
+├── index.css                MODIFY: add marketing CSS layer and design tokens block
+├── index.html               MODIFY: update default <title>, meta description, og:* tags
+├── lib/
+│   └── i18n.ts              MODIFY: add `marketing` namespace to Messages type + 3-locale copy
+│
+├── pages/
+│   ├── home.tsx             REPLACE: becomes the new MarketingPage shell
+│   └── [all others]         NO CHANGE
+│
+├── components/
+│   ├── fan/                 NO CHANGE
+│   ├── ui/                  NO CHANGE (fan + shared Radix primitives)
+│   └── marketing/           NEW: isolated marketing design system
+│       ├── index.ts         re-export barrel
+│       ├── MarketingNav.tsx
+│       ├── HeroSection.tsx
+│       ├── PillarsSection.tsx
+│       ├── ChannelsSection.tsx
+│       ├── OnboardingSection.tsx
+│       ├── CtaSection.tsx
+│       └── MarketingFooter.tsx
+│
+└── content/                 NEW: structured marketing copy (typed, locale-keyed)
+    └── marketing.ts         marketing copy object — same shape as existing i18n.ts namespaces
 ```
 
 ---
 
-## Data Flow: Creator Onboarding
+## Routing Strategy
 
-Multi-step, split across Hermes (Telegram) and web dashboard. Both paths write to the same DB tables.
+### Current Route Table (App.tsx)
 
 ```
-Step 0: KYC gate
-  Creator → api-server POST /api/kyc/identity (doc upload via signed URL)
-  Creator → api-server POST /api/kyc/initiate-signing (SignWell personality-rights doc)
-  SignWell → api-server POST /api/kyc/signwell-webhook (HMAC-verified)
-  Founder → api-server POST /api/ops/kyc/:id/approve (ops review queue)
-  creator_kyc.status = 'complete' unlocks twin routes
-
-Step 1: Asset upload (via Hermes)
-  Creator sends photo/video to Hermes bot
-  Hermes downloads bytes from Telegram
-  → inline moderation: moderateImageBytes / moderateVideoWithThumbnail (GMI vision)
-  → passed: insert creator_assets (consent_state='pending_consent'), writeAssetModerationAudit
-  → rejected: reply with category reason, write audit
-
-Step 2: Persona exercise (via Hermes or web)
-  Creator answers persona prompts
-  → api-server POST /api/onboarding/persona stores to creator_persona_responses
-  → Hermes /persona_complete → triggerPersonaRagIngest
-       → loads creator_personas fields
-       → chunks text, embeds via GmiEmbeddingAdapter (or OpenAI fallback)
-       → stores to creator_content_embeddings
-
-Step 3: Consent collection (via Hermes or web)
-  Hermes /consent → multi-turn state machine (in-memory Map, Slice 2 moves to Redis)
-  → collects YES/NO for: persona_text, voice, image, talking_video, fullbody_video
-  → commitConsent writes consent_grants rows
-  → if persona_text granted + KYC complete → creator_assets transition to consent_state='released'
-  → creator_onboarding.status = 'STEP_3_COMPLETE'
-  → twin production signal (wired in Week 2)
+/              → redirect to /en
+/:locale       → HomePage  (the 8-line placeholder — THIS is what we replace)
+/:locale/:handle → FanPage (MUST NOT CHANGE)
+/:locale/onboard → redirect dispatcher
+/:locale/onboard/step1|2|3 → wizard steps
+/:locale/account/data-request → DsarPortal
+/:locale/dashboard → CreatorDashboard
+/payment/success|cancel → payment pages
 ```
+
+### Marketing Site Route
+
+The marketing site replaces `HomePage` at `/:locale`. The route registration in `App.tsx` does not change:
+
+```tsx
+// App.tsx — route registration UNCHANGED
+<Route path="/:locale">
+  {() => <MarketingPage />}
+</Route>
+```
+
+Only the import changes: `import MarketingPage from "@/pages/home"` (the file `home.tsx` is replaced).
+
+### Why Path-Prefix (`/:locale`) is Already the Right Model
+
+The existing routing already uses path-prefix locale detection. `getPageLocale()` in App.tsx parses `window.location.pathname.split("/").find(Boolean)` to extract the locale segment and validates it against `isValidLocale()`. The root `/` redirects to `/en`.
+
+This means:
+- `/en` → marketing site in English
+- `/ja` → marketing site in Japanese
+- `/zh-TW` → marketing site in Traditional Chinese
+- `/en/claire` → FanPage for Claire (unaffected)
+
+No new routing logic is required. The fan route safety is guaranteed by wouter's route specificity: `/:locale/:handle` only matches when a second path segment exists, so the marketing route `/:locale` cannot conflict.
+
+### Locale Switcher for Marketing Page
+
+The fan page's `LocaleSwitcher` component switches to `/:locale/:handle`. For the marketing page, a separate `MarketingLocaleSwitcher` (inside `components/marketing/`) switches to `/:locale` (no handle). It reuses `LOCALES` and `isValidLocale` from `lib/i18n.ts` but is a different component — do NOT modify the fan page's `LocaleSwitcher`.
 
 ---
 
-## Data Flow: Consent Revocation
+## Design System Isolation
 
-High-priority path. Must cancel all in-flight jobs within 60s SLA.
+### The Problem
 
-```
-Creator /pause (Hermes) OR consent revoke UI (web)
-  → api-server enqueues ConsentRevocationPayload (priority: 1)
-     → worker/consent-revocation picks up within ≤10s
-          → DB query: generation_jobs WHERE creator_id AND status IN ('queued','processing')
-          → cancelBullMQJobs: removes waiting/delayed jobs; flags active jobs as cancelled=true
-          → DB update: generation_jobs.status = 'cancelled'
-          → audit_log insert: event_type = 'kill_switch' | 'consent_revoke'
-```
+The fan page CSS uses a dark-mode-first palette (near-black backgrounds, brand violet `263 80% 58%`). All CSS custom properties are defined on `:root` (light, mostly unset — still showing `red` placeholders) and `.dark`. The `body` applies `bg-background text-foreground`, which picks up the dark mode values.
 
----
+The marketing site needs a distinct brand aesthetic (likely light or mixed). If marketing components inherit the same CSS variables, they get the fan page's dark-mode skin.
 
-## Data Flow: Multi-Tenant Creator Isolation
+### Isolation Approach: CSS Layer + Scoped Token Block
 
-Multi-tenancy is achieved by scoping every DB table to `creator_id`. There is no separate schema per creator.
+Add a `[data-surface="marketing"]` attribute to the marketing page root element. Define a separate token block scoped to that attribute in a new CSS layer inside `index.css`:
 
-```
-Database row isolation:
-  - fans, generation_jobs, consent_grants, creator_assets, usage_counters,
-    fan_subscriptions, fan_credits all have creator_id FK
-  - RLS policy on each table: creator_id = current_setting('app.current_creator_id')
-  - Service role bypasses RLS (used in workers and hermes); api-server sets app.current_creator_id per request
+```css
+/* index.css — NEW section appended below existing @layer base */
 
-Hermes (Telegram):
-  - Single bot token, multi-tenant: every command resolves creator via findCreatorByTelegramId()
-  - Creator identity keyed by telegram_user_id → creator_id
+@layer marketing-tokens {
+  [data-surface="marketing"] {
+    --mkt-bg:          #ffffff;
+    --mkt-fg:          #0a0a0a;
+    --mkt-accent:      hsl(263 80% 58%);   /* brand violet — shared with fan page */
+    --mkt-accent-fg:   #ffffff;
+    --mkt-surface-1:   #f8f8f8;
+    --mkt-surface-2:   #f0f0f0;
+    --mkt-border:      #e5e5e5;
+    --mkt-radius:      0.75rem;
 
-Fan-twin Telegram bot (TBD):
-  - Per-creator bot token (one bot per creator twin)
-  - OR: single bot with routing by handle/username (to be decided in Week 2)
-
-API-server:
-  - Creator routes: requireCreatorAuth middleware resolves creator_id from auth token
-  - Fan routes: requireFanAccess resolves fan_id + creator_id from auth token
-  - Twin chat: anonymous fans — creator_id derived from :handle URL param
-
-Persona storage:
-  - Character Card V2 JSONB stored in creators.config (or dedicated character_cards table)
-  - Per-creator voice reference audio path in creator_assets (asset_type='audio')
-```
-
----
-
-## Component Build Order (Dependencies)
-
-This is the dependency-safe build sequence. Each level can be built in parallel within it, but depends on the level above.
-
-```
-Level 0 (blockers — Week 1):
-  lib/db          Drizzle schema from scratch (replaces Supabase migrations)
-  PostgreSQL      Replit PG init, pgvector availability check
-
-Level 1 (depends on Level 0 — Week 1):
-  lib/providers   GmiClient, ProviderRegistry (text, voice, moderator)
-  lib/queue       Queue definitions, job payload types, retry options
-
-Level 2 (depends on Level 1 — Week 2):
-  api-server      KYC gate middleware (entitlement check)
-                  Character Card V2 persona loading
-                  HMAC-signed conversation_id session management
-                  POST /api/twin/[handle]/chat — sync chat (text only)
-                  Conversation history storage
-
-Level 3 (depends on Level 2 — Week 2/3):
-  worker          text-generation worker (real LLM call replacing stub)
-                  moderation worker (L1+L3 OpenAI moderation)
-                  consent-revocation worker
-
-Level 4 (depends on Level 3 — Week 3):
-  worker          voice-generation worker (GMI XTTS)
-  hermes          asset upload + inline moderation handlers
-                  character card builder from persona responses
-  artifacts/web   fan funnel page /[handle] with chat + CTA
-  fan-twin bot    new artifact: Telegram fan-twin bot per creator
-
-Level 5 (depends on Level 4 — Week 3/4):
-  api-server      L4 crisis detection + helpline injection
-                  L5 Sentry + Lala notify integration
-                  L6 safety_audit_log on every flagged turn
-                  SB 243 disclosure footer on every response
-
-Level 6 (eval gate — Week 4):
-  eval suite      30 cases per creator (10 in-character + 10 boundary + 10 hard-limit)
-                  100% hard-limit pass before twin goes live
-                  Weekly regression cron in worker
-```
-
----
-
-## How Existing Artifacts Map to Standard Patterns
-
-| Artifact | Standard Pattern | Notes |
-|----------|-----------------|-------|
-| `artifacts/hermes` | Creator management bot / back-office agent | Handles onboarding, asset ingest, consent collection, kill-switch. Webhook mode (production), long-poll (dev). In-memory consent sessions (Slice 1) — must move to Redis for multi-replica. |
-| `artifacts/api-server` | REST API gateway | Express + Zod validation. All fan and creator REST routes. Also hosts BullBoard dev dashboard. Source of truth for request → job enqueue. Still references Supabase client — must be replaced with Drizzle in Week 1. |
-| `artifacts/worker` | Background job processor | BullMQ workers. One worker process runs all job types via `createWorker()` factory per queue. `ProviderRegistry` injected at startup. DLQ handler is a first-class concern, not an afterthought. |
-| `artifacts/web` | Fan-facing SPA / funnel | React + Vite, port 22333. Currently has a mix of old fan-payment UI (dormant) and new funnel scaffolding. `/[locale]/` routing already in place. |
-| `artifacts/admin` | Ops dashboard | Next.js, port 3001. KYC queue, audit pack export. Still references Supabase client — must migrate. |
-| `lib/providers` | Provider abstraction layer | Clean interface. GmiClient already has Helicone proxy support for per-creator cost attribution. GmiVoiceProvider and GmiTextProvider not yet implemented (throw on construction) — Week 2/3 work. |
-| `lib/queue` | Job queue contract | Well-defined payload types with `creatorId + fanId + jobDbId + consentGrantVersion` on every job — enables full audit trail. Consent revocation has priority:1 — picks up before any generation job. |
-
----
-
-## Persona / Character Card Storage
-
-Character Card V2 (SillyTavern standard) is the target persona format. Current state and target:
-
-```
-Current (pre-Week 2):
-  creators.config JSONB — freeform config blob
-  creator_personas table — flat fields (greeting_style, fan_endearment, etc.)
-  creator_persona_responses — raw Q&A answers from onboarding exercise
-  creator_content_embeddings — chunked + embedded persona text for RAG
-
-Target (Week 2):
-  character_cards table (or creators.config['character_card'] JSONB key)
-  Schema: CharacterCardV2 {
-    spec: "chara_card_v2",
-    spec_version: "2.0",
-    data: {
-      name, description, personality, scenario,
-      first_mes, mes_example, system_prompt,
-      post_history_instructions,   // injected after every context window
-      creator_notes,               // internal only, never sent to LLM
-      tags,
-      extensions: { lala_compliance: { sfw_only, kyc_signed_at, locale } }
-    }
+    /* Typography scale — distinct from fan page system-ui */
+    --mkt-font-display: 'Inter', system-ui, sans-serif;
+    --mkt-font-body:    'Inter', system-ui, sans-serif;
+    --mkt-text-hero:    clamp(2.5rem, 6vw, 4.5rem);
+    --mkt-text-section: clamp(1.75rem, 3.5vw, 2.5rem);
+    --mkt-text-body:    1rem;
+    --mkt-leading:      1.6;
   }
-  Validated with Zod at write time.
-  creator_config_versions table already exists — snapshots config JSONB on save, 
-  retains last 30 versions for rollback.
+}
+```
+
+`home.tsx` renders:
+```tsx
+<div data-surface="marketing" className="min-h-screen bg-[--mkt-bg] text-[--mkt-fg]">
+  {/* sections */}
+</div>
+```
+
+All marketing components consume `--mkt-*` tokens directly via Tailwind's arbitrary value syntax (`bg-[--mkt-bg]`, `text-[--mkt-accent]`) or via CSS classes defined in the `marketing-tokens` layer. They do NOT use `bg-background`, `text-foreground`, or any of the existing fan-page CSS variable names.
+
+### Why This Over a Separate CSS File / Stylesheet Import
+
+- No new stylesheet: the Vite build already bundles `index.css`; adding an import would split the critical path
+- Scoped by `data-surface` attribute: marketing tokens cannot leak onto fan page elements (different DOM subtree)
+- `@layer marketing-tokens` has lower specificity than `@layer base` if needed, preventing accidental overrides
+
+### Shared Radix Primitives
+
+The existing `components/ui/` Radix primitives (Button, DropdownMenu, Dialog, etc.) CAN be used in marketing components as long as they are styled with `--mkt-*` tokens rather than the fan-page token names. This is acceptable — the Radix primitives are unstyled in their base form; only the class overrides change.
+
+If a marketing component needs a `Button`, pass explicit className overrides instead of relying on the global `primary` variant, which uses `--primary` (fan-page violet). Example: `<Button className="bg-[--mkt-accent] text-[--mkt-accent-fg] ...">`
+
+---
+
+## Locale Detection and Routing — Marketing Pages
+
+### Existing Pattern (Do Not Break)
+
+The current flow for locale detection is:
+
+1. User visits `/` → `<Redirect to="/en" />` (in `App.tsx`)
+2. `getPageLocale()` reads `window.location.pathname` first segment
+3. Individual pages call `getMessages(locale).fan` / `.dsar` / `.onboard` to get typed copy
+
+The marketing page follows the exact same pattern. No new locale detection mechanism is needed.
+
+### Locale Redirect Logic
+
+The root `/` already redirects to `/en`. If a user visits `/zh-TW`, wouter matches `/:locale` with `locale="zh-TW"`, `isValidLocale("zh-TW")` returns true, and `MarketingPage` renders with the zh-TW locale.
+
+The `DEFAULT_LOCALE = "en"` fallback in `getPageLocale()` handles unknown locale segments without crashing.
+
+### No Accept-Language Header Negotiation on the Client
+
+There is no `Accept-Language` detection at the SPA layer and none should be added for this milestone. Path-prefix locale routing is already established and consistent across all existing pages. Adding browser-language auto-redirect would change behavior for existing fan routes and requires careful handling of direct links. Defer until a later milestone if needed.
+
+### Locale Switcher Placement
+
+The marketing `MarketingNav` component includes a `MarketingLocaleSwitcher`. It uses `useLocation()` from wouter (the same hook `LocaleSwitcher` uses) and navigates to `/${targetLocale}` (without a handle segment).
+
+---
+
+## Copy/Content Organization
+
+### Current i18n Pattern
+
+`lib/i18n.ts` is a single TypeScript file with:
+- A `Messages` type (typed shape for all copy)
+- A `messages: Record<Locale, Messages>` object with inline strings for all 3 locales
+- `getMessages(locale)` returning the typed object for that locale
+
+All existing pages call `const t = getMessages(locale).fan` / `.dsar` / `.onboard`.
+
+### Marketing Copy Approach: Extend the Same Pattern
+
+Add a `marketing` namespace to the existing `Messages` type and `messages` object. This is the zero-dependency, zero-new-tool approach consistent with the existing codebase.
+
+```typescript
+// lib/i18n.ts — MODIFY
+
+type Messages = {
+  version_history: { ... };    // existing
+  fan: { ... };                // existing
+  dsar: { ... };               // existing
+  onboard: { ... };            // existing
+  marketing: {                 // NEW
+    nav: {
+      cta_creator: string;     // "Start your twin"
+    };
+    hero: {
+      headline: string;
+      subheadline: string;
+      cta_primary: string;
+      cta_secondary: string;
+    };
+    pillars: {
+      title: string;
+      chat_label: string;
+      chat_desc: string;
+      voice_label: string;
+      voice_desc: string;
+      image_label: string;
+      image_desc: string;
+      video_label: string;
+      video_desc: string;
+    };
+    channels: {
+      title: string;
+      subtitle: string;
+      lala_label: string;
+      telegram_label: string;
+      social_label: string;
+    };
+    onboarding: {
+      title: string;
+      subtitle: string;
+      step1_label: string;
+      step1_desc: string;
+      step2_label: string;
+      step2_desc: string;
+      step3_label: string;
+      step3_desc: string;
+    };
+    cta: {
+      headline: string;
+      subheadline: string;
+      button: string;
+    };
+    footer: {
+      tagline: string;
+      privacy: string;
+      terms: string;
+      contact: string;
+    };
+  };
+};
+```
+
+`home.tsx` calls `const t = getMessages(locale).marketing`.
+
+### Why Not i18next for This Milestone
+
+`i18next` and `react-i18next` are NOT installed in the workspace. The CLAUDE.md tech stack section lists them as a recommendation, but the actual codebase uses `lib/i18n.ts`. Installing i18next for this milestone would:
+- Add ~50kB to the bundle
+- Require migrating existing `getMessages()` call sites or running two systems in parallel
+- Add configuration complexity (detection plugins, backends, suspense) with no benefit for 3 static locales and ~100 copy strings
+
+Extend `lib/i18n.ts` for this milestone. If i18next is needed later (dynamic content loading, many more locales, plural rules, ICU formatting), migrate the whole `lib/i18n.ts` system at that point — do not introduce a parallel system.
+
+### Content Volume
+
+Marketing copy for 3 locales is approximately 60-80 strings. This is small enough to keep inline in `lib/i18n.ts`. If the file grows beyond ~800 lines, split marketing copy into `lib/i18n-marketing.ts` and import+merge with the main messages — but do not do this preemptively.
+
+---
+
+## SEO — Without SSR
+
+### The Constraint
+
+Vite produces a client-rendered SPA. There is no SSR, no pre-rendering server, and no SSG step in the current build pipeline. The Replit deployment serves the single `dist/public/index.html` for all routes.
+
+### What This Means for SEO
+
+- Crawlers that execute JavaScript (Googlebot) will see the fully rendered marketing page — adequate for Google indexing
+- Social card scrapers (Twitter/X, Slack, Facebook, LINE) do NOT execute JavaScript — they read the static HTML `<head>` only. The current `index.html` has placeholder `og:*` tags; social previews will show those placeholders for all routes
+
+### Approach: Static Meta in index.html for Marketing Routes, React Helmet for Dynamic Routes
+
+**Step 1: Update `index.html` with real lala.la marketing meta.**
+
+The marketing site at `/:locale` is the canonical "home" of the domain. The static `index.html` meta tags should reflect the marketing site content (not the fan page, which has creator-specific meta that cannot be static anyway). Update `index.html`:
+
+```html
+<title>lala.la — AI Digital Twin for Creators</title>
+<meta name="description" content="Run your AI twin on lala.la and Telegram. Chat, voice, image, and video — managed for you. For 17 LIVE creators in JP/TW/HK." />
+<meta property="og:title" content="lala.la — AI Digital Twin for Creators" />
+<meta property="og:description" content="Run your AI twin on lala.la and Telegram. Chat, voice, image, and video — managed." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://lala.la" />
+<meta property="og:image" content="https://lala.la/og-marketing.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://lala.la/og-marketing.png" />
+```
+
+A static `public/og-marketing.png` (1200x630) is added as a build asset for the social card image.
+
+**Step 2: Do NOT install react-helmet or react-helmet-async for this milestone.**
+
+The fan page is creator-specific and needs dynamic `<title>` and `og:*` per creator, but that problem is orthogonal to this milestone and not blocking fan page functionality (the fan page already works). Defer react-helmet to the phase that adds per-creator SEO. For now:
+
+- Marketing pages: served by the static `index.html` meta (correct for social cards)
+- Fan pages: served by the same static `index.html` meta (acceptable — fan pages are not the social-card target; they're destination URLs, not shared links)
+
+**Step 3: Sitemap.xml — static file in `public/`.**
+
+Add `artifacts/web/public/sitemap.xml` listing the 3 locale marketing pages:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://lala.la/en</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://lala.la/ja</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://lala.la/zh-TW</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+</urlset>
+```
+
+Static files in `public/` are copied as-is into `dist/public/` by Vite.
+
+**Step 4: robots.txt in `public/`.**
+
+```
+User-agent: *
+Allow: /en
+Allow: /ja
+Allow: /zh-TW
+Disallow: /en/*/  
+Disallow: /ja/*/
+Disallow: /zh-TW/*/
+Sitemap: https://lala.la/sitemap.xml
+```
+
+This tells crawlers to index the marketing locale roots but not the fan chat pages (which are not content for indexing).
+
+### Vite Prerender Plugin — Considered and Deferred
+
+`vite-plugin-prerender` or `vite-ssg` could generate static HTML shells for the 3 locale roots at build time, giving social scrapers real meta. However:
+- These plugins require configuration changes to `vite.config.ts`
+- They add a headless browser build step (Puppeteer/Playwright)
+- For 3 pages with static content, the complexity outweighs the benefit
+- Googlebot JavaScript rendering is sufficient for SEO ranking
+
+Defer prerendering unless social card previews become a validated business requirement. The `og:image` static approach covers the most common social sharing scenario.
+
+---
+
+## Data Flow
+
+```
+Browser visits lala.la/ja
+    ↓
+Vite static server returns index.html (with updated marketing og:* tags)
+    ↓
+React + wouter boots in browser
+    ↓
+App.tsx: getPageLocale() reads pathname → "ja"
+    ↓
+Router: matches /:locale with locale="ja" → renders MarketingPage
+    ↓
+MarketingPage:
+  - reads locale from useParams() or getPageLocale()
+  - calls getMessages("ja").marketing → typed copy object
+  - renders sections: MarketingNav, HeroSection, PillarsSection,
+    ChannelsSection, OnboardingSection, CtaSection, MarketingFooter
+    ↓
+Primary CTA click:
+  - opens t.me/<HERMES_BOT>?start=creator (env var VITE_HERMES_DEEP_LINK)
+  - window.open() in new tab, no SPA navigation
+    ↓
+Locale switcher click:
+  - MarketingLocaleSwitcher calls setLocation("/" + targetLocale)
+  - wouter matches /:locale → MarketingPage re-renders in new locale
+```
+
+Fan route isolation:
+```
+Browser visits lala.la/ja/claire
+    ↓
+Router: matches /:locale/:handle with locale="ja", handle="claire"
+    ↓
+FanPage renders — marketing components never instantiated
 ```
 
 ---
 
-## Session Management
+## Component Structure
+
+### New Files (`artifacts/web/src/components/marketing/`)
+
+| Component | Responsibility |
+|-----------|---------------|
+| `index.ts` | Re-export barrel for all marketing components |
+| `MarketingNav.tsx` | Fixed-top nav: lala.la logo, locale switcher, "Start your twin" CTA button |
+| `HeroSection.tsx` | Full-viewport hero: headline, subheadline, dual CTA buttons, hero visual |
+| `PillarsSection.tsx` | Four generative pillars (chat/voice/image/video) — icon grid or card grid |
+| `ChannelsSection.tsx` | Multi-channel deployment story (lala.la + Telegram + own social) |
+| `OnboardingSection.tsx` | Managed white-glove onboarding — numbered steps |
+| `CtaSection.tsx` | Final CTA block — Hermes deep-link button |
+| `MarketingFooter.tsx` | Privacy / Terms links + tagline |
+
+Each section component receives `t: Messages["marketing"]` as a prop — it does not call `getMessages()` itself. `home.tsx` calls `getMessages(locale).marketing` once and passes `t` down.
+
+### Modified Files
+
+| File | Change Type | What Changes |
+|------|-------------|-------------|
+| `src/pages/home.tsx` | REPLACE | The 8-line placeholder is fully replaced with `MarketingPage` component |
+| `src/lib/i18n.ts` | MODIFY | Add `marketing` namespace to `Messages` type and populate 3-locale copy |
+| `src/index.css` | MODIFY | Append `@layer marketing-tokens` with `[data-surface="marketing"]` token block |
+| `src/App.tsx` | MODIFY (minor) | Import name change only if renaming the default export in home.tsx |
+| `index.html` | MODIFY | Update title, description, og:* tags for marketing content |
+
+### New Non-Component Files
+
+| File | Purpose |
+|------|---------|
+| `public/og-marketing.png` | 1200x630 social card image — static asset |
+| `public/sitemap.xml` | Sitemap for crawlers |
+| `public/robots.txt` | Crawler directives |
+
+### Files That Must NOT Be Modified
+
+| File | Reason |
+|------|--------|
+| `src/pages/fan-page.tsx` | Fan route — core product; no marketing concerns here |
+| `src/components/fan/*` | Fan page component tree |
+| `src/components/ui/*` | Shared Radix primitives — can be consumed but not modified |
+| `src/App.tsx` (route table) | Route registrations stay identical; only the import of `home.tsx` may change if the export is renamed |
+| `vite.config.ts` | Port 22333, base path — no changes |
+
+---
+
+## Build Order (Suggested)
+
+Dependencies flow from bottom to top. Each step unblocks the next.
 
 ```
-conversation_id:
-  HMAC-SHA256 of (creator_id + fan_identifier + timestamp_bucket)
-  Signed with HMAC_SECRET env var
-  Included in every request/response, validated server-side
-  Buckets by time window (1hr default) — new bucket = new session
-  Enables: audit trail, context window scoping, per-session rate limits
+Step 1 — Foundation (no visible output yet)
+  - Update lib/i18n.ts: add marketing namespace type + 3-locale copy strings
+  - Append marketing-tokens CSS layer to index.css
+  - Update index.html: title, description, og:* tags
+  - Add public/og-marketing.png, public/sitemap.xml, public/robots.txt
+  RATIONALE: Copy and tokens must exist before components consume them.
+  VERIFIABLE: pnpm run typecheck should pass
 
-Fan identity (anonymous):
-  No fan account required for trial (up to 3 messages)
-  After trial: redirect to creator's monetization platform (not a fan account here)
-  Fan identifier derived from: Telegram user ID (bot surface) or cookie (web surface)
+Step 2 — Static sections (no interaction)
+  - Create components/marketing/MarketingFooter.tsx
+  - Create components/marketing/HeroSection.tsx
+  - Create components/marketing/PillarsSection.tsx
+  - Create components/marketing/ChannelsSection.tsx
+  - Create components/marketing/OnboardingSection.tsx
+  - Create components/marketing/CtaSection.tsx
+  RATIONALE: Content sections have no inter-dependencies; build them in any order.
+  VERIFIABLE: Each component renders with placeholder data in isolation.
 
-Conversation history storage:
-  Table: conversation_messages (fan_id or fan_token, creator_id, conversation_id, role, content, created_at)
-  Not yet in schema v1 — Week 2 addition
-  Context window: last N turns loaded synchronously (no async RAG for N=1)
+Step 3 — Navigation
+  - Create components/marketing/MarketingNav.tsx (includes MarketingLocaleSwitcher)
+  RATIONALE: Nav depends on locale-switching logic; build after confirming
+  wouter's useLocation() pattern works as expected in the marketing context.
+
+Step 4 — Page assembly
+  - Replace src/pages/home.tsx with MarketingPage shell
+  - Wire all sections together; pass `t = getMessages(locale).marketing` to each
+  - Create components/marketing/index.ts barrel
+  RATIONALE: Assembly is last; all sections must be complete first.
+  VERIFIABLE: Visit /en, /ja, /zh-TW — marketing site renders in each locale.
+  Verify /en/claire still loads FanPage unaffected.
+
+Step 5 — Polish
+  - Add Framer Motion entrance animations to HeroSection (already in package.json)
+  - Mobile breakpoint audit across all sections
+  - Locale switcher test: switching from /ja to /en preserves marketing page
+  RATIONALE: Animation and responsive polish after layout is confirmed correct.
 ```
 
 ---
 
-## Async Job Processing Architecture
+## Environment Variable
+
+The Hermes Telegram deep-link CTA requires one new environment variable:
 
 ```
-Enqueue path (api-server):
-  POST /api/twin/[handle]/chat
-    1. Validate request + KYC gate
-    2. Insert generation_jobs row (status='queued')
-    3. Return job_id to client immediately (or for voice: enqueue after text delivered)
-    4. createAllQueues(REDIS_URL) → queue.add(payload)
-
-Consume path (worker):
-  createWorker(registry, redisUrl, supabaseClient)
-    Concurrency: text=10, voice=5, video=2, moderation=10, revocation=10
-    On start: UPDATE generation_jobs SET status='processing', bullmq_job_id=job.id
-    On complete: UPDATE generation_jobs SET status='complete', output=result
-    On fail (non-final): UPDATE attempt_count
-    On fail (final): handleDlqEvent() — mark 'dlq', audit_log, creator_notifications, Sentry
-
-Retry policy (lib/queue/options.ts):
-  textGeneration:    attempts=3, exponential backoff 1s
-  voiceGeneration:   attempts=3, exponential backoff 2s
-  videoGeneration:   attempts=2, exponential backoff 5s
-  moderation:        attempts=3, exponential backoff 1s
-  consentRevocation: attempts=5, exponential backoff 500ms, priority=1
-  dunningRetry:      attempts=1 (state machine schedules follow-up jobs explicitly)
-
-DLQ visibility:
-  creator_notifications.has_dlq_jobs = true (polled by dashboard)
-  audit_log entry with sanitized error (no fan PII)
-  Sentry capture with structured context
+VITE_HERMES_DEEP_LINK=https://t.me/<bot_username>?start=creator
 ```
 
----
-
-## Scalability Considerations
-
-At N=1 creator (week 4 launch target), the single-Replit architecture is appropriate. Pressure points as N grows:
-
-| Concern | At N=1 (now) | At N=10 | At N=50+ |
-|---------|-------------|---------|---------|
-| Persona loading | In-memory per request | PostgreSQL cache with index | Dedicated persona service or Redis cache |
-| Conversation history | PostgreSQL query per turn | Row-level index on (creator_id, fan_id) | Partition by creator_id |
-| Voice generation queue | BullMQ concurrency=5 | Same, backpressure acceptable | Add worker replicas |
-| Hermes consent sessions | In-memory Map (comment says "move to Redis Slice 2") | MUST move to Redis before second Hermes replica | Redis sessions, stateless hermes |
-| Moderation cost | OpenAI ~$0.30/day warm lead | $3/day at 10x | Evaluate GMI moderation as alternative |
-| RLS isolation | Set `app.current_creator_id` per request | Same pattern | Row-count partitioning per creator may be needed |
+Prefix `VITE_` is required for Vite to expose it to the browser bundle. Add to `.env.example`. The `CtaSection` and `MarketingNav` components reference `import.meta.env.VITE_HERMES_DEEP_LINK`. If absent (local dev without `.env.local`), fall back to a `#contact` anchor.
 
 ---
 
-## Key Architecture Decisions Already Locked
+## Anti-Patterns to Avoid
 
-| Decision | Implementation | Where |
-|----------|---------------|-------|
-| Character Card V2 persona format | Target JSONB schema with Zod validation | Week 2 build |
-| HMAC-signed conversation_id | Crypto.createHmac per session | api-server twin route |
-| Sync text, async voice | Text: request-response; Voice: enqueue + poll | twin route + worker |
-| Moderation in-pipeline (L1+L3) | OpenAI moderation API wrapping every LLM call | api-server (not worker) |
-| Consent-gated generation | consent_grant_id on every generation_jobs row | DB schema + revocation worker |
-| Kill-switch SLA ≤5s for pause, ≤60s for full revocation | Hermes /pause writes DB directly; revocation is priority-1 queue job | hermes/db.ts + worker/consent-revocation |
-| Audit log is append-only | No update/delete on audit_log | DB schema + DLQ handler |
-| Safety PII stripping | fan_id_hash + message_hash only in safety_audit_log | safety-audit.ts + migration |
-| Creator isolation via creator_id | RLS policies on all tables | schema_v1.sql |
-| Provider registry injection | `createWorker(registry, ...)` pattern | lib/providers + worker |
+### Anti-Pattern 1: Adding a new `artifacts/` entry for the marketing site
+
+The marketing site is a page within the existing `artifacts/web` SPA. Creating a separate artifact would duplicate the build pipeline, split the port mapping, and require a reverse proxy to serve both from `lala.la`. It adds no benefit.
+
+### Anti-Pattern 2: Using the fan page's `--primary` / `--background` CSS variables in marketing components
+
+The dark-mode fan page palette will make marketing components look like the chat interface. Use only `--mkt-*` tokens scoped under `[data-surface="marketing"]`.
+
+### Anti-Pattern 3: Installing i18next alongside the existing getMessages() system
+
+Running two i18n systems creates maintenance burden and confusion about which pages use which system. Extend `lib/i18n.ts` for this milestone. Migrate to i18next later as a whole-system decision if justified.
+
+### Anti-Pattern 4: Locale detection via Accept-Language header at the SPA level
+
+The existing routing already sends users to `/:locale` via the `/ → /en` redirect. Adding Accept-Language auto-detection would change existing behavior for bookmarked links and break locale persistence. Do not add it.
+
+### Anti-Pattern 5: Per-creator og:meta via react-helmet for the marketing milestone
+
+React-helmet is needed for fan page SEO but that is out of scope here. Introducing it now just to update the marketing page title (which is already served statically from `index.html`) adds unnecessary complexity.
+
+### Anti-Pattern 6: Modifying the wouter Route table for the fan route
+
+The fan route `/:locale/:handle` is a two-segment path and cannot conflict with the marketing route `/:locale`. Do not add guards, change route ordering, or modify the fan route registration.
 
 ---
 
-## Gaps / Open Architecture Questions
+## Sources
 
-1. **Fan-twin Telegram bot artifact does not yet exist.** The twin chat route is stubbed at `/api/twin/chat` (returns random canned responses). The fan-facing Telegram bot needs a new `artifacts/fan-twin-bot` (or similar) in Week 2/3.
+- `artifacts/web/src/App.tsx` — route table, wouter setup — HIGH confidence (direct inspection)
+- `artifacts/web/src/lib/i18n.ts` — Messages type, getMessages() pattern, 3 locales inline — HIGH confidence (direct inspection)
+- `artifacts/web/src/index.css` — Tailwind v4 CSS layer, CSS custom property system, dark-mode token definitions — HIGH confidence (direct inspection)
+- `artifacts/web/vite.config.ts` — Vite build config, port 22333, BASE_PATH env var — HIGH confidence (direct inspection)
+- `artifacts/web/index.html` — static meta, SPA shell — HIGH confidence (direct inspection)
+- `artifacts/web/package.json` — framer-motion confirmed present, i18next NOT present — HIGH confidence (direct inspection)
+- `artifacts/web/src/components/fan/LocaleSwitcher.tsx` — wouter useLocation() locale-switch pattern — HIGH confidence (direct inspection)
+- `artifacts/web/src/pages/home.tsx` — confirmed 8-line placeholder — HIGH confidence (direct inspection)
+- `.planning/PROJECT.md` — milestone v2.0 scope, must-not-change constraints — HIGH confidence (direct read)
+- `docs/roadmap.md` — initiative #1 done-looks-like criteria — HIGH confidence (direct read)
+- CLAUDE.md — tech stack, port mapping constraints — HIGH confidence (project instructions)
 
-2. **Hermes consent sessions are in-memory.** Explicitly noted as "TODO Slice 2: move to Redis." Until then, a Hermes restart loses all in-progress consent sessions. Risk is low at N=1 but must be fixed before any HA or multi-process deployment.
+---
 
-3. **Drizzle schema does not exist yet.** `lib/db/src/schema/index.ts` exports nothing. Supabase migrations are the schema source of truth. Week 1 Lane A is a blocker for all Week 2+ work.
-
-4. **GmiVoiceProvider and GmiTextProvider are not implemented.** `lib/providers` throws on `gmi` mode for voice and video. Week 2/3 work. Currently `TEXT_PROVIDER=mock` and `VOICE_PROVIDER=mock` must be set in all envs.
-
-5. **Conversation history table absent from schema v1.** `conversation_messages` does not appear in migration `20260524000001_schema_v1.sql`. Must be added in Week 2 alongside the twin chat route.
-
-6. **Character card table not in schema v1.** Persona data lives in `creator_personas` and `creator_content_embeddings` but the target Character Card V2 JSONB table is not yet defined. Week 2 addition.
-
-7. **pgvector availability on Replit PG is unverified.** `creator_content_embeddings` uses a vector column. If Replit PG does not expose pgvector, embedding storage will fail silently or require a workaround (JSON array fallback). Must be verified Week 1 Day 1.
-
-8. **`apps/web/` (Next.js, creator dashboard)** is in active development on this branch and is separate from `artifacts/web/` (fan funnel, React+Vite). The north-star Week 1 plan says to delete `apps/web/` but new files have been added to it this branch. Clarify which web artifact serves which role before Week 1 work begins.
+*Architecture research for: Marketing site integration into artifacts/web SPA*
+*Researched: 2026-05-30*
