@@ -643,18 +643,18 @@ function Router() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`og-marketing.png` artwork creation**
+1. **`og-marketing.png` artwork creation** — RESOLVED: covered by the ImageMagick placeholder task in Plan 05-02 (1200×630 brand card committed in `public/`); final artwork deferred to Phase 7.
    - What we know: file must be 1200×630 PNG, under 300 KB, `lala.la` wordmark + brand tagline, no creator likeness
    - What's unclear: who creates the artwork? The phase plan must include a task for creating this asset. If the founder creates it manually, a placeholder (e.g., a solid-color PNG with text) can be committed as an interim.
    - Recommendation: include a task "create placeholder og-marketing.png" in Wave 0 (or have the implementer generate a simple placeholder via ImageMagick or canvas) — the phase gate requires this file to be committed.
 
-2. **`satisfies` vs plain `Record<Locale, Messages>` annotation**
+2. **`satisfies` vs plain `Record<Locale, Messages>` annotation** — RESOLVED: Plan 05-01 Task 2 adds the `satisfies Record<Locale, Messages>` annotation after populating all three locales.
    - What we know: the existing code uses `const messages: Record<Locale, Messages> = {` (line 176), which enforces completeness. Adding `satisfies` improves error messages but is not strictly required.
    - Recommendation: add `satisfies` when appending the marketing namespace for better DX. It is a non-breaking change.
 
-3. **Stable font filenames for preload hint**
+3. **Stable font filenames for preload hint** — RESOLVED: Plan 05-03 Task 2 implements the stable-filename approach in `vite.config.ts` (`assetFileNames` emits woff2 at `/assets/fonts/[name][extname]`), satisfying the non-negotiable CONTEXT D-05 preload; the recommendation to defer is OVERRIDDEN by that locked decision.
    - What we know: Vite hashes asset filenames by default; static preload href to `node_modules` fails in production
    - What's unclear: whether the planner wants the preload hint or just `font-display: swap`
    - Recommendation: use `font-display: swap` only for Phase 5 (prevents FOIT without configuration complexity); add `vite.config.ts` stable font filename config in Phase 6 if Lighthouse shows font loading as a bottleneck

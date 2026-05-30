@@ -91,10 +91,12 @@ mapped: 2026-05-31
 <link rel="alternate" hreflang="en" href="https://lala.la/en" />
 <link rel="alternate" hreflang="ja" href="https://lala.la/ja" />
 <link rel="alternate" hreflang="zh-TW" href="https://lala.la/zh-TW" />
+<!-- NON-NEGOTIABLE font preload (CONTEXT.md D-05): 400-weight Noto Sans JP latin woff2 at the STABLE vite-emitted path -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/assets/fonts/noto-sans-jp-latin-wght-normal.woff2">
 <!-- Fontsource fonts loaded via main.tsx — no CDN link needed here -->
 ```
 
-**Critical constraint:** Do NOT add a `<link rel="preload">` pointing to `/node_modules/...` — Vite dev serves node_modules but the production dist does not. Rely on `font-display: swap` (built into Fontsource) for FOIT prevention instead. Document the preload gap for Phase 6.
+**Critical constraint:** The `<link rel="preload">` for the 400-weight Noto Sans JP woff2 is NON-NEGOTIABLE per CONTEXT.md D-05 — it MUST be present. The preload MUST point to the STABLE vite-emitted path `/assets/fonts/noto-sans-jp-latin-wght-normal.woff2` (configured in `vite.config.ts` `build.rollupOptions.output.assetFileNames`), NOT a `/node_modules/...` hashed path. Vite dev serves node_modules but the production dist does not, so the stable assetFileNames mapping (see the `vite.config.ts` section below) is the prerequisite that makes this preload resolve in production. `font-display: swap` (built into Fontsource) handles FOIT prevention alongside the preload.
 
 ---
 
@@ -460,7 +462,7 @@ build: {
 },
 ```
 
-**Optional addition** (for stable font filenames enabling a `<link rel="preload">` in index.html — include only if the planner decides preload is in scope for Phase 5; otherwise skip and document for Phase 6):
+**Required addition** (REQUIRED for Phase 5 — the locked-decision preload in index.html depends on this stable woff2 filename mapping; see CONTEXT.md D-05):
 ```typescript
 build: {
   outDir: path.resolve(import.meta.dirname, "dist/public"),
@@ -478,14 +480,14 @@ build: {
 },
 ```
 
-If this is added, the preload link in `index.html` can safely use:
+With this in place, the NON-NEGOTIABLE preload link in `index.html` references the stable path:
 ```html
 <link rel="preload" as="font" type="font/woff2"
   href="/assets/fonts/noto-sans-jp-latin-wght-normal.woff2"
   crossorigin="anonymous" />
 ```
 
-**Research recommendation:** Omit the `vite.config.ts` change for Phase 5 and rely on `font-display: swap` alone. `font-display: swap` (built into Fontsource) prevents FOIT without configuration complexity. The preload enhancement is a Phase 6 Lighthouse optimization if CJK paint metrics are unsatisfactory.
+**Resolution note:** RESEARCH § Pattern 3 originally floated omitting the preload and relying on `font-display: swap` alone. That option is OVERRIDDEN by CONTEXT.md D-05, which makes the preload non-negotiable. The stable-filename approach above is therefore in scope for Phase 5 (not deferred to Phase 6) precisely because it is the only production-safe way to satisfy the locked preload decision.
 
 ---
 
