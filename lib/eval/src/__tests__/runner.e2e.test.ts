@@ -81,11 +81,10 @@ vi.mock("@workspace/twin-runtime/system-prompt", () => ({
 
 // ─── The actual test — RED until runner.ts is implemented ────────────────────
 
-// This import will fail at runtime until 04-02 creates runner.ts.
-// @ts-expect-error runner.ts does not exist yet — RED until 04-02 implements it
+// runner.ts is now implemented in plan 04-02 — import is valid.
 import { runEval } from "../runner.js";
 
-describe("runEval — end-to-end contract (RED: runner.ts not yet implemented)", () => {
+describe("runEval — end-to-end contract", () => {
   it("should return an EvalReport with totalCases=30 and all 4 category keys", async () => {
     const FAKE_CREATOR_ID = "00000000-0000-0000-0000-000000000001";
 
