@@ -101,7 +101,7 @@ vi.mock("@workspace/providers", () => {
 // We intercept global fetch so the GET to the storage URL returns our canned bytes.
 const originalFetch = globalThis.fetch;
 let interceptObjectStorageFetch = false;
-globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+globalThis.fetch = async (input: Parameters<typeof fetch>[0], init?: RequestInit): Promise<Response> => {
   const url = typeof input === "string" ? input : (input instanceof URL ? input.toString() : (input as Request).url);
   if (interceptObjectStorageFetch && url.includes("/creators/") && url.includes("/generations/")) {
     // Simulate Object Storage GET returning canned audio bytes.
@@ -111,7 +111,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise
     });
   }
   // Forward everything else to original fetch (or throw if not available).
-  if (originalFetch) return originalFetch(input as RequestInfo, init);
+  if (originalFetch) return originalFetch(input, init);
   throw new Error(`fetch not intercepted and no original: ${url}`);
 };
 

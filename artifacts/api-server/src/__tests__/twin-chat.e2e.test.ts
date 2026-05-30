@@ -34,6 +34,8 @@ interface TwinRow {
   creatorId: string;
   status: string;
   characterCard: unknown | null;
+  handle: string;
+  voiceReferenceUrl: string | null;
 }
 interface KycRow {
   creatorId: string;
@@ -87,6 +89,8 @@ const twinsTable = {
   creatorId: { __col: "creatorId" },
   status: { __col: "status" },
   characterCard: { __col: "characterCard" },
+  handle: { __col: "handle" },
+  voiceReferenceUrl: { __col: "voiceReferenceUrl" },
 };
 const creatorConfigTable = {
   __name: "creator_config",
@@ -442,12 +446,16 @@ beforeEach(() => {
       creatorId: "creator-signed-1",
       status: "active",
       characterCard: null,
+      handle: "sakura",
+      voiceReferenceUrl: null,
     },
     {
       id: "twin-inactive-1",
       creatorId: "creator-inactive-twin-1",
       status: "inactive",
       characterCard: null,
+      handle: "test-inactive-twin",
+      voiceReferenceUrl: null,
     },
   ];
   state.kyc = [
