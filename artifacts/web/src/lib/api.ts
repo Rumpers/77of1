@@ -43,6 +43,8 @@ export interface TwinChatResponse {
   disclosure_footer: string;
   monetization_pivot: boolean;
   conversation_id: string;
+  /** VOICE-03: signed proxy URL to mp3 audio (/api/voice/:jobId?exp=...&token=...) */
+  voice_url?: string;
 }
 
 /** GET /api/twin/:handle/profile — bootstrap CTA data (CHAT-05). */

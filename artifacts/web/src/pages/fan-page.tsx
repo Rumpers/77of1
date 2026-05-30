@@ -13,6 +13,7 @@ import { ReportDialog, type ReportCategory } from "@/components/fan/ReportDialog
 import { PaywallDrawer } from "@/components/fan/PaywallDrawer";
 import { CrisisHelplineBubble } from "@/components/fan/CrisisHelplineBubble";
 import { MonetizationCTA } from "@/components/fan/MonetizationCTA";
+import { VoiceMessageBubble } from "@/components/fan/VoiceMessageBubble";
 
 const MAX_TRIAL = 3;
 const CJK_FONT =
@@ -70,6 +71,8 @@ type ChatMessage = {
   helplineSegment?: string | null;
   /** CHAT-05 monetization pivot from server. */
   showCta?: boolean;
+  /** VOICE-03: signed proxy URL to mp3 (undefined when voice disabled or worker not ready) */
+  voiceUrl?: string;
 };
 
 export default function FanPage() {
@@ -158,6 +161,8 @@ export default function FanPage() {
         isCrisis: split.isCrisis,
         helplineSegment: split.helplineSegment,
         showCta: data.monetization_pivot === true,
+        // VOICE-03: signed proxy URL to mp3; absent when voice not enabled (undefined)
+        voiceUrl: data.voice_url ?? undefined,
       };
       setMessages((prev) => prev.filter((m) => !m.pending).concat(aiMsg));
       if (newCount >= MAX_TRIAL && !fanAuthenticated) setTimeout(() => setShowPaywall(true), 600);
@@ -218,6 +223,14 @@ export default function FanPage() {
                 </>
               )}
             </MessageBubble>
+            {/* VOICE-03: render audio bubble below text bubble when voice URL present */}
+            {msg.role === "ai" && !msg.pending && msg.voiceUrl && (
+              <VoiceMessageBubble
+                voiceUrl={msg.voiceUrl}
+                transcript={msg.text}
+                disclosure={msg.footerText ?? `AI twin · @${handle}_ai`}
+              />
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
