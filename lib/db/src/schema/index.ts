@@ -127,6 +127,10 @@ export const twinsTable = pgTable("twins", {
   // registerVoiceClone() completes onboarding. NULL until clone registration runs;
   // synthesis falls back to GMI_TTS_FALLBACK_VOICE_ID when null.
   voiceId: text("voice_id"),
+  // Founder-authored direction text injected into the system prompt between the
+  // persona body and the reply-language directive (quick task 20260530). Nullable —
+  // existing twins without direction produce the same prompt they always did.
+  direction: text("direction"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
