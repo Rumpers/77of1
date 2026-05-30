@@ -50,16 +50,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A high-risk moderation flag triggers a Sentry alert and a Lala bot notification to the founder within the request lifecycle
   5. Creator can complete full onboarding (consent, persona intake, voice sample upload, character card generation) via Lala Telegram bot with no technical skills required; creator can pause/resume or revoke voice consent from the same bot
 **UI hint**: yes
-**Plans:** 9 plans (revision 1 — split 02-06 → 02-06a + 02-06b per checker WARNING 7)
-- [ ] 02-01-PLAN.md — Wave 0 unblock: env scrub, TELEGRAM_BOT_TOKEN_LALA rename, fan-twin port allocation, package legitimacy gate (i18next-http-middleware DROPPED per D-02-14), 10 RED test scaffolds
-- [ ] 02-02-PLAN.md — Wave 1: Character Card V2 Zod schema, twins.voiceReferenceUrl + creators.monetizationUrl columns, [BLOCKING] drizzle-kit push, HMAC/locale/conversation/system-prompt/constitution/disclosure libs + kyc-gate/verifyConversationId middlewares (PERSONA-02 reader; MOD-02 originator per D-02-15)
-- [ ] 02-03-PLAN.md — Wave 2: real /api/twin/chat LLM pipeline (no stubs) + readConstitution wiring + GET /api/twin/:handle/profile + middleware wiring (CHAT-01/03/04/05, COMPLY-01, PERSONA-02, I18N-02 server side; NO i18next-http-middleware)
-- [ ] 02-07-PLAN.md — Wave 2 (parallel with 02-03 — disjoint files): Hermes @telegraf/session/pg migration, consent + persona WizardScenes (now 9-step with platform_name/url capture per WARNING 3), twins.character_card populated, constitution.md stub written to Object Storage (PERSONA-02 per D-02-13), KYC status line in /status, ONBOARD-02 SLA regression test
-- [ ] 02-04-PLAN.md — Wave 3 (parallel with 02-08): refactor fan-page.tsx into 8 typed components, LocaleSwitcher, lib/api.ts client, .dark CSS variables, i18n string extensions
-- [ ] 02-08-PLAN.md — Wave 3 (parallel with 02-04): voice sample WizardScene + Replit Object Storage upload (consumes 02-07 helpers) + /revoke_voice command + consent-revocation worker body (ONBOARD-01 voice slice + ONBOARD-03)
-- [ ] 02-05-PLAN.md — Wave 4: six-layer moderation pipeline — OpenAiModeratorProvider, L1+L3 wrappers, deflections/helplines/notify-founder, CrisisHelplineBubble + MonetizationCTA UI (MOD-01/03/04/05/06, COMPLY-02). Depends on 02-04 (fan-page.tsx composition shell) per BLOCKER 2.
-- [ ] 02-06a-PLAN.md — Wave 5: extract shared @workspace/twin-runtime lib (10 files moved from api-server/src/lib/), extend TextGenerationPayload — pure refactor + payload extension, zero behavior change
-- [ ] 02-06b-PLAN.md — Wave 6: scaffold fan-twin artifact (async-ack webhook), fill worker text-generation pipeline with Telegram delivery + PERSONA-02 constitution read (CHAT-02, CHAT-06)
+**Plans:** 4 plans
+- [ ] 04-01-PLAN.md — Wave 1: scaffold @workspace/eval package + 30-case suite (10 in-character / 10 boundary-push / 5 hard-limit / 5 prompt-injection) + pure gradeCase + grader unit tests + RED runner E2E test [BLOCKING pnpm install] (EVAL-01)
+- [ ] 04-02-PLAN.md — Wave 2: eval_runs Drizzle table + migration + [BLOCKING] drizzle push, runner.ts (direct twin-runtime calls, temperature 0, isolated eval-probe sessions), persist + isGoLiveEligible + CLI; turns RED runner test GREEN (EVAL-01)
+- [ ] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
+- [ ] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
 
 ### Phase 3: Voice + Hardening
 **Goal**: Twin replies include optional voice audio via GMI Cloud XTTS, the moderation pipeline detects gradual-escalation patterns across turns, founders can review OCR-extracted fan-name masks, all user-facing strings are available in EN/JP/ZH-TW, and creators can request full data deletion
@@ -90,16 +85,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. Running the eval suite against a creator's twin produces a pass/fail report across all 30 cases (10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection); the twin cannot be set live unless hard-limit and injection scores are both 100%
   2. A deliberate regression (lowering a hard-limit guardrail) causes the weekly cron to fire a Sentry alert within the next scheduled run
-**Plans:** 9 plans (revision 1 — split 02-06 → 02-06a + 02-06b per checker WARNING 7)
-- [ ] 02-01-PLAN.md — Wave 0 unblock: env scrub, TELEGRAM_BOT_TOKEN_LALA rename, fan-twin port allocation, package legitimacy gate (i18next-http-middleware DROPPED per D-02-14), 10 RED test scaffolds
-- [ ] 02-02-PLAN.md — Wave 1: Character Card V2 Zod schema, twins.voiceReferenceUrl + creators.monetizationUrl columns, [BLOCKING] drizzle-kit push, HMAC/locale/conversation/system-prompt/constitution/disclosure libs + kyc-gate/verifyConversationId middlewares (PERSONA-02 reader; MOD-02 originator per D-02-15)
-- [ ] 02-03-PLAN.md — Wave 2: real /api/twin/chat LLM pipeline (no stubs) + readConstitution wiring + GET /api/twin/:handle/profile + middleware wiring (CHAT-01/03/04/05, COMPLY-01, PERSONA-02, I18N-02 server side; NO i18next-http-middleware)
-- [ ] 02-07-PLAN.md — Wave 2 (parallel with 02-03 — disjoint files): Hermes @telegraf/session/pg migration, consent + persona WizardScenes (now 9-step with platform_name/url capture per WARNING 3), twins.character_card populated, constitution.md stub written to Object Storage (PERSONA-02 per D-02-13), KYC status line in /status, ONBOARD-02 SLA regression test
-- [ ] 02-04-PLAN.md — Wave 3 (parallel with 02-08): refactor fan-page.tsx into 8 typed components, LocaleSwitcher, lib/api.ts client, .dark CSS variables, i18n string extensions
-- [ ] 02-08-PLAN.md — Wave 3 (parallel with 02-04): voice sample WizardScene + Replit Object Storage upload (consumes 02-07 helpers) + /revoke_voice command + consent-revocation worker body (ONBOARD-01 voice slice + ONBOARD-03)
-- [ ] 02-05-PLAN.md — Wave 4: six-layer moderation pipeline — OpenAiModeratorProvider, L1+L3 wrappers, deflections/helplines/notify-founder, CrisisHelplineBubble + MonetizationCTA UI (MOD-01/03/04/05/06, COMPLY-02). Depends on 02-04 (fan-page.tsx composition shell) per BLOCKER 2.
-- [ ] 02-06a-PLAN.md — Wave 5: extract shared @workspace/twin-runtime lib (10 files moved from api-server/src/lib/), extend TextGenerationPayload — pure refactor + payload extension, zero behavior change
-- [ ] 02-06b-PLAN.md — Wave 6: scaffold fan-twin artifact (async-ack webhook), fill worker text-generation pipeline with Telegram delivery + PERSONA-02 constitution read (CHAT-02, CHAT-06)
+**Plans:** 4 plans
+- [ ] 04-01-PLAN.md — Wave 1: scaffold @workspace/eval package + 30-case suite (10 in-character / 10 boundary-push / 5 hard-limit / 5 prompt-injection) + pure gradeCase + grader unit tests + RED runner E2E test [BLOCKING pnpm install] (EVAL-01)
+- [ ] 04-02-PLAN.md — Wave 2: eval_runs Drizzle table + migration + [BLOCKING] drizzle push, runner.ts (direct twin-runtime calls, temperature 0, isolated eval-probe sessions), persist + isGoLiveEligible + CLI; turns RED runner test GREEN (EVAL-01)
+- [ ] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
+- [ ] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
 
 ## Progress
 
@@ -111,6 +101,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Baseline Repair | 6/6 | Complete   | 2026-05-28 |
 | 2. Twin Runtime Core | 0/TBD | Not started | - |
 | 3. Voice + Hardening | 0/TBD | Not started | - |
-| 4. Eval Gate + Go-Live | 0/TBD | Not started | - |
+| 4. Eval Gate + Go-Live | 0/4 | Not started | - |
 </content>
 </invoke>
