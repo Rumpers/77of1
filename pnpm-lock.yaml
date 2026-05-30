@@ -233,6 +233,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/eval':
+        specifier: workspace:*
+        version: link:../../lib/eval
       '@workspace/queue':
         specifier: workspace:*
         version: link:../../lib/queue
