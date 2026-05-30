@@ -43,8 +43,10 @@ import { notifyFounderAsync } from "../lib/notify-founder.js";
 import { getHelpline } from "../lib/helplines.js";
 import { getDeflection } from "../lib/deflections.js";
 import { scoreEscalation } from "@workspace/twin-runtime/escalation";
+import { shouldGenerateVoice, enqueueVoiceJob } from "@workspace/twin-runtime/voice";
 import { atomicDeductCredit, TRIAL_LIMIT } from "../lib/credits.js";
 import { TRIAL_COOKIE } from "../lib/auth.js";
+import { signVoiceUrl } from "../lib/voice-token.js";
 import { getTextProvider } from "../providers/registry.js";
 import {
   ProviderError,
@@ -204,11 +206,16 @@ router.post(
       .select({
         id: twinsTable.id,
         characterCard: twinsTable.characterCard,
+        handle: twinsTable.handle,
+        voiceReferenceUrl: twinsTable.voiceReferenceUrl,
       })
       .from(twinsTable)
       .where(eq(twinsTable.creatorId, creatorId))
       .limit(1)
-      .then((r: Array<{ id: string; characterCard: unknown }>) => r[0] ?? null);
+      .then(
+        (r: Array<{ id: string; characterCard: unknown; handle: string; voiceReferenceUrl: string | null }>) =>
+          r[0] ?? null,
+      );
 
     const constitution = await readConstitution(creatorId);
 
@@ -423,39 +430,43 @@ router.post(
       content: safeReply,
     });
 
-    // ── Async voice note stub (VOICE-01) ─────────────────────────────────────
-    // Fire-and-forget: queue a voice generation job when REDIS_URL is set and
-    // the fan is authenticated (fanId required for job tracking). Errors are
-    // swallowed — voice note delivery is async and non-blocking for the HTTP
-    // response (per D-02 PATTERNS A8: async queue for generation).
-    if (fanId && process.env.REDIS_URL) {
-      const redisUrl = process.env.REDIS_URL;
-      Promise.resolve().then(async () => {
-        try {
-          const { createAllQueues } = await import("@workspace/queue");
-          const { QUEUE_NAMES } = await import("@workspace/queue");
-          const queues = createAllQueues(redisUrl);
-          await queues.voiceGeneration.add("voice-note", {
-            type: "voice-generation",
-            jobDbId: crypto.randomUUID(),
+    // ── Voice note enqueue (VOICE-01, VOICE-03) ──────────────────────────────
+    // After persisting the assistant turn (post-L3), check consent + enqueue a
+    // voice-generation job. Returns a signed proxy URL included in the response
+    // so the fan-page can render the audio bubble immediately (the worker fills
+    // in the mp3 async). Errors are swallowed — voice is non-blocking for text.
+    let voiceUrl: string | undefined;
+    if (twin && process.env.REDIS_URL) {
+      try {
+        const voiceEligible = await shouldGenerateVoice(creatorId, {
+          voiceReferenceUrl: twin.voiceReferenceUrl,
+        });
+        if (voiceEligible) {
+          const voiceJobDbId = crypto.randomUUID();
+          await enqueueVoiceJob({
+            jobDbId: voiceJobDbId,
             creatorId,
-            fanId,
-            consentGrantVersion: "1",
+            fanIdHash,
             transcript: safeReply,
-            language: locale === "ja" ? "ja" : locale === "zh-TW" ? "zh-TW" : "en",
+            locale,
+            conversationId,
+            deliveryChannel: "web",
+            handle: twin.handle,
+            twinId: twin.id,
           });
-          await queues.voiceGeneration.close();
+          voiceUrl = signVoiceUrl(voiceJobDbId);
           logger.info(
-            { event: "twin.chat.voice_queued", creatorId, fanId },
+            { event: "twin.chat.voice_queued", creatorId, voiceJobDbId },
             "[twin/chat] voice note queued",
           );
-        } catch (err) {
-          logger.warn(
-            { event: "twin.chat.voice_queue_error", err: (err as Error).message },
-            "[twin/chat] voice queue error (non-fatal)",
-          );
         }
-      });
+      } catch (err) {
+        // Swallow — voice failure must not break text delivery (SC1 circuit-breaker pattern)
+        logger.warn(
+          { event: "twin.chat.voice_enqueue_error", err: (err as Error).message },
+          "[twin/chat] voice enqueue error (non-fatal — text continues)",
+        );
+      }
     }
 
     // ── Increment trial cookie for anonymous fans ─────────────────────────────
@@ -485,6 +496,7 @@ router.post(
       disclosure_footer: getDisclosureFooter(locale, handle),
       monetization_pivot,
       conversation_id: conversationId,
+      voice_url: voiceUrl,        // signed proxy URL to mp3 (undefined when voice off)
     });
   },
 );

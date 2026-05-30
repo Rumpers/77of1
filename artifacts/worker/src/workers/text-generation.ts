@@ -61,6 +61,7 @@ import type { Locale } from "@workspace/twin-runtime/locale";
 // We use it inline rather than reaching into api-server's `GmiTextProvider` class.
 // Same HTTP endpoint, same Helicone routing, same retry behaviour.
 import { GmiClient } from "@workspace/providers";
+import { shouldGenerateVoice, enqueueVoiceJob } from "@workspace/twin-runtime/voice";
 
 // NOTE on KYC: api-server's `isKycSigned` (artifacts/api-server/src/lib/kyc.ts)
 // is the source of truth. We re-implement the strict `status === "signed"`
@@ -324,12 +325,14 @@ export function createWorker(
           .select({
             id: twinsTable.id,
             characterCard: twinsTable.characterCard,
+            voiceReferenceUrl: twinsTable.voiceReferenceUrl,
           })
           .from(twinsTable)
           .where(eq(twinsTable.creatorId, creatorId))
           .limit(1)
           .then(
-            (r: Array<{ id: string; characterCard: unknown }>) => r[0] ?? null,
+            (r: Array<{ id: string; characterCard: unknown; voiceReferenceUrl: string | null }>) =>
+              r[0] ?? null,
           );
 
         // ── 5. Load history (CHAT-04) ──────────────────────────────────────
@@ -394,6 +397,46 @@ export function createWorker(
           role: "assistant",
           content: safeReply,
         });
+
+        // ── 11b. Voice job enqueue (VOICE-01 Telegram path) ───────────────
+        // Enqueue a voice-generation job AFTER persisting the assistant turn
+        // and BEFORE the text outbound. The voice worker sends the audio as
+        // a separate bot.telegram.sendAudio message (mp3). Text outbound is
+        // NOT blocked by voice — they are independent messages in Telegram UX.
+        // Only enqueued on non-flagged turns (L3 flagged paths returned above).
+        if (twin && process.env.REDIS_URL && !l3.flagged) {
+          try {
+            const voiceEligible = await shouldGenerateVoice(creatorId, {
+              voiceReferenceUrl: twin.voiceReferenceUrl,
+            });
+            if (voiceEligible) {
+              const { randomUUID } = await import("crypto");
+              const voiceJobDbId = randomUUID();
+              await enqueueVoiceJob({
+                jobDbId: voiceJobDbId,
+                creatorId,
+                fanIdHash,
+                transcript: safeReply,
+                locale: (locale as "en" | "ja" | "zh-TW") ?? "en",
+                conversationId,
+                deliveryChannel: "telegram",
+                telegramChatId,
+                handle,
+                twinId: twin.id,
+              });
+              logger.info(
+                { event: "text-gen.voice_queued", jobDbId, creatorId, voiceJobDbId },
+                "[text-gen] voice note queued for Telegram",
+              );
+            }
+          } catch (err) {
+            // Swallow — voice failure must never break text delivery (SC1)
+            logger.warn(
+              { event: "text-gen.voice_enqueue_error", jobDbId, err: (err as Error).message },
+              "[text-gen] voice enqueue error (non-fatal — text continues)",
+            );
+          }
+        }
 
         // ── 12. Outbound delivery ──────────────────────────────────────────
         if (l3.flagged && l3.reply) {
