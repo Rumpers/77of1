@@ -88,8 +88,14 @@ None yet.
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
+## Quick Tasks Completed
+
+| Quick ID | Description | Date | Commits |
+|----------|-------------|------|---------|
+| 20260530-claire-persona-direction | twins.direction column + buildSystemPrompt steering + placeholder Claire persona + seed script | 2026-05-30 | 0d92b29, b74dbe8, 9f2f9fc |
+
 ## Session Continuity
 
-Last session: 2026-05-30T06:27:07.526Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-05-30T06:59:00Z
+Stopped at: Completed quick task 20260530-claire-persona-direction
 Resume file: None
