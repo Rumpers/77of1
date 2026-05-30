@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: context exhaustion at 75% (2026-05-29)
-last_updated: "2026-05-30T00:45:29.942Z"
+last_updated: "2026-05-30T04:29:51.589Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 27
-  completed_plans: 18
+  completed_plans: 20
   percent: 50
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 ## Current Position
 
 Phase: 04 (eval-gate-go-live) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-30
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 74%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [███████░░░] 67%
 
 *Updated after each plan completion*
 | Phase 04 P01 | 366s | 3 tasks | 13 files |
+| Phase 04 P04-02 | 720 | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Recent decisions affecting current work:
 - KYC gate (COMPLY-01, KYC-01) is a legal hard gate — twin chat must never pass without `status = 'signed'`
 - GMI XTTS endpoint URL unconfirmed — Phase 3 voice work is blocked until GMI credentials are resolved
 - CHAT-06 async Telegram ack must be built correctly in Phase 2; retrofitting is expensive
+- [Phase ?]: 04-02: Inline moderator factory in runner.ts avoids api-server circular dep; DB push requires live DATABASE_URL on Replit
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-30T00:45:29.871Z
+Last session: 2026-05-30T04:29:51.541Z
 Stopped at: context exhaustion at 75% (2026-05-29)
 Resume file: None
