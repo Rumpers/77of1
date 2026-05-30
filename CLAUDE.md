@@ -67,7 +67,7 @@ pnpm --filter @workspace/db run push-force      # force push
 - `artifacts/` — runnable services (api-server, web, hermes, worker, admin, mockup-sandbox)
 - `lib/` — shared libraries (db, api-spec, api-zod, api-client-react, providers, queue, admin-sdk)
 - `apps/web/` — Next.js creator dashboard (active development, no package.json yet — distinct from `artifacts/web/`)
-- `supabase/migrations/` — primary migration path (SQL files, applied via Supabase CLI)
+- `lib/db/src/migrations/` — canonical hand-written SQL migration path (sequential NNN numbering, e.g. `013_phase4_eval_runs.sql`), applied via `pnpm --filter @workspace/db run push` (supabase/migrations/ is retired/empty after Phase 1 Supabase removal)
 
 ### Data Flow
 
@@ -104,10 +104,11 @@ Fan (browser / Telegram)
 
 ## Migrations
 
-Two systems coexist:
+After Phase 1 Supabase retirement, one system remains:
 
-1. **Supabase migrations** (`supabase/migrations/YYYYMMDDHHMMSS_name.sql`) — primary path for schema changes, applied via `supabase db push`.
-2. **Drizzle** (`lib/db/src/migrations/`) — dev-only schema push. Rollback scripts at `supabase/rollbacks/*.down.sql`.
+1. **Hand-written SQL migrations** (`lib/db/src/migrations/NNN_name.sql`) — canonical migration path with sequential numbering (e.g. `013_phase4_eval_runs.sql`). Apply via `pnpm --filter @workspace/db run push`. Drizzle schema at `lib/db/src/schema/index.ts` is the source of truth for types; the SQL files are the authoritative DDL applied to the live database. Rollback scripts at `supabase/rollbacks/*.down.sql` (reference only).
+
+Note: `supabase/migrations/` is retired and empty after the Phase 1 Supabase-to-Replit-PG migration (012_remove_supabase.sql). Do not write new migrations there.
 
 A post-merge hook (`scripts/post-merge.sh`) runs `pnpm install --frozen-lockfile && pnpm --filter db push` automatically.
 

@@ -704,3 +704,43 @@ export type CreatorDeletionLog = typeof creatorDeletionLogTable.$inferSelect;
 export type InsertCreatorDeletionLog = z.infer<
   typeof insertCreatorDeletionLogSchema
 >;
+
+// ─── Table: eval_runs ─────────────────────────────────────────────────────────
+// Records each eval harness run result (EVAL-01 / plan 04-02).
+// go_live_eligible is the computed gate: passedHardLimit100 && passedInjection100.
+// is_regression_run flags weekly BullMQ cron runs so they are excluded from the
+// live-gate query (which reads only founder-initiated runs).
+
+export const evalRunsTable = pgTable(
+  "eval_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creatorsTable.id, { onDelete: "cascade" }),
+    ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
+    totalCases: integer("total_cases").notNull(),
+    totalPassed: integer("total_passed").notNull(),
+    totalFailed: integer("total_failed").notNull(),
+    hardLimitPassed: integer("hard_limit_passed").notNull(),
+    hardLimitTotal: integer("hard_limit_total").notNull(),
+    injectionPassed: integer("injection_passed").notNull(),
+    injectionTotal: integer("injection_total").notNull(),
+    passedHardLimit100: boolean("passed_hard_limit_100").notNull().default(false),
+    passedInjection100: boolean("passed_injection_100").notNull().default(false),
+    goLiveEligible: boolean("go_live_eligible").notNull().default(false),
+    report: jsonb("report"),
+    isRegressionRun: boolean("is_regression_run").notNull().default(false),
+    triggeredSentryAlert: boolean("triggered_sentry_alert").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    creatorRanAtIdx: index("eval_runs_creator_ran_idx").on(t.creatorId, t.ranAt),
+  })
+);
+
+export const insertEvalRunSchema = createInsertSchema(evalRunsTable).omit({
+  createdAt: true,
+});
+export type EvalRun = typeof evalRunsTable.$inferSelect;
+export type InsertEvalRun = z.infer<typeof insertEvalRunSchema>;
