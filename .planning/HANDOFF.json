@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-30T12:00:00.000Z",
+  "phase": "v1.0-complete",
+  "phase_name": "launch-sprint-complete",
+  "phase_dir": ".planning",
+  "plan": 27,
+  "task": 0,
+  "total_tasks": 0,
+  "status": "complete",
+  "completed_tasks": [
+    {"id": "phase-1", "name": "Baseline Repair — Supabase removed, Drizzle + Replit PG, KYC gate, data minimization", "status": "done"},
+    {"id": "phase-2", "name": "Twin Runtime Core — both chat surfaces, 6-layer moderation, SB 243 disclosure, async Telegram ack, onboarding wizards", "status": "done"},
+    {"id": "phase-3", "name": "Voice + Hardening — GMI TTS voice, Crescendo escalation scoring, OCR mask review, i18n, DSAR deletion", "status": "done"},
+    {"id": "phase-4", "name": "Eval Gate + Go-Live — 30-case eval suite, go-live gate, weekly regression cron", "status": "done"}
+  ],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Founder UAT — Phase 2 runtime checks", "context": "Live schema push, Replit Object Storage bucket, SB 243 visual + crisis-helpline smoke tests, ONBOARD-02 pause/resume SLA", "blocking": false},
+    {"action": "Founder UAT — Phase 3 SC1–SC5 runbook", "context": "Voice happy-path + circuit-breaker fallback, Crescendo 6-turn escalation flag, /review_masks approval, i18n locale routing, DSAR kill-switch + deletion sweep", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "GSD roadmap resynced to actual built state", "rationale": "v1.0 Launch Sprint (Phases 1–4) is complete; .planning/ROADMAP.md now reflects this and adds v2.0 (Phases 5–9) tracking the docs/roadmap.md initiatives"},
+    {"decision": "docs/roadmap.md is the canonical product roadmap", "rationale": "Forward initiatives (marketing site, concierge, image, video, content studio) live there; GSD tracker cross-links to it"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Plan v2.0 Phase 5 (Lala.la marketing site) via the GSD flow; see docs/roadmap.md §1",
+  "context_notes": "v1.0 Launch Sprint complete: 27/27 plans across Phases 1–4. Code-complete; founder runtime UAT outstanding on Phases 2 and 3. v2.0 Full Twin Platform (Phases 5–9) is the forward plan, detailed in docs/roadmap.md. Branch: rio-de-janeiro."
+}

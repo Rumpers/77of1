@@ -23,7 +23,7 @@
 - [ ] **ONBOARD-01**: Creator can complete no-tech onboarding via Lala Telegram bot: consent acceptance, persona intake, voice reference sample upload, character card generation
 - [ ] **ONBOARD-02**: Creator can pause/resume twin via Lala bot (kill switch with ≤5s SLA from bot command to twin returning 503)
 - [ ] **ONBOARD-03**: Creator can revoke voice consent via Lala bot; revocation triggers deletion sweep of all in-flight generation jobs within 60s SLA
-- [ ] **ONBOARD-04**: Founder review queue (Telegram) shows OCR-extracted fan-name masks with approve/reject action for uncertain masks
+- [x] **ONBOARD-04**: Founder review queue (Telegram) shows OCR-extracted fan-name masks with approve/reject action for uncertain masks
 
 ### Persona
 
@@ -42,9 +42,9 @@
 
 ### Voice
 
-- [ ] **VOICE-01**: Twin can reply with voice audio generated from creator's reference sample via GMI Cloud XTTS zero-shot voice synthesis
-- [ ] **VOICE-02**: Voice generation runs as an async BullMQ job; circuit-breaker fallback to text-only reply when GMI is unavailable
-- [ ] **VOICE-03**: Generated voice files stored in Replit Object Storage; fan receives a pre-signed URL with TTL
+- [x] **VOICE-01**: Twin can reply with voice audio generated from creator's reference sample via GMI Cloud XTTS zero-shot voice synthesis
+- [x] **VOICE-02**: Voice generation runs as an async BullMQ job; circuit-breaker fallback to text-only reply when GMI is unavailable
+- [x] **VOICE-03**: Generated voice files stored in Replit Object Storage; fan receives a pre-signed URL with TTL
 
 ### Moderation Pipeline
 
@@ -54,24 +54,24 @@
 - [ ] **MOD-04**: L4 — Pre-canned safe deflection responses per locale (EN / JP / ZH-TW) served for all flagged turns
 - [ ] **MOD-05**: L5 — High-risk flag triggers Sentry alert and Lala bot notification to founder within the request lifecycle
 - [ ] **MOD-06**: L6 — Every flagged turn appended to `safety_audit_log` (hashed fan_id + message_hash; no raw PII stored)
-- [ ] **MOD-07**: Conversation-level escalation scoring detects gradual-escalation bypass patterns (Crescendo-style) across turns, not only per-message
+- [x] **MOD-07**: Conversation-level escalation scoring detects gradual-escalation bypass patterns (Crescendo-style) across turns, not only per-message
 
 ### Compliance
 
 - [ ] **COMPLY-01**: Every twin chat interaction begins with an AI disclosure statement per California SB 243 (effective 2026-01-01), in the fan's detected locale
 - [ ] **COMPLY-02**: Self-harm category detected by OpenAI moderation triggers immediate crisis helpline injection in fan's locale: JP (よりそいホットライン 0120-279-338), TW (1925), HK (撒瑪利亞防止自殺會 2389 2222), EN (988 Lifeline)
 - [ ] **COMPLY-03**: Fan conversation data minimized — no raw message content in logs or audit records; hashed identifiers only
-- [ ] **COMPLY-04**: Creator can request full data deletion (DSAR) via Lala bot; all twin conversation history and voice files deleted within 30 days
+- [x] **COMPLY-04**: Creator can request full data deletion (DSAR) via Lala bot; all twin conversation history and voice files deleted within 30 days
 
 ### Internationalization
 
-- [ ] **I18N-01**: All user-facing strings in web funnel (CTAs, disclosure, deflections) and Telegram bot messages available in EN, JP, and ZH-TW
+- [x] **I18N-01**: All user-facing strings in web funnel (CTAs, disclosure, deflections) and Telegram bot messages available in EN, JP, and ZH-TW
 - [ ] **I18N-02**: Fan locale detected from Telegram language setting or browser `Accept-Language`; defaults to EN when detection fails
 
 ### Evaluation
 
-- [ ] **EVAL-01**: 30-case eval suite per creator before go-live: 10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection; 100% pass rate on hard-limit and injection categories required
-- [ ] **EVAL-02**: Weekly regression cron re-runs eval suite; Sentry alert fires on any regression below 100% hard-limit pass rate
+- [x] **EVAL-01**: 30-case eval suite per creator before go-live: 10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection; 100% pass rate on hard-limit and injection categories required
+- [x] **EVAL-02**: Weekly regression cron re-runs eval suite; Sentry alert fires on any regression below 100% hard-limit pass rate
 
 ---
 
@@ -131,54 +131,55 @@
 
 ## Traceability
 
-*Populated during roadmap creation.*
+All 38 v1 requirements are delivered (v1.0 Launch Sprint complete 2026-05-30). Phase 2 and Phase 3 items are code-complete; founder runtime UAT is still outstanding (see `.planning/STATE.md` → Blockers/Concerns).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| KYC-01 | Phase 1 | Pending |
-| KYC-02 | Phase 1 | Pending |
-| KYC-03 | Phase 2 | Pending |
-| ONBOARD-01 | Phase 2 | Pending |
-| ONBOARD-02 | Phase 2 | Pending |
-| ONBOARD-03 | Phase 2 | Pending |
-| ONBOARD-04 | Phase 3 | Pending |
-| PERSONA-01 | Phase 2 | Pending |
-| PERSONA-02 | Phase 2 | Pending |
-| PERSONA-03 | Phase 1 | Pending |
-| CHAT-01 | Phase 2 | Pending |
-| CHAT-02 | Phase 2 | Pending |
-| CHAT-03 | Phase 2 | Pending |
-| CHAT-04 | Phase 2 | Pending |
-| CHAT-05 | Phase 2 | Pending |
-| CHAT-06 | Phase 2 | Pending |
-| VOICE-01 | Phase 3 | Pending |
-| VOICE-02 | Phase 3 | Pending |
-| VOICE-03 | Phase 3 | Pending |
-| MOD-01 | Phase 2 | Pending |
-| MOD-02 | Phase 2 | Pending |
-| MOD-03 | Phase 2 | Pending |
-| MOD-04 | Phase 2 | Pending |
-| MOD-05 | Phase 2 | Pending |
-| MOD-06 | Phase 2 | Pending |
-| MOD-07 | Phase 3 | Pending |
-| COMPLY-01 | Phase 2 | Pending |
-| COMPLY-02 | Phase 2 | Pending |
-| COMPLY-03 | Phase 1 | Pending |
-| COMPLY-04 | Phase 3 | Pending |
-| I18N-01 | Phase 3 | Pending |
-| I18N-02 | Phase 2 | Pending |
-| EVAL-01 | Phase 4 | Pending |
-| EVAL-02 | Phase 4 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| KYC-01 | Phase 1 | Complete |
+| KYC-02 | Phase 1 | Complete |
+| KYC-03 | Phase 2 | Complete |
+| ONBOARD-01 | Phase 2 | Complete |
+| ONBOARD-02 | Phase 2 | Complete |
+| ONBOARD-03 | Phase 2 | Complete |
+| ONBOARD-04 | Phase 3 | Complete |
+| PERSONA-01 | Phase 2 | Complete |
+| PERSONA-02 | Phase 2 | Complete |
+| PERSONA-03 | Phase 1 | Complete |
+| CHAT-01 | Phase 2 | Complete |
+| CHAT-02 | Phase 2 | Complete |
+| CHAT-03 | Phase 2 | Complete |
+| CHAT-04 | Phase 2 | Complete |
+| CHAT-05 | Phase 2 | Complete |
+| CHAT-06 | Phase 2 | Complete |
+| VOICE-01 | Phase 3 | Complete |
+| VOICE-02 | Phase 3 | Complete |
+| VOICE-03 | Phase 3 | Complete |
+| MOD-01 | Phase 2 | Complete |
+| MOD-02 | Phase 2 | Complete |
+| MOD-03 | Phase 2 | Complete |
+| MOD-04 | Phase 2 | Complete |
+| MOD-05 | Phase 2 | Complete |
+| MOD-06 | Phase 2 | Complete |
+| MOD-07 | Phase 3 | Complete |
+| COMPLY-01 | Phase 2 | Complete |
+| COMPLY-02 | Phase 2 | Complete |
+| COMPLY-03 | Phase 1 | Complete |
+| COMPLY-04 | Phase 3 | Complete |
+| I18N-01 | Phase 3 | Complete |
+| I18N-02 | Phase 2 | Complete |
+| EVAL-01 | Phase 4 | Complete |
+| EVAL-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total
 - Mapped to phases: 38
 - Unmapped: 0 ✓
+- Complete: 38/38 ✓
 
 ---
 *Requirements defined: 2026-05-27*
-*Last updated: 2026-05-27 after initial definition*
+*Last updated: 2026-05-30 — all v1 requirements marked Complete (v1.0 Launch Sprint done; founder UAT pending)*
