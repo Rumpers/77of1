@@ -131,7 +131,9 @@
 
 ## Traceability
 
-All 38 v1 requirements are delivered (v1.0 Launch Sprint complete 2026-05-30). Phase 2 and Phase 3 items are code-complete; founder runtime UAT is still outstanding (see `.planning/STATE.md` → Blockers/Concerns).
+All 38 numbered v1 requirements are delivered (v1.0 Launch Sprint complete 2026-05-30). Phase 2 and Phase 3 items are code-complete; live execution / founder runtime UAT is still outstanding (see `.planning/STATE.md` → Blockers/Concerns).
+
+**Out-of-traceability gap:** the self-service **web DSAR portal** (`routes/dsar.ts` + `dsar-portal.tsx`/`fan-dsar.tsx`) and **email suppression-log writes** (`routes/email-webhooks.ts`) remain `PHASE_1_STUB` 503s — never restored in Phase 2 as their comments promised. These are not covered by a numbered requirement (COMPLY-04 covers only the creator *bot* DSAR path, which IS complete). Tracked as a v1.0 follow-up.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -178,7 +180,7 @@ All 38 v1 requirements are delivered (v1.0 Launch Sprint complete 2026-05-30). P
 - v1 requirements: 38 total
 - Mapped to phases: 38
 - Unmapped: 0 ✓
-- Complete: 38/38 ✓
+- Complete: 38/38 numbered requirements ✓ (plus one untracked gap: web DSAR portal + email suppression still stubbed — see note above)
 
 ---
 *Requirements defined: 2026-05-27*

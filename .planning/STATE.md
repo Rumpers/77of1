@@ -75,11 +75,12 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- **Restore the self-service web DSAR portal + email suppression** — `routes/dsar.ts` (6 routes) and the suppression-log write in `routes/email-webhooks.ts` are still `PHASE_1_STUB` 503s. The "restored in Phase 2" comments were never actioned. Not a numbered requirement; the creator *bot* DSAR path (COMPLY-04) is complete. Candidate for an inserted phase or v2.0 hardening.
 
 ### Blockers/Concerns
 
-- **Founder UAT (v1.0)**: Phase 2 + Phase 3 are code-complete but await founder runtime verification — live schema push, Replit Object Storage bucket, SB 243 visual + helpline smoke tests, and the Phase 3 SC1–SC5 voice/escalation/DSAR runbook.
+- **Live execution / founder UAT (v1.0)**: schema is good; Object Storage is wired but needs a live round-trip test (voice upload + signed proxy fetch); SB 243 disclosure + voice are code-complete pending live execution; Phase 3 SC1–SC5 runbook (voice happy-path + circuit-breaker fallback, Crescendo escalation, /review_masks, i18n routing, DSAR-bot sweep) awaits a live run.
+- **Stubbed (not code-complete)**: web DSAR portal + email suppression — see Pending Todos.
 
 ### Resolved
 

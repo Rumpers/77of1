@@ -124,11 +124,18 @@ Forward initiatives, detailed in [`../docs/roadmap.md`](../docs/roadmap.md). Req
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline Repair | 6/6 | Complete | 2026-05-28 |
-| 2. Twin Runtime Core | 9/9 | Complete (founder UAT pending) | 2026-05-29 |
-| 3. Voice + Hardening | 8/8 | Complete (founder UAT pending) | 2026-05-30 |
+| 2. Twin Runtime Core | 9/9 | Complete — except DSAR web portal + email suppression still 503-stubbed (see gap note) | 2026-05-29 |
+| 3. Voice + Hardening | 8/8 | Code-complete; pending live execution | 2026-05-30 |
 | 4. Eval Gate + Go-Live | 4/4 | Complete | 2026-05-30 |
 
-**Milestone v1.0: COMPLETE** — 27/27 plans. Founder UAT outstanding on Phase 2 (live schema push, Object Storage bucket, SB 243 visual + helpline smoke tests, ONBOARD-02 SLA) and Phase 3 (SC1–SC5 runbook: voice happy-path + circuit-breaker fallback, Crescendo escalation, /review_masks, i18n routing, DSAR sweep).
+**Milestone v1.0: COMPLETE** — 27/27 plans shipped. Status of the remaining live-execution items:
+
+- **Schema** — good (Drizzle migrations applied).
+- **Object Storage** — wired; needs a live round-trip test (voice reference upload + signed proxy fetch).
+- **SB 243 disclosure + crisis helpline (COMPLY-01/02)** — code-complete; pending live execution/visual smoke test.
+- **Voice (Phase 3 SC1–SC5)** — code-complete; pending live execution: voice happy-path + circuit-breaker fallback, Crescendo escalation, /review_masks, i18n routing, DSAR-bot sweep.
+
+**Known gap (NOT code-complete despite the Phase 2 label):** the **self-service web DSAR portal** (`artifacts/api-server/src/routes/dsar.ts` + `dsar-portal.tsx`/`fan-dsar.tsx`) and **email suppression-log writes** (`routes/email-webhooks.ts`) are still `PHASE_1_STUB` 503s — their "restored in Phase 2" comment was never actioned. The creator DSAR *bot* path (COMPLY-04, plan 03-04) IS complete; only the fan-facing web self-service flow + email suppression remain. Neither maps to a numbered v1 requirement; tracked as a v1.0 follow-up (candidate for an inserted phase or v2.0 hardening).
 
 ### Milestone v2.0 — Full Twin Platform
 
