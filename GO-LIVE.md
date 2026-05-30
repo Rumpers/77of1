@@ -55,17 +55,29 @@ Green preflight = infra ready. (A valid bot token ≠ process running — check 
 
 ---
 
-## 2. Onboard Claire (the real bottleneck)
+## 2. Get a twin to test against
 
-Requires **Claire's writing/text samples** (Character Card V2 persona) and a
-**voice clip 10s–5min, MP3/M4A/WAV, <20MB** (NOT the old 6s assumption).
+### Option A — placeholder seed (test the pipeline NOW, before Claire's real data)
+Disposable fixture to exercise deploy → eval → activate → chat end-to-end without waiting on
+Claire's samples. Edit `scripts/personas/claire.json` (and the `CLAIRE_*` env overrides) freely.
+```bash
+pnpm tsx scripts/src/seed-claire.ts        # idempotent; prints the creator id
+export EVAL_CREATOR_ID=<printed id>        # set as a Replit secret + restart
+```
+Then steer behaviour without rewriting the card via the new **`twins.direction`** field
+(injected as a "Creator Direction" block in the system prompt) — update it and re-test until
+the twin behaves how you want. Persona is iterative by design.
 
-Do this via **Hermes, not SQL** (dogfood the real UX):
-`/start` → consent → persona wizard → voice wizard. This run is also the Phase 2
-human-verify smoke (UI, Telegram self-harm flow, `/pause` SLA) and needs the
-**SignWell KYC signature** with voice-synthesis authorization before fans message the twin.
+### Option B — onboard the real Claire (the eventual bottleneck)
+Requires **Claire's writing/text samples** (persona) and a **voice clip 10s–5min,
+MP3/M4A/WAV, <20MB** (NOT the old 6s assumption). Do this via **Hermes, not SQL** (dogfood the
+real UX): `/start` → consent → persona wizard → voice wizard. Also the Phase 2 human-verify
+smoke (UI, Telegram self-harm flow, `/pause` SLA); needs the **SignWell KYC signature** with
+voice-synthesis authorization before fans message the twin. Then grab her `creators.id` →
+set `EVAL_CREATOR_ID` → restart.
 
-After onboarding, grab her `creators.id` → set `EVAL_CREATOR_ID` secret → restart.
+Either way, the placeholder/real persona's `post_history_instructions` must be strong enough
+to pass the eval gate's hard-limit + injection categories (the seeded one already is).
 
 ---
 
