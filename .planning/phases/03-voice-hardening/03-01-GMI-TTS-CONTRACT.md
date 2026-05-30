@@ -95,14 +95,41 @@ twin sound like Claire:
 - **Step B — synthesize (per reply):** call the submit endpoint with `payload.voice_id` =
   Claire's cloned id. No reference re-upload per call → faster + cheaper.
 
-## OPEN — ONE item left: clone-registration request shape
+## OPEN — ONE item left: GMI's wrapper for the clone registration
 
-Still need the exact request/response for **Step A** (reference clip → voice_id) on
-`minimax-audio-voice-clone-speech-2.6-hd`. Likely the same `requestqueue/apikey/requests`
-endpoint with a payload carrying the reference audio (URL or base64) and returning a
-`voice_id` in `outcome.voice_id`. **Action for founder:** paste the voice-clone model's
-sample request+response (from its docs page or the "Try" playground). Then this flips to
-fully `confirmed` and 03-06 can write both steps.
+**Semantics now CONFIRMED** (MiniMax native docs, 2026-05-30). Voice cloning is a TWO-STEP
+registration that produces a reusable `voice_id`, then synthesis (already built) uses it:
+
+1. **Upload** the reference clip → returns a `file_id`.
+   - Native MiniMax: `POST https://api.minimax.io/v1/files/upload` (multipart) → `file_id`.
+   - Constraints: MP3 / M4A / WAV, **10s–5min**, **<20MB**. (Claire's onboarding clip must
+     meet these — note the 10s minimum; the old `voice_reference.wav` 6s assumption is too short.)
+2. **Clone** → `POST https://api.minimax.io/v1/voice_clone` with body roughly
+   `{ file_id, voice_id: "<our chosen id, e.g. twin-<creatorId>>", model: "speech-2.6-hd",
+   need_noise_reduction: true, need_volumn_normalization: true }`. Assigns the custom
+   `voice_id`. After this, that `voice_id` is usable in the synth payload (Step B above).
+
+**Still unconfirmed = GMI's wrapper.** The above is MiniMax's *native* API on `api.minimax.io`
+(needs a MiniMax key). Our mandate is **GMI** (`console.gmicloud.ai`, GMI key) — GMI almost
+certainly proxies upload + voice_clone through its own surface (likely the same
+`requestqueue/apikey/requests` queue with `model: minimax-audio-voice-clone-speech-2.6-hd`
+and a payload carrying the reference + chosen voice_id, OR dedicated file/clone endpoints).
+GMI's clone docs page currently 404s. **DO NOT implement the clone call against the native
+MiniMax shape** — it would bypass the GMI mandate and need a key we don't use.
+
+**Action for founder (narrow, specific):** from the GMI console "Try" panel on the
+`minimax-audio-voice-clone-speech-2.6-hd` model, capture (a) how a reference clip is
+submitted (file upload endpoint? file_id? audio URL? base64?) and (b) where the resulting
+`voice_id` appears in the response. Paste that and `registerVoiceClone()` (currently a
+throwing stub) can be implemented directly — the surrounding flow (persist `twins.voice_id`,
+synth fallback) is already wired.
+
+Until then: synthesis uses `GMI_TTS_FALLBACK_VOICE_ID` (a preset voice), so the twin speaks
+in a generic voice, not Claire's. Functional, just not her clone.
+
+### Reference
+- MiniMax Voice Clone docs — https://platform.minimax.io/docs/guides/speech-voice-clone
+- MiniMax T2A / voice_clone endpoint — `POST https://api.minimax.io/v1/voice_clone`
 
 > Interim: 03-06 can be built now against the SYNTH contract (Step B) using a preset
 > `voice_id` for tests, with the clone call (Step A) stubbed behind the registry until the
