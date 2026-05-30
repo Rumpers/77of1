@@ -14,3 +14,5 @@ export { ALL_CASES } from "./cases/index.js";
 export { gradeCase } from "./grader.js";
 export { runEval } from "./runner.js";
 export { isGoLiveEligible } from "./live-gate.js";
+export { processEvalRegression } from "./regression-processor.js";
+export type { EvalProcessorDeps } from "./regression-processor.js";

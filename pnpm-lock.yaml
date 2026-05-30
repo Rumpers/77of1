@@ -792,6 +792,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/eval':
+        specifier: workspace:*
+        version: link:../../lib/eval
       '@workspace/providers':
         specifier: workspace:*
         version: link:../../lib/providers

@@ -12,6 +12,7 @@
   "dependencies": {
     "@sentry/node": "^8",
     "@workspace/db": "workspace:*",
+    "@workspace/eval": "workspace:*",
     "@workspace/providers": "workspace:*",
     "@workspace/queue": "workspace:*",
     "@workspace/twin-runtime": "workspace:*",
