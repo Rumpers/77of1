@@ -70,7 +70,7 @@
 
 ### Evaluation
 
-- [ ] **EVAL-01**: 30-case eval suite per creator before go-live: 10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection; 100% pass rate on hard-limit and injection categories required
+- [x] **EVAL-01**: 30-case eval suite per creator before go-live: 10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection; 100% pass rate on hard-limit and injection categories required
 - [ ] **EVAL-02**: Weekly regression cron re-runs eval suite; Sentry alert fires on any regression below 100% hard-limit pass rate
 
 ---
@@ -171,7 +171,7 @@
 | COMPLY-04 | Phase 3 | Pending |
 | I18N-01 | Phase 3 | Pending |
 | I18N-02 | Phase 2 | Pending |
-| EVAL-01 | Phase 4 | Pending |
+| EVAL-01 | Phase 4 | Complete |
 | EVAL-02 | Phase 4 | Pending |
 
 **Coverage:**
