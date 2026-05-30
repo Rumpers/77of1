@@ -42,8 +42,8 @@
 
 ### Voice
 
-- [ ] **VOICE-01**: Twin can reply with voice audio generated from creator's reference sample via GMI Cloud XTTS zero-shot voice synthesis
-- [ ] **VOICE-02**: Voice generation runs as an async BullMQ job; circuit-breaker fallback to text-only reply when GMI is unavailable
+- [x] **VOICE-01**: Twin can reply with voice audio generated from creator's reference sample via GMI Cloud XTTS zero-shot voice synthesis
+- [x] **VOICE-02**: Voice generation runs as an async BullMQ job; circuit-breaker fallback to text-only reply when GMI is unavailable
 - [ ] **VOICE-03**: Generated voice files stored in Replit Object Storage; fan receives a pre-signed URL with TTL
 
 ### Moderation Pipeline
@@ -155,8 +155,8 @@
 | CHAT-04 | Phase 2 | Pending |
 | CHAT-05 | Phase 2 | Pending |
 | CHAT-06 | Phase 2 | Pending |
-| VOICE-01 | Phase 3 | Pending |
-| VOICE-02 | Phase 3 | Pending |
+| VOICE-01 | Phase 3 | Complete |
+| VOICE-02 | Phase 3 | Complete |
 | VOICE-03 | Phase 3 | Pending |
 | MOD-01 | Phase 2 | Pending |
 | MOD-02 | Phase 2 | Pending |
