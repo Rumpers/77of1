@@ -10,6 +10,7 @@ export interface AllQueues {
   consentRevocation: Queue;
   dunningRetry: Queue;
   dsarDeletion: Queue;
+  evalRegression: Queue;
 }
 
 export function createAllQueues(redisUrl: string): AllQueues {
@@ -42,6 +43,10 @@ export function createAllQueues(redisUrl: string): AllQueues {
     dsarDeletion: new Queue(QUEUE_NAMES.dsarDeletion, {
       connection: conn,
       defaultJobOptions: JOB_OPTIONS.dsarDeletion,
+    }),
+    evalRegression: new Queue(QUEUE_NAMES.evalRegression, {
+      connection: conn,
+      defaultJobOptions: JOB_OPTIONS.evalRegression,
     }),
   };
 }

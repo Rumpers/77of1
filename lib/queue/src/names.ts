@@ -6,6 +6,7 @@ export const QUEUE_NAMES = {
   consentRevocation: "consent-revocation",
   dunningRetry: "dunning-retry",
   dsarDeletion: "dsar-deletion",
+  evalRegression: "eval-regression",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

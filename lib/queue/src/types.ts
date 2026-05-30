@@ -78,6 +78,11 @@ export interface DunningRetryPayload {
   attempt: number;
 }
 
+export interface EvalRegressionPayload {
+  type: "eval-regression";
+  triggeredBy: "weekly-cron" | "manual";
+}
+
 export type TextGenerationContext = {
   creatorId: string;
   systemPrompt: string;

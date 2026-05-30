@@ -50,4 +50,12 @@ export const JOB_OPTIONS: Record<string, JobsOptions> = {
     removeOnComplete,
     removeOnFail: false,
   },
+  evalRegression: {
+    // Weekly eval regression run — 2 attempts with exponential backoff.
+    // removeOnFail: false — keep failed runs visible for inspection.
+    attempts: 2,
+    backoff: { type: "exponential", delay: 30_000 },
+    removeOnComplete,
+    removeOnFail: false,
+  },
 };
