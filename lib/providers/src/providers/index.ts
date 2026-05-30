@@ -10,3 +10,8 @@ export {
   getEmailProvider,
   resetEmailProvider,
 } from "./resend-email.js";
+export {
+  gmiTtsBreaker,
+  registerVoiceClone,
+} from "./gmi-tts-client.js";
+export type { GmiTtsInput, GmiTtsOutput } from "./gmi-tts-client.js";

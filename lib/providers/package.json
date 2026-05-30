@@ -10,6 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/opossum": "^8.1.9"
+  },
+  "dependencies": {
+    "opossum": "^9.0.0"
   }
 }

@@ -123,6 +123,10 @@ export const twinsTable = pgTable("twins", {
   // creators/{creatorId}/voice_reference.wav — populated by the /voice wizard
   // scene (plan 02-08). NULL until creator uploads a 6+ second voice note.
   voiceReferenceUrl: text("voice_reference_url"),
+  // Cloned MiniMax voice_id from clone Step A (03-06). Populated when
+  // registerVoiceClone() completes onboarding. NULL until clone registration runs;
+  // synthesis falls back to GMI_TTS_FALLBACK_VOICE_ID when null.
+  voiceId: text("voice_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
