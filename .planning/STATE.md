@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-05-30T06:27:07.583Z"
+milestone: v2.0
+milestone_name: Marketing Site
+status: planning
+last_updated: "2026-05-30T14:25:30.580Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 27
-  completed_plans: 25
-  percent: 75
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 ## Current Position
 
-Phase: 04 — COMPLETE
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-05-30
-
-Progress: [█████████░] 93%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-30 — Milestone v2.0 started
 
 ## Performance Metrics
 

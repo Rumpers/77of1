@@ -10,6 +10,19 @@ lala.la is plumbing, not a destination. We do not own the creator's relationship
 
 A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation with a creator's AI twin, and get nudged to her actual monetization platform — all within 30 seconds of first message.
 
+## Current Milestone: v2.0 Marketing Site
+
+**Goal:** Replace the placeholder landing page with a polished, localized public marketing front door that sells lala.la as a managed AI digital-twin service and routes creators into onboarding.
+
+**Target features:**
+- Multi-section marketing site at the locale root: value proposition, the four generative pillars (chat/voice/image/video), the multi-channel deployment story, and how managed white-glove onboarding works
+- Net-new marketing design system (typography, color, layout, motion) — distinct from the utilitarian fan-chat page
+- Primary CTA routes creators into the existing Hermes Telegram onboarding deep-link
+- Responsive, mobile-first, fully localized en / ja / zh-TW
+- Fan route `lala.la/[handle]` remains unaffected
+
+**Out of scope (this milestone):** pricing/billing/self-serve signup, backend/API changes, blog/docs/help-center content. The other four `docs/roadmap.md` initiatives (Lala Concierge, Image gen + LoRA, Video generation, Content studio) are deferred to later milestones.
+
 ## Requirements
 
 ### Validated
@@ -32,6 +45,17 @@ A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation wi
 - [ ] Parallel EN + JP + ZH-TW first-class i18n from day 1
 - [ ] 30-case eval suite per creator (10 in-character + 10 boundary + 10 hard-limit); 100% hard-limit pass before twin goes live
 - [ ] Compliance baseline: SB 243 AI disclosure, self-harm detection + crisis helpline injection per locale, GDPR/APPI/PDPA data minimization
+
+**v2.0 Marketing Site:**
+
+- [ ] Public marketing site at the locale root with value-proposition messaging (managed AI digital-twin service)
+- [ ] Section presenting the four generative pillars (chat / voice / image / video)
+- [ ] Section presenting the multi-channel deployment story (lala.la + Telegram + own social channels)
+- [ ] Section explaining managed white-glove onboarding
+- [ ] Net-new marketing design system (typography, color, layout, motion), distinct from the fan-chat page
+- [ ] Primary CTA routes creators to the Hermes Telegram onboarding deep-link
+- [ ] Responsive / mobile-first layout
+- [ ] Full en / ja / zh-TW localization of marketing copy
 
 ### Out of Scope
 
@@ -80,6 +104,9 @@ A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation wi
 | Plain context window for RAG (N=1) | Graphiti+Neo4j at creator #3-5 horizon | — Locked |
 | Markdown twin constitution v1 | DB table deferred; Markdown sufficient for N=1 | — Locked |
 | Supabase → Replit PG (Week 1) | Simplify stack, remove external DB dependency | — Pending |
+| v2.0 = Marketing site only | First of 5 roadmap initiatives; net-new public front door, frontend-only | — Locked |
+| Marketing CTA → Hermes Telegram deep-link | Reuse existing creator onboarding entry; zero new backend | — Locked |
+| Net-new marketing design system | Public site needs distinct brand from utilitarian fan-chat page | — Locked |
 
 ## Evolution
 
@@ -99,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-27 after initialization from north-star.md*
+*Last updated: 2026-05-30 — started milestone v2.0 Marketing Site*
