@@ -159,6 +159,23 @@ router.post(
       return;
     }
 
+    // ── Runtime twin status gate (04-03) ─────────────────────────────────────
+    // Twins default to status "inactive" (schema default). Only twins explicitly
+    // activated via POST /api/admin/twin/:creatorId/activate (after passing the
+    // eval gate) have status "active". This gate runs BEFORE the credit gate so
+    // an inactive twin never deducts a credit or reaches the LLM.
+    const twinStatusRow = await db
+      .select({ status: twinsTable.status })
+      .from(twinsTable)
+      .where(eq(twinsTable.creatorId, creatorId))
+      .limit(1)
+      .then((r: Array<{ status: string }>) => r[0] ?? null);
+
+    if (twinStatusRow && twinStatusRow.status !== "active") {
+      res.status(503).json({ code: "twin_inactive" });
+      return;
+    }
+
     // ── Credit gate (CHAT-02, D-02-10) ───────────────────────────────────────
     // Authenticated fan (fanId set by requireFanAccess): atomic DB deduction.
     // Anonymous fan (trial mode): check cookie counter; reject at TRIAL_LIMIT.

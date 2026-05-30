@@ -32,6 +32,7 @@ interface CreatorRow {
 interface TwinRow {
   id: string;
   creatorId: string;
+  status: string;
   characterCard: unknown | null;
 }
 interface KycRow {
@@ -84,6 +85,7 @@ const twinsTable = {
   __name: "twins",
   id: { __col: "id" },
   creatorId: { __col: "creatorId" },
+  status: { __col: "status" },
   characterCard: { __col: "characterCard" },
 };
 const creatorConfigTable = {
@@ -116,6 +118,17 @@ const twinConfigsTable = {
   outboundModEnabled: { __col: "outboundModEnabled" },
 };
 
+// safety_audit_log marker for escalation scorer (MOD-07).
+// escalation.ts imports it at the top level (not lazily), so the mock must
+// export it. Tests return an empty slice so the scorer never fires.
+const safetyAuditLogTable = {
+  __name: "safety_audit_log",
+  creatorId: { __col: "creatorId" },
+  fanIdHash: { __col: "fanIdHash" },
+  categoryScores: { __col: "categoryScores" },
+  createdAt: { __col: "createdAt" },
+};
+
 interface Predicate {
   __pred: "eq";
   col: { __col: string };
@@ -135,6 +148,8 @@ vi.mock("@workspace/db", () => {
         return state.conversationMessages;
       case "creator_kyc":
         return state.kyc;
+      case "safety_audit_log":
+        return []; // no prior escalation history in tests
       default:
         return [];
     }
@@ -230,6 +245,7 @@ vi.mock("@workspace/db", () => {
     creatorKycTable,
     personasTable,
     twinConfigsTable,
+    safetyAuditLogTable,
     fansTable: { __name: "fans", id: { __col: "id" } },
   };
 });
@@ -289,6 +305,19 @@ vi.mock("../providers/registry.js", () => ({
 // ─── Mock constitution read (no Replit storage in tests) ─────────────────────
 vi.mock("../lib/constitution.js", () => ({
   readConstitution: async (_creatorId: string) => null,
+}));
+
+// ─── Mock escalation scorer (MOD-07) ─────────────────────────────────────────
+// scoreEscalation imports db from @workspace/db at the top level (not lazily).
+// In tests the vi.mock("@workspace/db") stub does not support the `and()`
+// predicate shape scoreEscalation uses. Mock the scorer itself so it always
+// returns no-flag (functionally equivalent to zero prior escalation history).
+vi.mock("@workspace/twin-runtime/escalation", () => ({
+  scoreEscalation: async () => ({
+    flagged: false,
+    cumulativeScore: 0,
+    windowSize: 0,
+  }),
 }));
 
 // ─── HTTP harness helper ─────────────────────────────────────────────────────
@@ -399,11 +428,25 @@ beforeEach(() => {
       monetizationUrl: null,
       config: {},
     },
+    {
+      id: "creator-inactive-twin-1",
+      handle: "test-inactive-twin",
+      killSwitchActive: false,
+      monetizationUrl: null,
+      config: {},
+    },
   ];
   state.twins = [
     {
       id: "twin-sakura-1",
       creatorId: "creator-signed-1",
+      status: "active",
+      characterCard: null,
+    },
+    {
+      id: "twin-inactive-1",
+      creatorId: "creator-inactive-twin-1",
+      status: "inactive",
       characterCard: null,
     },
   ];
@@ -412,6 +455,7 @@ beforeEach(() => {
     { creatorId: "creator-pending-1", status: "pending" },
     { creatorId: "creator-paused-1", status: "signed" },
     { creatorId: "creator-killed-1", status: "signed" },
+    { creatorId: "creator-inactive-twin-1", status: "signed" },
   ];
   state.configs = [
     { creatorId: "creator-paused-1", paused: true },
@@ -586,6 +630,28 @@ describe("CHAT-01 e2e: POST /api/twin/chat — signed creator", () => {
   it("maxTokens = 512 is passed to generateText", async () => {
     await request("POST", "/api/twin/chat", { handle: "sakura", message: "hi" });
     expect(providerCalls[0]?.maxTokens).toBe(512);
+  });
+
+  it("returns 503 twin_inactive when twin status is not 'active'", async () => {
+    const { status, body } = await request("POST", "/api/twin/chat", {
+      handle: "test-inactive-twin",
+      message: "hi",
+    });
+    expect(status).toBe(503);
+    expect(body.code).toBe("twin_inactive");
+    // LLM must NOT have been called
+    expect(providerCalls).toHaveLength(0);
+  });
+
+  it("active twin still reaches the pipeline (status gate passes)", async () => {
+    nextProviderResponse = "Hello from active twin.";
+    const { status } = await request("POST", "/api/twin/chat", {
+      handle: "sakura",
+      message: "hi",
+    });
+    expect(status).toBe(200);
+    // Provider was called — credit gate and LLM were reached
+    expect(providerCalls).toHaveLength(1);
   });
 });
 
