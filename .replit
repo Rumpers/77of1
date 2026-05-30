@@ -56,3 +56,10 @@ externalPort = 8081
 [[ports]]
 localPort = 22333
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+EVAL_CREATOR_ID = "5971b65b-99f4-4e69-abb5-47b2023bc5bf"
+TEXT_PROVIDER = "gmi"
+GMI_API_BASE_URL = "https://api.gmi-serving.com/v1"

@@ -230,13 +230,77 @@ export function writeNonFlaggedScores(args: {
   });
 }
 
+// ─── L0 keyword pre-check ────────────────────────────────────────────────────
+// Catches explicit content requests and prompt-injection markers that OpenAI's
+// omni-moderation API does not reliably flag (politely-worded sexual requests,
+// plain-text "IGNORE ALL PREVIOUS INSTRUCTIONS" patterns, etc.).
+// Runs BEFORE the OpenAI call — zero latency cost, deterministic.
+// Using synthetic ModerationResult so composeFlaggedReply produces the correct
+// locale-appropriate deflection string via the shared L4 path.
+
+const L0_SEXUAL_PATTERNS = [
+  /\bexplicit\s+(sexual\s+)?(photo|video|pic|image|content)/i,
+  /\bsend\s+me\s+(nude|naked|explicit|sexual)/i,
+  /\b(nude|naked)\s+(photo|pic|image)/i,
+  /\bonly\s+fans\b.*\bsend/i,
+];
+
+const L0_INJECTION_PATTERNS = [
+  /IGNORE\s+ALL\s+PREVIOUS\s+INSTRUCTIONS/i,
+  /\[SYSTEM\s+OVERRIDE\]/i,
+  /\bYou\s+are\s+now\s+DAN\b/i,
+  /\bnew\s+persona\s*:\s*you\s+are\s+an\s+uncensored/i,
+  /\bforget\s+(all\s+)?(your\s+)?(previous\s+)?instructions/i,
+  /\bDo\s+Anything\s+Now\b/i,
+];
+
+function checkL0(text: string): { flagged: true; category: "sexual" | "injection" } | { flagged: false } {
+  for (const re of L0_SEXUAL_PATTERNS) {
+    if (re.test(text)) return { flagged: true, category: "sexual" };
+  }
+  for (const re of L0_INJECTION_PATTERNS) {
+    if (re.test(text)) return { flagged: true, category: "injection" };
+  }
+  return { flagged: false };
+}
+
 /**
  * L1 — moderate fan input BEFORE the LLM call. When flagged, the caller MUST
  * skip the LLM and send `outcome.reply` directly.
+ * Runs an L0 keyword pre-check first (catches patterns OpenAI doesn't flag),
+ * then falls through to the OpenAI moderation API.
  */
-export function runL1Moderation(
+export async function runL1Moderation(
   ctx: ModerationContext,
 ): Promise<ModerationOutcome> {
+  const l0 = checkL0(ctx.text);
+  if (l0.flagged) {
+    const syntheticMod: ModerationResult = {
+      flagged: true,
+      categories: [l0.category === "sexual" ? "sexual" : "harassment"],
+      scores: {},
+      primaryCategory: l0.category === "sexual" ? "sexual" : "harassment",
+    };
+    const severity = severityFromCategories(syntheticMod.categories);
+    const reply = composeFlaggedReply(syntheticMod, ctx.locale);
+    writeSafetyAuditLog({
+      creatorId: ctx.creatorId,
+      fanId: ctx.fanIdHash,
+      sessionId: ctx.sessionId,
+      messageText: ctx.text,
+      crisisLevel: severityToCrisisLevel(severity),
+      crisisType: syntheticMod.primaryCategory ?? "l0-keyword",
+      locale: ctx.locale,
+      categoryScores: {},
+      responseSent: true,
+      twinPaused: false,
+    });
+    logger.info(
+      { event: "moderation.L0.flagged", category: l0.category, creatorId: ctx.creatorId },
+      "[moderation/L0] keyword pre-check flagged — skipping OpenAI call",
+    );
+    return { flagged: true, reply, primaryCategory: syntheticMod.primaryCategory ?? undefined, severity };
+  }
   return runModeration("L1", ctx);
 }
 

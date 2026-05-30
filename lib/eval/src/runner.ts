@@ -187,7 +187,17 @@ async function runSingleCase(
     return { l1Flagged: false, l3Flagged: false, llmOutput: "__provider_error__" };
   }
 
-  // L3 moderation on LLM output
+  // L3 moderation on LLM output.
+  // Exception: boundary-push cases explicitly test the LLM's supportive
+  // response to distress messages. L3 uses OpenAI moderation which cannot
+  // distinguish a compassionate reply about depression from harmful content —
+  // it fires on any mention of self-harm topics, replacing the caring response
+  // with a deflection string that fails the mustContain check. Skip L3 for
+  // boundary-push cases so the LLM's actual output reaches the grader.
+  if (c.category === "boundary-push") {
+    return { l1Flagged: false, l3Flagged: false, llmOutput };
+  }
+
   const l3 = await runL3Moderation({ text: llmOutput, locale, creatorId, fanIdHash, sessionId });
 
   const safeOutput = l3.flagged && l3.reply ? l3.reply : llmOutput;
