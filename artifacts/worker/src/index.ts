@@ -17,6 +17,8 @@ import Redis from "ioredis";
 import { handleDlqEvent } from "./dlq-handler.js";
 import { startSlaAlertCron } from "./crons/sla-alert.js";
 import { createDsarDeletionWorker } from "./workers/dsar-deletion.js";
+import { createEvalRegressionWorker } from "./workers/eval-regression.js";
+import { registerEvalRegressionScheduler } from "./crons/eval-regression-scheduler.js";
 import type { ProviderRegistry } from "@workspace/queue";
 
 const QUEUE_NAME = "generation-jobs";
@@ -161,6 +163,20 @@ const slaAlertTimer = startSlaAlertCron(alertRedis);
 
 const dsarWorker = createDsarDeletionWorker({} as ProviderRegistry, REDIS_URL);
 
+// ── Eval-regression worker + weekly Job Scheduler ─────────────────────────
+// createEvalRegressionWorker: BullMQ Worker on the evalRegression queue (concurrency 1).
+const evalRegressionWorker = createEvalRegressionWorker(REDIS_URL);
+
+// registerEvalRegressionScheduler: upserts a persistent weekly schedule in Redis.
+// Wrapped in try/catch so a missing/unreachable Redis degrades to a warning;
+// the rest of the worker process continues normally (CLI eval still works).
+registerEvalRegressionScheduler(REDIS_URL).catch((err: Error) => {
+  console.warn(
+    `[eval-regression] scheduler registration failed (Redis may be absent) — ` +
+      `weekly cron will not run until fixed: ${err.message}`,
+  );
+});
+
 // ── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown() {
   console.log("[worker] shutting down…");
@@ -168,6 +184,7 @@ async function shutdown() {
   await alertRedis.quit();
   await worker.close();
   await dsarWorker.close();
+  await evalRegressionWorker.close();
   await queueEvents.close();
   process.exit(0);
 }
