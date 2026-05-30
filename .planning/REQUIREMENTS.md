@@ -75,7 +75,55 @@
 
 ---
 
-## v2 Requirements
+## Milestone v2.0 — Marketing Site Requirements
+
+**Defined:** 2026-05-30
+**Goal:** Replace the placeholder landing page with a polished, localized public marketing front door that sells lala.la as a managed AI digital-twin service and routes creators into onboarding. Frontend-only (no backend/API changes).
+
+### Marketing Content
+
+- [ ] **MKT-01**: Visitor sees a hero section with a localized headline, sub-headline, hero visual, and a single primary Telegram CTA
+- [ ] **MKT-02**: Visitor sees a value-proposition section communicating the managed AI digital-twin service and its outcome for creators
+- [ ] **MKT-03**: Visitor sees a four-pillars section presenting chat and voice as live and image and video tagged "coming soon"
+- [ ] **MKT-04**: Visitor sees a "how it works" section explaining the 3-step managed white-glove onboarding in non-technical language
+- [ ] **MKT-05**: Visitor sees a multi-channel deployment section (lala.la + Telegram + creator's own social channels)
+- [ ] **MKT-06**: Visitor sees a static demo-transcript card showing a sample twin conversation, localized per locale
+- [ ] **MKT-07**: Visitor sees a footer with company name, contact email, privacy-policy link, and an AI-disclosure notice
+- [ ] **MKT-08**: The primary Telegram CTA is repeated at hero, mid-page, and footer with consistent wording
+
+### Conversion CTA
+
+- [ ] **MKT-09**: The primary CTA routes the visitor to the Hermes Telegram onboarding deep-link (`https://t.me/<bot>?start=<alphanumeric>`), with a graceful fallback for visitors without Telegram installed
+
+### Design System
+
+- [ ] **MKT-10**: The marketing site uses a net-new design system (typography, color, layout, motion) isolated from fan-page styling via scoped `--mkt-*` tokens under a `.marketing-root` / `[data-surface="marketing"]` scope
+- [ ] **MKT-11**: The marketing site is responsive and mobile-first with no layout overflow at 375px width
+- [ ] **MKT-12**: Scroll-reveal animations respect `prefers-reduced-motion` and never gate the LCP (hero) element
+
+### Internationalization
+
+- [ ] **MKT-13**: All marketing copy is localized in EN / JA / ZH-TW via a typed `marketing` namespace in `lib/i18n.ts` with compile-time key-completeness enforcement (`satisfies`)
+- [ ] **MKT-14**: Visitor can switch locale from the marketing nav without leaving the marketing page (routes to `/:locale` with no handle)
+- [ ] **MKT-15**: CJK (JA / ZH-TW) typography renders correctly — Noto Sans JP loaded with `font-display: swap`, correct line-break/word-break, and no FOIT on mobile
+
+### SEO
+
+- [ ] **MKT-16**: `index.html` carries real marketing meta (title, description, `og:*`, `twitter:card`) and a committed `og-marketing.png`, so social-card scrapers show correct previews without SSR
+- [ ] **MKT-17**: Static `sitemap.xml` (3 locale URLs), `robots.txt`, and per-locale `hreflang` link tags are served from static HTML/assets
+
+### Compliance
+
+- [ ] **MKT-18**: A visible SB 243 AI-companion disclosure statement appears on the public marketing page (not only behind a footer ToS link)
+- [ ] **MKT-19**: Marketing copy avoids deceptive/overclaiming language (e.g. "indistinguishable", "fans won't know"); any creator likeness/asset shown has written marketing-use authorization on file
+
+### Fan-Route Safety
+
+- [ ] **MKT-20**: The existing fan route `lala.la/[handle]` and the fixed Replit ports remain unaffected — marketing routes are ordered above the fan catch-all and leak no CSS into the fan page
+
+---
+
+## Backlog / Future Requirements
 
 ### Streaming
 
@@ -126,6 +174,13 @@
 | `twin_constitutions` DB table | Markdown file sufficient for v1; table added in v2 |
 | AI image generation (v1) | Phase 5+ only; requires TAKE IT DOWN Act compliance gating |
 | Romantic/intimate relationship framing | FTC complaint risk + EU pressure (see Replika); parasocial-friendship framing only |
+| Marketing: pricing / billing / self-serve signup page | v2.0 is managed-onboarding only; no self-serve funnel — CTA is the Telegram deep-link |
+| Marketing: blog / docs / help-center / FAQ | Out of scope for v2.0 marketing front door |
+| Marketing: social-proof testimonial block | Deferred — needs Claire marketing-use authorization; revisit in a v2.x point release |
+| Marketing: creator-ownership callout section | Deferred from v2.0 scope (kept lean); candidate for v2.x |
+| Marketing: safety one-liner ("30-case review") section | Deferred from v2.0 scope; candidate for v2.x |
+| Marketing: Express bot-detect OG-injection middleware | v2.0 is frontend-only; static `index.html` meta covers the use case — backend OG middleware deferred |
+| Marketing: analytics / social-media links / live demo widget | Out of v2.0 scope; static demo-transcript card used instead of a live widget |
 
 ---
 
@@ -181,4 +236,4 @@
 
 ---
 *Requirements defined: 2026-05-27*
-*Last updated: 2026-05-27 after initial definition*
+*Last updated: 2026-05-30 — added Milestone v2.0 Marketing Site requirements (MKT-01–MKT-20)*
