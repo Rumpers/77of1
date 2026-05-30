@@ -19,6 +19,7 @@
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/eval": "workspace:*",
+    "@workspace/providers": "workspace:*",
     "@workspace/queue": "workspace:*",
     "@workspace/twin-runtime": "workspace:*",
     "bullmq": "^5.56.1",
