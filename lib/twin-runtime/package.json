@@ -18,7 +18,8 @@
     "./provider-types": "./src/provider-types.ts",
     "./safety-audit": "./src/safety-audit.ts",
     "./system-prompt": "./src/system-prompt.ts",
-    "./escalation": "./src/escalation.ts"
+    "./escalation": "./src/escalation.ts",
+    "./voice": "./src/voice.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -26,6 +27,8 @@
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
+    "@workspace/queue": "workspace:*",
+    "bullmq": "^5.56.1",
     "drizzle-orm": "catalog:",
     "pino": "^9.14.0",
     "zod": "catalog:"

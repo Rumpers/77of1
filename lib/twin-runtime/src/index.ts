@@ -51,3 +51,8 @@ export * from "./logger.js";
 
 // MOD-07: Crescendo cross-turn escalation scorer
 export * from "./escalation.js";
+
+// Voice consent check + enqueue helpers (03-06 / VOICE-01, VOICE-02)
+export { shouldGenerateVoice } from "./voice.js";
+export { enqueueVoiceJob } from "./voice.js";
+export type { TwinVoiceCheck, EnqueueVoiceJobArgs } from "./voice.js";
