@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 lala.la is a managed AI digital-twin service for influencers. Creators onboard via Telegram (the "Hermes" bot, user-visible name "Lala"); fans chat with the creator's AI twin at `lala.la/[handle]` or via a fan-twin Telegram bot. The twin routes fans toward the creator's existing monetization platforms (Fanvue, Patreon, 17LIVE, etc.). Creators pay a flat fee — there is no fan payment loop.
 
+## Project Goal
+
+Get Claire (creator #1) live as 77of1's first paying creator — her AI twin responds to fans on Telegram and at `lala.la/[handle]`, passes the 30-case eval gate, and drives at least one attributable conversion to her monetization platform — validating the 25-30% rev-share model before opening to creator #2.
+
 ## Package Manager
 
 **Always use `pnpm`.** A preinstall script blocks npm and yarn. Never use `npm install` or `yarn`.
