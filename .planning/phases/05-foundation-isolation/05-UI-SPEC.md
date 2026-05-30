@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: foundation-isolation
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-31
+reviewed_at: 2026-05-31
 ---
 
 # Phase 5 — UI Design Contract: Foundation & Isolation
