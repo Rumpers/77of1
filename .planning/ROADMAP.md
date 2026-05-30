@@ -67,14 +67,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Founder sees a Telegram review queue with OCR-extracted fan-name mask candidates and can approve or reject each with a single action
   4. Every user-facing string (CTA, disclosure statement, deflection, helpline) renders correctly in EN, JP, and ZH-TW; switching Telegram language or browser Accept-Language changes the locale within one session
   5. Creator can send a DSAR deletion request via Lala bot; all conversation history and voice files for that creator are deleted within the 30-day SLA
-**Plans:** 4/8 plans executed
+**Plans:** 5/8 plans executed
 - [ ] 03-01-PLAN.md — Wave 0 unblock: opossum legitimacy gate, founder GMI TTS endpoint confirmation, VOICE_URL_SIGNING_SECRET provisioning, normalizeLocale helper (cross-lib locale drift fix)
 - [ ] 03-02-PLAN.md — Wave 1: schema foundation — safety_audit_log.category_scores jsonb + fan_name_masks + creator_deletion_log tables + dsarDeletion BullMQ queue + extended VoiceGenerationPayload + [BLOCKING] drizzle-kit push + Supabase migration (MOD-07, ONBOARD-04, COMPLY-04 prereqs)
 - [x] 03-03-PLAN.md — Wave 2 (parallel): MOD-07 vertical slice — escalation.ts scorer + categoryScores persistence in moderation.ts + scoreEscalation wired into both /api/twin/chat and text-generation worker; flagged escalation triggers same deflection+helpline+notify flow as L1
 - [x] 03-04-PLAN.md — Wave 2 (parallel): COMPLY-04 vertical slice — Hermes /dsar wizard scene (CONFIRM gate, kill-switch flip BEFORE enqueue per Pitfall 8) + dsar-deletion worker (8-step sweep, anonymize-not-delete per Pitfall 4) + Hermes i18n strings (EN/JA/ZH-TW)
 - [x] 03-05-PLAN.md — Wave 3 (parallel with 03-06; disjoint files): ONBOARD-04 vertical slice — Hermes /review_masks scene with Telegraf inline keyboards + founder gate via FOUNDER_TELEGRAM_USER_ID + UUID-regex callback_data validation + getNextPendingMask/setMaskReviewed helpers + i18n
 - [x] 03-06-PLAN.md — Wave 3: voice provider — opossum-wrapped GMI TTS client (timeout 30s, breaker trips at 50% over 60s) + GmiVoiceProvider real impl + full voice-generation worker body (SB 243 self-harm short-circuit, dual consent rechecks per Pitfall 7, size-aware sendVoice/sendAudio per Pitfall 5, disclosure caption) + shouldGenerateVoice/enqueueVoiceJob helpers
-- [ ] 03-07-PLAN.md — Wave 4: VOICE-03 wiring — HMAC voice-token.ts + GET /api/voice/:jobId proxy (Replit Object Storage has no presigned URLs per Pitfall 2) + OpenAPI spec addition + codegen + enqueueVoiceJob wired into /api/twin/chat and text-generation worker + VoiceMessageBubble (fan SPA)
+- [x] 03-07-PLAN.md — Wave 4: VOICE-03 wiring — HMAC voice-token.ts + GET /api/voice/:jobId proxy (Replit Object Storage has no presigned URLs per Pitfall 2) + OpenAPI spec addition + codegen + enqueueVoiceJob wired into /api/twin/chat and text-generation worker + VoiceMessageBubble (fan SPA)
 - [ ] 03-08-PLAN.md — Wave 5: E2E verification — voice happy-path + circuit-breaker integration test + Crescendo integration test + comprehensive human-verify checkpoint across all 5 ROADMAP success criteria
 
 ### Phase 4: Eval Gate + Go-Live
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Baseline Repair | 6/6 | Complete   | 2026-05-28 |
 | 2. Twin Runtime Core | 0/TBD | Not started | - |
-| 3. Voice + Hardening | 4/8 | In Progress|  |
+| 3. Voice + Hardening | 5/8 | In Progress|  |
 | 4. Eval Gate + Go-Live | 4/4 | Complete   | 2026-05-30 |
 </content>
 </invoke>
