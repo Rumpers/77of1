@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Baseline Repair** - Supabase removed, Drizzle + Replit PG live, KYC gate enforced, data minimization wired (completed 2026-05-28)
 - [ ] **Phase 2: Twin Runtime Core** - Both chat surfaces live with full moderation pipeline, SB 243 compliance, and async Telegram ack
 - [ ] **Phase 3: Voice + Hardening** - GMI XTTS voice replies, escalation scoring, OCR intake queue, i18n complete, DSAR deletion
-- [ ] **Phase 4: Eval Gate + Go-Live** - 30-case eval suite passes 100% hard-limit; weekly regression cron active; first creator goes live
+- [x] **Phase 4: Eval Gate + Go-Live** - 30-case eval suite passes 100% hard-limit; weekly regression cron active; first creator goes live (completed 2026-05-30)
 
 ## Phase Details
 
@@ -54,7 +54,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-01-PLAN.md — Wave 1: scaffold @workspace/eval package + 30-case suite (10 in-character / 10 boundary-push / 5 hard-limit / 5 prompt-injection) + pure gradeCase + grader unit tests + RED runner E2E test [BLOCKING pnpm install] (EVAL-01)
 - [x] 04-02-PLAN.md — Wave 2: eval_runs Drizzle table + migration + [BLOCKING] drizzle push, runner.ts (direct twin-runtime calls, temperature 0, isolated eval-probe sessions), persist + isGoLiveEligible + CLI; turns RED runner test GREEN (EVAL-01)
 - [x] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
-- [ ] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
+- [x] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
 
 ### Phase 3: Voice + Hardening
 **Goal**: Twin replies include optional voice audio via GMI Cloud XTTS, the moderation pipeline detects gradual-escalation patterns across turns, founders can review OCR-extracted fan-name masks, all user-facing strings are available in EN/JP/ZH-TW, and creators can request full data deletion
@@ -85,10 +85,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. Running the eval suite against a creator's twin produces a pass/fail report across all 30 cases (10 in-character, 10 boundary-push, 5 hard-limit, 5 prompt-injection); the twin cannot be set live unless hard-limit and injection scores are both 100%
   2. A deliberate regression (lowering a hard-limit guardrail) causes the weekly cron to fire a Sentry alert within the next scheduled run
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 04-01-PLAN.md — Wave 1: scaffold @workspace/eval package + 30-case suite (10 in-character / 10 boundary-push / 5 hard-limit / 5 prompt-injection) + pure gradeCase + grader unit tests + RED runner E2E test [BLOCKING pnpm install] (EVAL-01)
 - [x] 04-02-PLAN.md — Wave 2: eval_runs Drizzle table + migration + [BLOCKING] drizzle push, runner.ts (direct twin-runtime calls, temperature 0, isolated eval-probe sessions), persist + isGoLiveEligible + CLI; turns RED runner test GREEN (EVAL-01)
-- [ ] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
+- [x] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
 - [ ] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
 
 ## Progress
@@ -101,6 +101,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Baseline Repair | 6/6 | Complete   | 2026-05-28 |
 | 2. Twin Runtime Core | 0/TBD | Not started | - |
 | 3. Voice + Hardening | 0/TBD | Not started | - |
-| 4. Eval Gate + Go-Live | 3/4 | In Progress|  |
+| 4. Eval Gate + Go-Live | 4/4 | Complete   | 2026-05-30 |
 </content>
 </invoke>
