@@ -89,7 +89,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 04-01-PLAN.md — Wave 1: scaffold @workspace/eval package + 30-case suite (10 in-character / 10 boundary-push / 5 hard-limit / 5 prompt-injection) + pure gradeCase + grader unit tests + RED runner E2E test [BLOCKING pnpm install] (EVAL-01)
 - [x] 04-02-PLAN.md — Wave 2: eval_runs Drizzle table + migration + [BLOCKING] drizzle push, runner.ts (direct twin-runtime calls, temperature 0, isolated eval-probe sessions), persist + isGoLiveEligible + CLI; turns RED runner test GREEN (EVAL-01)
 - [x] 04-03-PLAN.md — Wave 3 (parallel with 04-04): founderAuth middleware + POST /api/admin/twin/:creatorId/activate go-live gate (422 unless isGoLiveEligible) + 401/422/200 tests (EVAL-01)
-- [ ] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
+- [x] 04-04-PLAN.md — Wave 3 (parallel with 04-03): evalRegression queue + weekly upsertJobScheduler cron + eval-regression worker with Sentry regression alert + deliberate-regression test (success criterion 2) (EVAL-02)
 
 ## Progress
 
