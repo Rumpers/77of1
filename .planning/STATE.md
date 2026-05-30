@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-30T14:25:30.580Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation with a creator's AI twin, and get nudged to her actual monetization platform — all within 30 seconds of first message.
-**Current focus:** Phase 04 — eval-gate-go-live
+**Current focus:** Phase 05 — foundation-and-isolation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 5 — Foundation & Isolation
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-30 — Milestone v2.0 started
+Status: Roadmap defined; ready to plan Phase 5
+Last activity: 2026-05-30 — Milestone v2.0 roadmap created (Phases 5–7)
+
+```
+v2.0 progress: [          ] 0% (0/3 phases)
+Phase 5: [ ] Not started
+Phase 6: [ ] Not started
+Phase 7: [ ] Not started
+```
 
 ## Performance Metrics
 
@@ -69,6 +76,11 @@ Recent decisions affecting current work:
 - CHAT-06 async Telegram ack must be built correctly in Phase 2; retrofitting is expensive
 - [Phase ?]: 04-02: Inline moderator factory in runner.ts avoids api-server circular dep; DB push requires live DATABASE_URL on Replit
 - [Phase ?]: founderAuth per-route; timingSafeEqual admin token; lazy @workspace/eval import in activate route
+- [v2.0]: All marketing work is frontend-only — artifacts/web only; no backend/API changes, no port changes
+- [v2.0]: CSS isolation via [data-surface="marketing"] / --mkt-* tokens is mandatory before any component work
+- [v2.0]: SEO approach is static index.html + public/ assets only — no Express bot-detect middleware (deferred)
+- [v2.0]: i18n approach is extend lib/i18n.ts marketing namespace — do NOT install i18next
+- [v2.0]: Noto Sans JP self-hosted via @fontsource-variable; font-display: swap + preload mandatory
 
 ### Pending Todos
 
@@ -76,14 +88,19 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 3 blocker**: GMI Cloud XTTS endpoint URL unconfirmed — resolve before Phase 3 begins
-- **Legal gate**: COMPLY-01 (SB 243 AI disclosure) and COMPLY-02 (crisis helpline injection) must be live before any fan-facing twin is accessible
+- **Phase 3 blocker (v1.0)**: GMI Cloud XTTS endpoint URL unconfirmed — resolve before Phase 3 begins
+- **Legal gate (v1.0)**: COMPLY-01 (SB 243 AI disclosure) and COMPLY-02 (crisis helpline injection) must be live before any fan-facing twin is accessible
+- **v2.0 Phase 6 ops dependency**: Native-speaker copywriting for JA/ZH-TW needed before Phase 7 copy lock — plan a review round during Phase 6
+- **v2.0 Phase 6 ops dependency**: Claire marketing-use authorization (separate from twin operation consent) required before any creator asset appears on the marketing page
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| v2.0 SEO | Express bot-detect OG-injection middleware | Deferred to v2.x | Phase 5 — static index.html covers use case |
+| v2.0 marketing | Social-proof testimonial block | Deferred to v2.x | Needs Claire marketing authorization |
+| v2.0 marketing | Creator-ownership callout section | Deferred to v2.x | Kept lean for v2.0 |
+| v2.0 marketing | Safety one-liner ("30-case review") section | Deferred to v2.x | Kept lean for v2.0 |
 
 ## Quick Tasks Completed
 
@@ -94,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-30T06:59:00Z
-Stopped at: Completed quick task 20260530-claire-persona-direction
+Stopped at: Roadmap v2.0 created — Phases 5, 6, 7 defined
 Resume file: None

@@ -228,12 +228,33 @@
 | I18N-02 | Phase 2 | Pending |
 | EVAL-01 | Phase 4 | Complete |
 | EVAL-02 | Phase 4 | Complete |
+| MKT-01 | Phase 6 | Pending |
+| MKT-02 | Phase 6 | Pending |
+| MKT-03 | Phase 6 | Pending |
+| MKT-04 | Phase 6 | Pending |
+| MKT-05 | Phase 6 | Pending |
+| MKT-06 | Phase 6 | Pending |
+| MKT-07 | Phase 6 | Pending |
+| MKT-08 | Phase 6 | Pending |
+| MKT-09 | Phase 6 | Pending |
+| MKT-10 | Phase 5 | Pending |
+| MKT-11 | Phase 6 | Pending |
+| MKT-12 | Phase 7 | Pending |
+| MKT-13 | Phase 5 | Pending |
+| MKT-14 | Phase 6 | Pending |
+| MKT-15 | Phase 5 | Pending |
+| MKT-16 | Phase 5 | Pending |
+| MKT-17 | Phase 5 | Pending |
+| MKT-18 | Phase 7 | Pending |
+| MKT-19 | Phase 7 | Pending |
+| MKT-20 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 38 total
-- Mapped to phases: 38
+- v2.0 MKT requirements: 20 total
+- Mapped to phases: 58
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-27*
-*Last updated: 2026-05-30 — added Milestone v2.0 Marketing Site requirements (MKT-01–MKT-20)*
+*Last updated: 2026-05-30 — added Milestone v2.0 Marketing Site requirements (MKT-01–MKT-20); traceability updated with Phase 5–7 mappings*

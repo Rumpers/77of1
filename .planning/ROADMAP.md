@@ -102,5 +102,66 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Twin Runtime Core | 0/TBD | Not started | - |
 | 3. Voice + Hardening | 6/8 | In Progress|  |
 | 4. Eval Gate + Go-Live | 4/4 | Complete   | 2026-05-30 |
-</content>
-</invoke>
+
+---
+
+## Milestone v2.0 — Marketing Site
+
+Replace the placeholder landing page with a polished, localized public marketing front door that sells lala.la as a managed AI digital-twin service and routes creators into onboarding. Frontend-only: all work lives in `artifacts/web`. No backend/API changes, no new artifact, no port changes.
+
+### Phases (v2.0)
+
+- [ ] **Phase 5: Foundation & Isolation** - CSS token isolation, typed i18n namespace, static SEO assets, CJK fonts, and fan-route safety locked before any section component is written
+- [ ] **Phase 6: Marketing Components & Navigation** - All content sections, footer, locale-switching nav, Telegram CTA deep-link, and responsive layout built as isolated components
+- [ ] **Phase 7: Assembly, Polish & Compliance** - Page assembled from components, locale verification across EN/JA/ZH-TW, scroll animations with reduced-motion respect, visible SB 243 disclosure, and no-overclaiming copy confirmed
+
+### Phase Details (v2.0)
+
+### Phase 5: Foundation & Isolation
+**Goal**: The marketing site's CSS tokens, i18n types, static SEO assets, and CJK font loading are locked in place so no component work can cause fan-page contamination, OG-tag invisibility, i18n drift, or route collisions
+**Depends on**: Phase 4 (v1.0 milestone complete; this is the first v2.0 phase)
+**Requirements**: MKT-10, MKT-13, MKT-15, MKT-16, MKT-17, MKT-20
+**Success Criteria** (what must be TRUE):
+  1. All marketing CSS is scoped under `[data-surface="marketing"]` using `--mkt-*` tokens in a dedicated `@layer marketing-tokens` block; the fan chat page is visually unchanged after a full marketing CSS commit
+  2. The `marketing` namespace is added to `lib/i18n.ts` with `satisfies Record<Locale, Messages>` enforced; adding a key in EN without adding it in JA or ZH-TW causes a TypeScript compile error
+  3. `index.html` carries real marketing `<title>`, `<meta description>`, and all `og:*` / `twitter:card` tags statically; `curl -A "Twitterbot/1.0" https://lala.la/en` returns the correct `og:title` without JavaScript execution
+  4. `public/og-marketing.png`, `public/sitemap.xml` (3 locale URLs), and `public/robots.txt` are committed and served as static assets
+  5. Noto Sans JP is loaded with `font-display: swap` and a `<link rel="preload">` for the 400-weight woff2; on a simulated slow-3G connection text shows a system fallback immediately with no invisible-text period
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 6: Marketing Components & Navigation
+**Goal**: Every content section, the marketing footer, the sticky nav with locale switcher, and the Telegram CTA deep-link are built as isolated, individually verifiable React components that consume only `--mkt-*` tokens and the typed `marketing` i18n namespace
+**Depends on**: Phase 5
+**Requirements**: MKT-01, MKT-02, MKT-03, MKT-04, MKT-05, MKT-06, MKT-07, MKT-08, MKT-09, MKT-11, MKT-14
+**Success Criteria** (what must be TRUE):
+  1. Visiting the hero section in isolation shows a localized headline, sub-headline, hero visual, and a single primary Telegram CTA button that opens the correct Hermes deep-link (`https://t.me/<bot>?start=<payload>`); visitors without Telegram see a graceful fallback text prompt
+  2. Each of the four content sections (value proposition, four pillars, multi-channel, how it works) renders correctly in EN with accurate copy; the two deferred pillars (image, video) are visually marked "coming soon"
+  3. The primary CTA button appears at hero, mid-page, and footer with identical wording; tapping any instance routes to the same deep-link URL
+  4. The sticky marketing nav includes a `MarketingLocaleSwitcher` that navigates to `/:locale` (no handle) and does not interfere with the fan-page locale switcher
+  5. No component layout overflows at 375px viewport width; verified by resizing browser or using DevTools responsive mode
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7: Assembly, Polish & Compliance
+**Goal**: The marketing page is assembled from all components, verified in all three locales, animated tastefully with reduced-motion support, and confirmed compliant — visible AI disclosure on screen, no deceptive copy, fan route intact
+**Depends on**: Phase 6
+**Requirements**: MKT-12, MKT-18, MKT-19
+**Success Criteria** (what must be TRUE):
+  1. `src/pages/home.tsx` renders the complete marketing page with all sections assembled in correct order; switching locale via the nav updates all copy without a full page reload and without navigating to a fan-page handle
+  2. Scroll-reveal animations trigger on non-LCP elements only; the hero headline and image render at full opacity on first paint with no `initial={{ opacity: 0 }}`; toggling `prefers-reduced-motion: reduce` in OS accessibility settings disables all scroll animations
+  3. A visible SB 243 AI-companion disclosure statement (not only a footer ToS link) is present on the rendered page in all three locales
+  4. The fan route `lala.la/[handle]` loads the fan chat page correctly after the marketing site is deployed; no marketing CSS variable leaks into the fan page UI
+**Plans**: TBD
+**UI hint**: yes
+
+### Progress (v2.0)
+
+**Execution Order:**
+Phases execute in numeric order: 5 → 6 → 7
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 5. Foundation & Isolation | 0/TBD | Not started | - |
+| 6. Marketing Components & Navigation | 0/TBD | Not started | - |
+| 7. Assembly, Polish & Compliance | 0/TBD | Not started | - |
