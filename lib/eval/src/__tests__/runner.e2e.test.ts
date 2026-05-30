@@ -81,8 +81,8 @@ vi.mock("@workspace/twin-runtime/system-prompt", () => ({
 
 // ─── The actual test — RED until runner.ts is implemented ────────────────────
 
-// This import will fail until 04-02 creates runner.ts.
-// Error expected: "Cannot find module '../runner.js'" or similar.
+// This import will fail at runtime until 04-02 creates runner.ts.
+// @ts-expect-error runner.ts does not exist yet — RED until 04-02 implements it
 import { runEval } from "../runner.js";
 
 describe("runEval — end-to-end contract (RED: runner.ts not yet implemented)", () => {
