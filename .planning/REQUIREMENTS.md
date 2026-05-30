@@ -23,7 +23,7 @@
 - [ ] **ONBOARD-01**: Creator can complete no-tech onboarding via Lala Telegram bot: consent acceptance, persona intake, voice reference sample upload, character card generation
 - [ ] **ONBOARD-02**: Creator can pause/resume twin via Lala bot (kill switch with ≤5s SLA from bot command to twin returning 503)
 - [ ] **ONBOARD-03**: Creator can revoke voice consent via Lala bot; revocation triggers deletion sweep of all in-flight generation jobs within 60s SLA
-- [ ] **ONBOARD-04**: Founder review queue (Telegram) shows OCR-extracted fan-name masks with approve/reject action for uncertain masks
+- [x] **ONBOARD-04**: Founder review queue (Telegram) shows OCR-extracted fan-name masks with approve/reject action for uncertain masks
 
 ### Persona
 
@@ -44,7 +44,7 @@
 
 - [x] **VOICE-01**: Twin can reply with voice audio generated from creator's reference sample via GMI Cloud XTTS zero-shot voice synthesis
 - [x] **VOICE-02**: Voice generation runs as an async BullMQ job; circuit-breaker fallback to text-only reply when GMI is unavailable
-- [ ] **VOICE-03**: Generated voice files stored in Replit Object Storage; fan receives a pre-signed URL with TTL
+- [x] **VOICE-03**: Generated voice files stored in Replit Object Storage; fan receives a pre-signed URL with TTL
 
 ### Moderation Pipeline
 
@@ -54,18 +54,18 @@
 - [ ] **MOD-04**: L4 — Pre-canned safe deflection responses per locale (EN / JP / ZH-TW) served for all flagged turns
 - [ ] **MOD-05**: L5 — High-risk flag triggers Sentry alert and Lala bot notification to founder within the request lifecycle
 - [ ] **MOD-06**: L6 — Every flagged turn appended to `safety_audit_log` (hashed fan_id + message_hash; no raw PII stored)
-- [ ] **MOD-07**: Conversation-level escalation scoring detects gradual-escalation bypass patterns (Crescendo-style) across turns, not only per-message
+- [x] **MOD-07**: Conversation-level escalation scoring detects gradual-escalation bypass patterns (Crescendo-style) across turns, not only per-message
 
 ### Compliance
 
 - [ ] **COMPLY-01**: Every twin chat interaction begins with an AI disclosure statement per California SB 243 (effective 2026-01-01), in the fan's detected locale
 - [ ] **COMPLY-02**: Self-harm category detected by OpenAI moderation triggers immediate crisis helpline injection in fan's locale: JP (よりそいホットライン 0120-279-338), TW (1925), HK (撒瑪利亞防止自殺會 2389 2222), EN (988 Lifeline)
 - [ ] **COMPLY-03**: Fan conversation data minimized — no raw message content in logs or audit records; hashed identifiers only
-- [ ] **COMPLY-04**: Creator can request full data deletion (DSAR) via Lala bot; all twin conversation history and voice files deleted within 30 days
+- [x] **COMPLY-04**: Creator can request full data deletion (DSAR) via Lala bot; all twin conversation history and voice files deleted within 30 days
 
 ### Internationalization
 
-- [ ] **I18N-01**: All user-facing strings in web funnel (CTAs, disclosure, deflections) and Telegram bot messages available in EN, JP, and ZH-TW
+- [x] **I18N-01**: All user-facing strings in web funnel (CTAs, disclosure, deflections) and Telegram bot messages available in EN, JP, and ZH-TW
 - [ ] **I18N-02**: Fan locale detected from Telegram language setting or browser `Accept-Language`; defaults to EN when detection fails
 
 ### Evaluation
@@ -145,7 +145,7 @@
 | ONBOARD-01 | Phase 2 | Pending |
 | ONBOARD-02 | Phase 2 | Pending |
 | ONBOARD-03 | Phase 2 | Pending |
-| ONBOARD-04 | Phase 3 | Pending |
+| ONBOARD-04 | Phase 3 | Complete |
 | PERSONA-01 | Phase 2 | Pending |
 | PERSONA-02 | Phase 2 | Pending |
 | PERSONA-03 | Phase 1 | Pending |
@@ -157,19 +157,19 @@
 | CHAT-06 | Phase 2 | Pending |
 | VOICE-01 | Phase 3 | Complete |
 | VOICE-02 | Phase 3 | Complete |
-| VOICE-03 | Phase 3 | Pending |
+| VOICE-03 | Phase 3 | Complete |
 | MOD-01 | Phase 2 | Pending |
 | MOD-02 | Phase 2 | Pending |
 | MOD-03 | Phase 2 | Pending |
 | MOD-04 | Phase 2 | Pending |
 | MOD-05 | Phase 2 | Pending |
 | MOD-06 | Phase 2 | Pending |
-| MOD-07 | Phase 3 | Pending |
+| MOD-07 | Phase 3 | Complete |
 | COMPLY-01 | Phase 2 | Pending |
 | COMPLY-02 | Phase 2 | Pending |
 | COMPLY-03 | Phase 1 | Pending |
-| COMPLY-04 | Phase 3 | Pending |
-| I18N-01 | Phase 3 | Pending |
+| COMPLY-04 | Phase 3 | Complete |
+| I18N-01 | Phase 3 | Complete |
 | I18N-02 | Phase 2 | Pending |
 | EVAL-01 | Phase 4 | Complete |
 | EVAL-02 | Phase 4 | Complete |
