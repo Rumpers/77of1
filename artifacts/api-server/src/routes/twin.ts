@@ -208,12 +208,13 @@ router.post(
         characterCard: twinsTable.characterCard,
         handle: twinsTable.handle,
         voiceReferenceUrl: twinsTable.voiceReferenceUrl,
+        direction: twinsTable.direction,
       })
       .from(twinsTable)
       .where(eq(twinsTable.creatorId, creatorId))
       .limit(1)
       .then(
-        (r: Array<{ id: string; characterCard: unknown; handle: string; voiceReferenceUrl: string | null }>) =>
+        (r: Array<{ id: string; characterCard: unknown; handle: string; voiceReferenceUrl: string | null; direction: string | null }>) =>
           r[0] ?? null,
       );
 
@@ -253,7 +254,7 @@ router.post(
       twin?.characterCard
         ? (twin.characterCard as Parameters<typeof buildSystemPrompt>[0])
         : null;
-    const systemPrompt = buildSystemPrompt(card, locale, constitution, persona);
+    const systemPrompt = buildSystemPrompt(card, locale, constitution, persona, twin?.direction ?? null);
 
     const fanIdHash = hashFanId(conversationId);
 

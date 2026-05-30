@@ -326,12 +326,13 @@ export function createWorker(
             id: twinsTable.id,
             characterCard: twinsTable.characterCard,
             voiceReferenceUrl: twinsTable.voiceReferenceUrl,
+            direction: twinsTable.direction,
           })
           .from(twinsTable)
           .where(eq(twinsTable.creatorId, creatorId))
           .limit(1)
           .then(
-            (r: Array<{ id: string; characterCard: unknown; voiceReferenceUrl: string | null }>) =>
+            (r: Array<{ id: string; characterCard: unknown; voiceReferenceUrl: string | null; direction: string | null }>) =>
               r[0] ?? null,
           );
 
@@ -345,7 +346,7 @@ export function createWorker(
         const card = twin?.characterCard
           ? (twin.characterCard as Parameters<typeof buildSystemPrompt>[0])
           : null;
-        const systemPrompt = buildSystemPrompt(card, locale, constitution);
+        const systemPrompt = buildSystemPrompt(card, locale, constitution, null, twin?.direction ?? null);
 
         // ── 8. Persist user turn (always — audit trail) ────────────────────
         await persistTurn({

@@ -66,6 +66,7 @@ export function buildSystemPrompt(
   locale: Locale,
   constitution?: string | null,
   persona?: Persona | null,
+  direction?: string | null,
 ): string {
   const sections: string[] = [];
 
@@ -90,10 +91,17 @@ export function buildSystemPrompt(
     if (style) sections.push(style);
   }
 
-  // 5. Reply-language directive
+  // 5. Creator Direction — founder-authored steering injected AFTER persona
+  //    body / interaction style, BEFORE the reply-language directive.
+  //    Absent when null/undefined/empty so existing callers are unaffected.
+  if (direction && direction.trim().length > 0) {
+    sections.push(`## Creator Direction\n\n${direction.trim()}`);
+  }
+
+  // 6. Reply-language directive
   sections.push(REPLY_LANGUAGE[locale] ?? REPLY_LANGUAGE.en);
 
-  // 6. post_history_instructions — last so they bind the most recent turn
+  // 7. post_history_instructions — last so they bind the most recent turn
   if (card?.data.post_history_instructions) {
     sections.push(
       `## Guardrails (apply to the most recent message)\n\n${card.data.post_history_instructions}`,
