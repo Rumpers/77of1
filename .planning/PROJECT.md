@@ -126,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-30 — started milestone v2.0 Marketing Site*
+*Last updated: 2026-05-31 — Phase 5 (Foundation & Isolation) complete: marketing CSS-token isolation, typed i18n namespace, static SEO assets, and self-hosted CJK fonts locked in*
