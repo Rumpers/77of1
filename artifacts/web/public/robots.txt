@@ -1,2 +1,9 @@
 User-agent: *
-Allow: /
+Allow: /en
+Allow: /ja
+Allow: /zh-TW
+Disallow: /en/
+Disallow: /ja/
+Disallow: /zh-TW/
+Disallow: /payment/
+Sitemap: https://lala.la/sitemap.xml
