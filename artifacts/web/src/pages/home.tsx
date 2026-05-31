@@ -18,9 +18,9 @@ const LOCALE_LABELS: Record<Locale, string> = {
   "zh-TW": "繁中",
 };
 
-const VARIANT_ORDER = ["steady-pay", "violet-pop", "spotlight"] as const;
+const VARIANT_ORDER = ["violet-pop", "steady-pay", "spotlight"] as const;
 type VariantId = (typeof VARIANT_ORDER)[number];
-const DEFAULT_VARIANT: VariantId = "steady-pay";
+const DEFAULT_VARIANT: VariantId = "violet-pop";
 
 type SectionId = "what" | "how" | "features";
 

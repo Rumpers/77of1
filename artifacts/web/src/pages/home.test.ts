@@ -14,6 +14,7 @@ test("MarketingLanding shows the locked hero copy and a short nav", () => {
 
   assert.match(html, /Your AI twin, built and run for you\./);
   assert.match(html, /Talk to Lala/);
+  assert.match(html, /Playful card stack/);
   assert.match(html, /What it does/);
   assert.match(html, /How it works/);
   assert.match(html, /Features/);
