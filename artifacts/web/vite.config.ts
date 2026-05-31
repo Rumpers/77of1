@@ -57,6 +57,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith('.woff2')) {
+            return 'assets/fonts/[name][extname]'; // stable, unhashed — enables preload href
+          }
+          return 'assets/[name]-[hash][extname]';  // default for all other assets
+        },
+      },
+    },
   },
   server: {
     port,
