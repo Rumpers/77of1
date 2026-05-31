@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Marketing Site
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-05-30T23:48:03.753Z"
-last_activity: 2026-05-30 -- Phase 05 planning complete
+last_updated: "2026-05-31T00:09:32.351Z"
+last_activity: 2026-05-31 -- Phase 05 execution started
 progress:
   total_phases: 3
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation with a creator's AI twin, and get nudged to her actual monetization platform — all within 30 seconds of first message.
-**Current focus:** Phase 05 — foundation-and-isolation
+**Current focus:** Phase 05 — foundation-isolation
 
 ## Current Position
 
-Phase: Phase 5 — Foundation & Isolation
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-30 -- Phase 05 planning complete
+Phase: 05 (foundation-isolation) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 05
+Last activity: 2026-05-31 -- Phase 05 execution started
 
 ```
 v2.0 progress: [          ] 0% (0/3 phases)

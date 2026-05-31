@@ -128,8 +128,8 @@ Replace the placeholder landing page with a polished, localized public marketing
   4. `public/og-marketing.png`, `public/sitemap.xml` (3 locale URLs), and `public/robots.txt` are committed and served as static assets
   5. Noto Sans JP is loaded with `font-display: swap` and a `<link rel="preload">` for the 400-weight woff2; on a simulated slow-3G connection text shows a system fallback immediately with no invisible-text period
 **Plans**: 3 plans (2 waves)
-- [ ] 05-01-PLAN.md — CSS token isolation (@layer marketing-tokens / [data-surface="marketing"]), typed marketing i18n namespace (satisfies-enforced), React.lazy code-split + route-safety (MKT-10, MKT-13, MKT-20)
-- [ ] 05-02-PLAN.md — Static SEO assets: public/sitemap.xml (3 locale URLs + hreflang), public/robots.txt (allow roots / disallow fan pages), public/og-marketing.png brand card (MKT-16, MKT-17)
+- [x] 05-01-PLAN.md — CSS token isolation (@layer marketing-tokens / [data-surface="marketing"]), typed marketing i18n namespace (satisfies-enforced), React.lazy code-split + route-safety (MKT-10, MKT-13, MKT-20)
+- [x] 05-02-PLAN.md — Static SEO assets: public/sitemap.xml (3 locale URLs + hreflang), public/robots.txt (allow roots / disallow fan pages), public/og-marketing.png brand card (MKT-16, MKT-17)
 - [ ] 05-03-PLAN.md — Self-hosted Fontsource fonts + vite stable-woff2 filename + index.html marketing meta/og/twitter/hreflang + working Noto Sans JP preload; Google Fonts CDN removed (MKT-15, MKT-16, MKT-17)
 **UI hint**: yes
 
@@ -165,6 +165,6 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Foundation & Isolation | 0/3 | Not started | - |
+| 5. Foundation & Isolation | 2/3 | In Progress|  |
 | 6. Marketing Components & Navigation | 0/TBD | Not started | - |
 | 7. Assembly, Polish & Compliance | 0/TBD | Not started | - |
