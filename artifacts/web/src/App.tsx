@@ -1,17 +1,19 @@
+import React, { Suspense } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import NotFound from "@/pages/not-found";
-import HomePage from "@/pages/home";
-import FanPage from "@/pages/fan-page";
-import PaymentSuccessPage from "@/pages/payment-success";
-import PaymentCancelPage from "@/pages/payment-cancel";
-import OnboardStep1 from "@/pages/onboard-step1";
-import OnboardStep2 from "@/pages/onboard-step2";
-import OnboardStep3 from "@/pages/onboard-step3";
-import DsarPortal from "@/pages/dsar-portal";
-import CreatorDashboard from "@/pages/creator-dashboard";
 import { DEFAULT_LOCALE, isValidLocale } from "@/lib/i18n";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
+
+const NotFound         = React.lazy(() => import("@/pages/not-found"));
+const HomePage         = React.lazy(() => import("@/pages/home"));
+const FanPage          = React.lazy(() => import("@/pages/fan-page"));
+const PaymentSuccessPage = React.lazy(() => import("@/pages/payment-success"));
+const PaymentCancelPage  = React.lazy(() => import("@/pages/payment-cancel"));
+const OnboardStep1     = React.lazy(() => import("@/pages/onboard-step1"));
+const OnboardStep2     = React.lazy(() => import("@/pages/onboard-step2"));
+const OnboardStep3     = React.lazy(() => import("@/pages/onboard-step3"));
+const DsarPortal       = React.lazy(() => import("@/pages/dsar-portal"));
+const CreatorDashboard = React.lazy(() => import("@/pages/creator-dashboard"));
 
 const queryClient = new QueryClient();
 
@@ -24,7 +26,8 @@ function getPageLocale(): string {
 
 function Router() {
   return (
-    <Switch>
+    <Suspense fallback={null}>
+      <Switch>
       {/* Root → redirect to default locale */}
       <Route path="/">
         <Redirect to={`/${DEFAULT_LOCALE}`} />
@@ -65,7 +68,8 @@ function Router() {
       <Route path="/:locale/:handle" component={FanPage} />
 
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </Suspense>
   );
 }
 
