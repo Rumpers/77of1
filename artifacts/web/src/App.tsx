@@ -37,6 +37,11 @@ function Router() {
       <Route path="/payment/success" component={PaymentSuccessPage} />
       <Route path="/payment/cancel" component={PaymentCancelPage} />
 
+      {/* Compare view for the three landing variants */}
+      <Route path="/:locale/compare">
+        {() => <HomePage />}
+      </Route>
+
       {/* Locale home page */}
       <Route path="/:locale">
         {() => <HomePage />}
