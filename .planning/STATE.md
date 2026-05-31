@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Marketing Site
-status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-31T00:09:32.351Z"
+status: ready_to_plan
+stopped_at: Phase 05 complete (3/3) — ready to discuss Phase 6
+last_updated: 2026-05-31T00:46:22.686Z
 last_activity: 2026-05-31 -- Phase 05 execution started
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 28
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation with a creator's AI twin, and get nudged to her actual monetization platform — all within 30 seconds of first message.
-**Current focus:** Phase 05 — foundation-isolation
+**Current focus:** Phase 6 — marketing components & navigation
 
 ## Current Position
 
-Phase: 05 (foundation-isolation) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 05
-Last activity: 2026-05-31 -- Phase 05 execution started
+Phase: 6
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-31
 
 ```
 v2.0 progress: [          ] 0% (0/3 phases)
@@ -41,7 +41,7 @@ Phase 7: [ ] Not started
 
 **Velocity:**
 
-- Total plans completed: 6
+- Total plans completed: 9
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -50,6 +50,7 @@ Phase 7: [ ] Not started
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 6 | - | - |
+| 05 | 3 | - | - |
 
 **Recent Trend:**
 
