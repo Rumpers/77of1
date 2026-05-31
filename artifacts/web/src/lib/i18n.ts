@@ -110,6 +110,31 @@ type Messages = {
     data_rights_link: string;
     loading: string;
     creator_note: string;
+    // fan-dsar.tsx (newer DSAR UI) keys — added to close gap with satisfies enforcement
+    fan_tab: string;
+    creator_tab: string;
+    fan_title: string;
+    fan_subtitle: string;
+    email_label: string;
+    email_placeholder: string;
+    request_type_label: string;
+    request_type_all: string;
+    request_type_messages: string;
+    request_type_account: string;
+    fan_notice: string;
+    creator_title: string;
+    creator_subtitle: string;
+    creator_email_label: string;
+    creator_notice: string;
+    email_invalid: string;
+    submitting: string;
+    fan_submit: string;
+    creator_submit: string;
+    done_title: string;
+    done_body_fan: string;
+    done_body_creator: string;
+    done_support_hint: string;
+    powered_by: string;
   };
   onboard: {
     step1: {
@@ -171,9 +196,74 @@ type Messages = {
       };
     };
   };
+  marketing: {
+    meta: {
+      title: string;
+      description: string;
+    };
+    nav: {
+      cta_creator: string;
+    };
+    hero: {
+      headline: string;
+      subheadline: string;
+      cta_primary: string;
+      cta_no_telegram: string;
+    };
+    value_prop: {
+      title: string;
+      subtitle: string;
+    };
+    pillars: {
+      title: string;
+      chat_label: string;
+      chat_desc: string;
+      voice_label: string;
+      voice_desc: string;
+      image_label: string;
+      image_desc: string;
+      image_coming_soon: string;
+      video_label: string;
+      video_desc: string;
+      video_coming_soon: string;
+    };
+    channels: {
+      title: string;
+      subtitle: string;
+      lala_label: string;
+      telegram_label: string;
+      social_label: string;
+    };
+    onboarding: {
+      title: string;
+      subtitle: string;
+      step1_label: string;
+      step1_desc: string;
+      step2_label: string;
+      step2_desc: string;
+      step3_label: string;
+      step3_desc: string;
+    };
+    cta: {
+      headline: string;
+      subheadline: string;
+      button: string;
+      no_telegram: string;
+    };
+    footer: {
+      tagline: string;
+      privacy: string;
+      contact: string;
+      ai_disclosure: string;
+    };
+    demo: {
+      title: string;
+      label: string;
+    };
+  };
 };
 
-const messages: Record<Locale, Messages> = {
+const messages = {
   en: {
     version_history: {
       panel_title: "Version history",
@@ -275,6 +365,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "Your data rights",
       loading: "Loading…",
       creator_note: "As a creator, your download link is valid for 72 hours.",
+      fan_tab: "Fan",
+      creator_tab: "Creator",
+      fan_title: "Fan Data Request",
+      fan_subtitle: "Download a copy of your personal data held by lala.la.",
+      email_label: "Your email",
+      email_placeholder: "your@email.com",
+      request_type_label: "Data type",
+      request_type_all: "All data",
+      request_type_messages: "Messages only",
+      request_type_account: "Account data",
+      fan_notice: "Your data will be packaged and sent to your email address within minutes.",
+      creator_title: "Creator Data Export",
+      creator_subtitle: "Export your persona, consent records, and conversation logs.",
+      creator_email_label: "Creator email",
+      creator_notice: "Your export will be sent to your registered creator email address.",
+      email_invalid: "Please enter a valid email address.",
+      submitting: "Submitting…",
+      fan_submit: "Request my data",
+      creator_submit: "Request export",
+      done_title: "Request submitted",
+      done_body_fan: "We'll send your data package to {email} within minutes.",
+      done_body_creator: "We'll send your creator export to {email} shortly.",
+      done_support_hint: "Questions? Contact support@lala.la",
+      powered_by: "Powered by lala.la",
     },
     onboard: {
       step1: {
@@ -380,6 +494,71 @@ const messages: Record<Locale, Messages> = {
         },
       },
     },
+    marketing: {
+      meta: {
+        title: "lala.la — AI Digital Twin for Creators",
+        description: "Your AI twin, fully managed — keep your fans engaged in your voice while you create.",
+      },
+      nav: {
+        cta_creator: "Get started",
+      },
+      hero: {
+        headline: "Your AI twin, fully managed.",
+        subheadline: "We keep your fans engaged in your voice while you create.",
+        cta_primary: "Start with Telegram",
+        cta_no_telegram: "No Telegram? Contact us",
+      },
+      value_prop: {
+        title: "We handle everything",
+        subtitle: "From setup to daily fan engagement — you focus on creating.",
+      },
+      pillars: {
+        title: "What your twin can do",
+        chat_label: "Chat",
+        chat_desc: "Text chat with your fans in your voice.",
+        voice_label: "Voice",
+        voice_desc: "Voice messages that sound like you.",
+        image_label: "Image",
+        image_desc: "AI-generated photos.",
+        image_coming_soon: "Coming soon",
+        video_label: "Video",
+        video_desc: "AI-generated videos.",
+        video_coming_soon: "Coming soon",
+      },
+      channels: {
+        title: "Where your twin lives",
+        subtitle: "Meet your fans where they are.",
+        lala_label: "lala.la",
+        telegram_label: "Telegram",
+        social_label: "Social",
+      },
+      onboarding: {
+        title: "Get started in 3 steps",
+        subtitle: "From zero to live twin in one session.",
+        step1_label: "Tell us about yourself",
+        step1_desc: "Share your persona via Telegram.",
+        step2_label: "We train your twin",
+        step2_desc: "We handle the technical setup.",
+        step3_label: "Go live",
+        step3_desc: "Your twin starts responding to fans.",
+      },
+      cta: {
+        headline: "Ready to meet your fans?",
+        subheadline: "Your first twin session is free.",
+        button: "Start with Telegram",
+        no_telegram: "No Telegram? Contact us",
+      },
+      footer: {
+        tagline: "lala.la — AI Digital Twin for Creators",
+        privacy: "Privacy Policy",
+        contact: "Contact",
+        ai_disclosure: "AI-generated content · Not a real person",
+      },
+      demo: {
+        title: "See a demo",
+        label: "Try a live demo",
+      },
+    },
   },
 
   ja: {
@@ -483,6 +662,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "データに関する権利",
       loading: "読み込み中…",
       creator_note: "クリエイターの場合、ダウンロードリンクは72時間有効です。",
+      fan_tab: "ファン",
+      creator_tab: "クリエイター",
+      fan_title: "ファンデータリクエスト",
+      fan_subtitle: "lala.laが保有するあなたの個人データのコピーをダウンロードできます。",
+      email_label: "メールアドレス",
+      email_placeholder: "メールアドレス",
+      request_type_label: "データの種類",
+      request_type_all: "すべてのデータ",
+      request_type_messages: "メッセージのみ",
+      request_type_account: "アカウントデータ",
+      fan_notice: "数分以内にメールアドレスにデータをお送りします。",
+      creator_title: "クリエイターデータエクスポート",
+      creator_subtitle: "ペルソナ、同意記録、会話ログをエクスポートします。",
+      creator_email_label: "クリエイターメールアドレス",
+      creator_notice: "登録済みのクリエイターメールアドレスにエクスポートをお送りします。",
+      email_invalid: "有効なメールアドレスを入力してください。",
+      submitting: "送信中…",
+      fan_submit: "データをリクエストする",
+      creator_submit: "エクスポートをリクエスト",
+      done_title: "リクエスト完了",
+      done_body_fan: "数分以内に {email} にデータパッケージをお送りします。",
+      done_body_creator: "まもなく {email} にクリエイターエクスポートをお送りします。",
+      done_support_hint: "ご質問は support@lala.la まで",
+      powered_by: "lala.la 提供",
     },
     onboard: {
       step1: {
@@ -588,6 +791,71 @@ const messages: Record<Locale, Messages> = {
         },
       },
     },
+    marketing: {
+      meta: {
+        title: "lala.la — AI Digital Twin for Creators",
+        description: "Your AI twin, fully managed — keep your fans engaged in your voice while you create.",
+      },
+      nav: {
+        cta_creator: "Get started",
+      },
+      hero: {
+        headline: "Your AI twin, fully managed.",
+        subheadline: "We keep your fans engaged in your voice while you create.",
+        cta_primary: "Start with Telegram",
+        cta_no_telegram: "No Telegram? Contact us",
+      },
+      value_prop: {
+        title: "We handle everything",
+        subtitle: "From setup to daily fan engagement — you focus on creating.",
+      },
+      pillars: {
+        title: "What your twin can do",
+        chat_label: "Chat",
+        chat_desc: "Text chat with your fans in your voice.",
+        voice_label: "Voice",
+        voice_desc: "Voice messages that sound like you.",
+        image_label: "Image",
+        image_desc: "AI-generated photos.",
+        image_coming_soon: "Coming soon",
+        video_label: "Video",
+        video_desc: "AI-generated videos.",
+        video_coming_soon: "Coming soon",
+      },
+      channels: {
+        title: "Where your twin lives",
+        subtitle: "Meet your fans where they are.",
+        lala_label: "lala.la",
+        telegram_label: "Telegram",
+        social_label: "Social",
+      },
+      onboarding: {
+        title: "Get started in 3 steps",
+        subtitle: "From zero to live twin in one session.",
+        step1_label: "Tell us about yourself",
+        step1_desc: "Share your persona via Telegram.",
+        step2_label: "We train your twin",
+        step2_desc: "We handle the technical setup.",
+        step3_label: "Go live",
+        step3_desc: "Your twin starts responding to fans.",
+      },
+      cta: {
+        headline: "Ready to meet your fans?",
+        subheadline: "Your first twin session is free.",
+        button: "Start with Telegram",
+        no_telegram: "No Telegram? Contact us",
+      },
+      footer: {
+        tagline: "lala.la — AI Digital Twin for Creators",
+        privacy: "Privacy Policy",
+        contact: "Contact",
+        ai_disclosure: "AI-generated content · Not a real person",
+      },
+      demo: {
+        title: "See a demo",
+        label: "Try a live demo",
+      },
+    },
   },
 
   "zh-TW": {
@@ -691,6 +959,30 @@ const messages: Record<Locale, Messages> = {
       data_rights_link: "您的資料權利",
       loading: "載入中…",
       creator_note: "作為創作者，您的下載連結有效期為72小時。",
+      fan_tab: "粉絲",
+      creator_tab: "創作者",
+      fan_title: "粉絲資料請求",
+      fan_subtitle: "下載 lala.la 持有的您的個人資料副本。",
+      email_label: "您的電子郵件",
+      email_placeholder: "您的電子郵件",
+      request_type_label: "資料類型",
+      request_type_all: "所有資料",
+      request_type_messages: "僅訊息",
+      request_type_account: "帳號資料",
+      fan_notice: "我們將在數分鐘內將您的資料發送至您的電子郵件地址。",
+      creator_title: "創作者資料匯出",
+      creator_subtitle: "匯出您的人格、同意記錄和對話記錄。",
+      creator_email_label: "創作者電子郵件",
+      creator_notice: "匯出資料將發送至您的已登記創作者電子郵件地址。",
+      email_invalid: "請輸入有效的電子郵件地址。",
+      submitting: "提交中…",
+      fan_submit: "請求我的資料",
+      creator_submit: "請求匯出",
+      done_title: "請求已提交",
+      done_body_fan: "我們將在數分鐘內將資料套件發送至 {email}。",
+      done_body_creator: "我們即將將創作者匯出資料發送至 {email}。",
+      done_support_hint: "有問題？請聯絡 support@lala.la",
+      powered_by: "由 lala.la 提供",
     },
     onboard: {
       step1: {
@@ -793,8 +1085,73 @@ const messages: Record<Locale, Messages> = {
         },
       },
     },
+    marketing: {
+      meta: {
+        title: "lala.la — AI Digital Twin for Creators",
+        description: "Your AI twin, fully managed — keep your fans engaged in your voice while you create.",
+      },
+      nav: {
+        cta_creator: "Get started",
+      },
+      hero: {
+        headline: "Your AI twin, fully managed.",
+        subheadline: "We keep your fans engaged in your voice while you create.",
+        cta_primary: "Start with Telegram",
+        cta_no_telegram: "No Telegram? Contact us",
+      },
+      value_prop: {
+        title: "We handle everything",
+        subtitle: "From setup to daily fan engagement — you focus on creating.",
+      },
+      pillars: {
+        title: "What your twin can do",
+        chat_label: "Chat",
+        chat_desc: "Text chat with your fans in your voice.",
+        voice_label: "Voice",
+        voice_desc: "Voice messages that sound like you.",
+        image_label: "Image",
+        image_desc: "AI-generated photos.",
+        image_coming_soon: "Coming soon",
+        video_label: "Video",
+        video_desc: "AI-generated videos.",
+        video_coming_soon: "Coming soon",
+      },
+      channels: {
+        title: "Where your twin lives",
+        subtitle: "Meet your fans where they are.",
+        lala_label: "lala.la",
+        telegram_label: "Telegram",
+        social_label: "Social",
+      },
+      onboarding: {
+        title: "Get started in 3 steps",
+        subtitle: "From zero to live twin in one session.",
+        step1_label: "Tell us about yourself",
+        step1_desc: "Share your persona via Telegram.",
+        step2_label: "We train your twin",
+        step2_desc: "We handle the technical setup.",
+        step3_label: "Go live",
+        step3_desc: "Your twin starts responding to fans.",
+      },
+      cta: {
+        headline: "Ready to meet your fans?",
+        subheadline: "Your first twin session is free.",
+        button: "Start with Telegram",
+        no_telegram: "No Telegram? Contact us",
+      },
+      footer: {
+        tagline: "lala.la — AI Digital Twin for Creators",
+        privacy: "Privacy Policy",
+        contact: "Contact",
+        ai_disclosure: "AI-generated content · Not a real person",
+      },
+      demo: {
+        title: "See a demo",
+        label: "Try a live demo",
+      },
+    },
   },
-};
+} satisfies Record<Locale, Messages>;
 
 export function getMessages(locale: string): Messages {
   const loc = LOCALES.includes(locale as Locale) ? (locale as Locale) : DEFAULT_LOCALE;
