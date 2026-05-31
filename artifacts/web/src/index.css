@@ -392,3 +392,48 @@
     inset: -1px;
   }
 }
+
+/* ============================================================
+ * MARKETING SURFACE TOKENS
+ * Scope: [data-surface="marketing"] attribute selector only.
+ * NEVER reference --mkt-* outside this ancestor scope.
+ * NEVER add --mkt-* to @theme inline or :root.
+ * PLACEHOLDER VALUES — replace wholesale via UI-SPEC before Phase 6.
+ * ============================================================ */
+@layer marketing-tokens {
+  [data-surface="marketing"] {
+    --mkt-bg:            #ffffff;
+    --mkt-fg:            #111111;
+    --mkt-surface-1:     #f5f5f5;
+    --mkt-surface-2:     #ebebeb;
+    --mkt-border:        #e0e0e0;
+    --mkt-accent:        hsl(263 80% 58%);
+    --mkt-accent-fg:     #ffffff;
+    --mkt-accent-hover:  hsl(263 80% 50%);
+    --mkt-muted-fg:      #666666;
+    --mkt-radius-sm:     0.375rem;
+    --mkt-radius-md:     0.625rem;
+    --mkt-radius-lg:     1rem;
+    --mkt-font-sans:     'Inter Variable', 'Noto Sans JP Variable', system-ui,
+                         -apple-system, "Hiragino Sans", "Meiryo", sans-serif;
+    --mkt-text-xs:       0.75rem;
+    --mkt-text-sm:       0.875rem;
+    --mkt-text-base:     1rem;
+    --mkt-text-lg:       1.125rem;
+    --mkt-text-xl:       1.25rem;
+    --mkt-text-2xl:      1.5rem;
+    --mkt-text-3xl:      1.875rem;
+    --mkt-text-hero:     clamp(2.25rem, 5vw, 4rem);
+    --mkt-text-section:  clamp(1.5rem, 3vw, 2.25rem);
+    --mkt-leading-tight: 1.2;
+    --mkt-leading-body:  1.6;
+    --mkt-leading-cjk:   1.8;
+    --mkt-spacing-xs:    0.25rem;
+    --mkt-spacing-sm:    0.5rem;
+    --mkt-spacing-md:    1rem;
+    --mkt-spacing-lg:    1.5rem;
+    --mkt-spacing-xl:    2rem;
+    --mkt-spacing-2xl:   3rem;
+    --mkt-spacing-3xl:   4rem;
+  }
+}
