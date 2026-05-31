@@ -111,7 +111,7 @@ Replace the placeholder landing page with a polished, localized public marketing
 
 ### Phases (v2.0)
 
-- [ ] **Phase 5: Foundation & Isolation** - CSS token isolation, typed i18n namespace, static SEO assets, CJK fonts, and fan-route safety locked before any section component is written
+- [x] **Phase 5: Foundation & Isolation** - CSS token isolation, typed i18n namespace, static SEO assets, CJK fonts, and fan-route safety locked before any section component is written (completed 2026-05-31)
 - [ ] **Phase 6: Marketing Components & Navigation** - All content sections, footer, locale-switching nav, Telegram CTA deep-link, and responsive layout built as isolated components
 - [ ] **Phase 7: Assembly, Polish & Compliance** - Page assembled from components, locale verification across EN/JA/ZH-TW, scroll animations with reduced-motion respect, visible SB 243 disclosure, and no-overclaiming copy confirmed
 
@@ -130,7 +130,7 @@ Replace the placeholder landing page with a polished, localized public marketing
 **Plans**: 3 plans (2 waves)
 - [x] 05-01-PLAN.md — CSS token isolation (@layer marketing-tokens / [data-surface="marketing"]), typed marketing i18n namespace (satisfies-enforced), React.lazy code-split + route-safety (MKT-10, MKT-13, MKT-20)
 - [x] 05-02-PLAN.md — Static SEO assets: public/sitemap.xml (3 locale URLs + hreflang), public/robots.txt (allow roots / disallow fan pages), public/og-marketing.png brand card (MKT-16, MKT-17)
-- [ ] 05-03-PLAN.md — Self-hosted Fontsource fonts + vite stable-woff2 filename + index.html marketing meta/og/twitter/hreflang + working Noto Sans JP preload; Google Fonts CDN removed (MKT-15, MKT-16, MKT-17)
+- [x] 05-03-PLAN.md — Self-hosted Fontsource fonts + vite stable-woff2 filename + index.html marketing meta/og/twitter/hreflang + working Noto Sans JP preload; Google Fonts CDN removed (MKT-15, MKT-16, MKT-17)
 **UI hint**: yes
 
 ### Phase 6: Marketing Components & Navigation
@@ -165,6 +165,6 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Foundation & Isolation | 2/3 | In Progress|  |
+| 5. Foundation & Isolation | 3/3 | Complete   | 2026-05-31 |
 | 6. Marketing Components & Navigation | 0/TBD | Not started | - |
 | 7. Assembly, Polish & Compliance | 0/TBD | Not started | - |
