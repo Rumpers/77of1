@@ -3,19 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>7of1</title>
-    <meta name="description" content="7of1 — built on Replit. Update this description to reflect the app." />
+    <title>lala.la — AI Digital Twin for Creators</title>
+    <meta name="description"
+      content="Your AI twin, fully managed — keep your fans engaged in your voice while you create. For 17 LIVE creators in JP, TW, and HK." />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="7of1" />
-    <meta property="og:description" content="7of1 — built on Replit. Update this description to reflect the app." />
+    <meta property="og:title" content="lala.la — AI Digital Twin for Creators" />
+    <meta property="og:description" content="Your AI twin, fully managed. Chat, voice, and more — we handle everything." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lala.la" />
+    <meta property="og:image" content="https://lala.la/og-marketing.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="7of1" />
-    <meta name="twitter:description" content="7of1 — built on Replit. Update this description to reflect the app." />
+    <meta name="twitter:title" content="lala.la — AI Digital Twin for Creators" />
+    <meta name="twitter:description" content="Your AI twin, fully managed. Chat, voice, and more — we handle everything." />
+    <meta name="twitter:image" content="https://lala.la/og-marketing.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- hreflang: MUST be static in index.html — NOT JS-injected -->
+    <link rel="alternate" hreflang="x-default" href="https://lala.la/en" />
+    <link rel="alternate" hreflang="en" href="https://lala.la/en" />
+    <link rel="alternate" hreflang="ja" href="https://lala.la/ja" />
+    <link rel="alternate" hreflang="zh-TW" href="https://lala.la/zh-TW" />
+    <!-- NON-NEGOTIABLE font preload (CONTEXT.md D-05): 400-weight Noto Sans JP latin woff2 at the STABLE vite-emitted path -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/noto-sans-jp-latin-wght-normal.woff2" crossorigin="anonymous" />
+    <!-- Fontsource fonts loaded via main.tsx — no CDN link needed here -->
   </head>
   <body>
     <div id="root"></div>
