@@ -143,7 +143,11 @@ Replace the placeholder landing page with a polished, localized public marketing
   3. The primary CTA button appears at hero, mid-page, and footer with identical wording; tapping any instance routes to the same deep-link URL
   4. The sticky marketing nav includes a `MarketingLocaleSwitcher` that navigates to `/:locale` (no handle) and does not interfere with the fan-page locale switcher
   5. No component layout overflows at 375px viewport width; verified by resizing browser or using DevTools responsive mode
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+- [ ] 06-01-PLAN.md — Wave 1: leaf primitives (CtaButton + always-visible mailto fallback, MarketingLocaleSwitcher → /:locale, static HeroOrb), full 12-name barrel, .env.example VITE vars, reduced-motion guard (MKT-08, MKT-09, MKT-14, MKT-11)
+- [ ] 06-02-PLAN.md — Wave 2 (parallel with 06-03; disjoint files): HeroSection (LCP-safe single CTA + bloom), ValuePropSection, FourPillarsSection (chat/voice live, image/video coming-soon), DemoTranscriptSection (MKT-01, MKT-02, MKT-03, MKT-06)
+- [ ] 06-03-PLAN.md — Wave 2 (parallel with 06-02; disjoint files): HowItWorksSection (3-step non-technical), MultiChannelSection (lala.la + Telegram + social), CtaSection (mid-page CTA repeat via shared primitive) (MKT-04, MKT-05, MKT-08)
+- [ ] 06-04-PLAN.md — Wave 3: MarketingNav (sticky, locale switcher hidden sm) + MarketingFooter (CTA + locale + privacy/contact/AI-disclosure) + home.tsx wholesale replacement (9-section shell) + QA gate (build, token-bleed grep, fan-route safety) + 375px human-verify checkpoint (MKT-07, MKT-08, MKT-11, MKT-14)
 **UI hint**: yes
 
 ### Phase 7: Assembly, Polish & Compliance
