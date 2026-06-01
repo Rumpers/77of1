@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Marketing Site
 status: planning
-stopped_at: Phase 05 complete + verified; paused before Phase 6 discussion (user opted for interactive design discussion)
-last_updated: "2026-05-31T08:27:24.826Z"
-last_activity: 2026-05-31
+stopped_at: Design system "Luminous Infrastructure" locked in DESIGN.md; Phase 5 --mkt-* tokens retrofitted (quick 260601-f4l); ready for /gsd-ui-phase 6
+last_updated: "2026-06-01T02:53:30.876Z"
+last_activity: 2026-06-01
 progress:
   total_phases: 3
   completed_phases: 1
@@ -109,9 +109,10 @@ None yet.
 | Quick ID | Description | Date | Commits |
 |----------|-------------|------|---------|
 | 20260530-claire-persona-direction | twins.direction column + buildSystemPrompt steering + placeholder Claire persona + seed script | 2026-05-30 | 0d92b29, b74dbe8, 9f2f9fc |
+| 260601-f4l | Retrofit marketing --mkt-* tokens to DESIGN.md "Luminous Infrastructure" + self-host Bricolage Grotesque / Geist / Noto Sans TC | 2026-06-01 | c01695d, 1c1c878 |
 
 ## Session Continuity
 
-Last session: 2026-05-31T08:27:24.794Z
-Stopped at: Phase 05 complete + verified; paused before Phase 6 discussion (user opted for interactive design discussion)
+Last session: 2026-06-01T02:53:30.876Z
+Stopped at: Design system locked (DESIGN.md) + Phase 5 --mkt-* tokens retrofitted (quick 260601-f4l). Next: /gsd-ui-phase 6 → /gsd-plan-phase 6
 Resume file: None
