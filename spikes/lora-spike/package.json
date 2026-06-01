@@ -1,0 +1,25 @@
+{
+  "name": "lora-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY R&D spike — FLUX.1 LoRA likeness test via Replicate. Outside the pnpm workspace. Not production code.",
+  "scripts": {
+    "train": "tsx src/train.ts",
+    "generate": "tsx src/generate.ts",
+    "gallery": "tsx src/gallery.ts",
+    "all": "tsx src/train.ts && tsx src/generate.ts && tsx src/gallery.ts",
+    "serve": "tsx src/serve.ts"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "dotenv": "^16.4.7",
+    "replicate": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

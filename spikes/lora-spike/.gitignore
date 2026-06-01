@@ -1,0 +1,6 @@
+# THROWAWAY spike — never commit secrets, deps, real photos, or generated outputs.
+node_modules/
+.env
+data/
+outputs/
+*.zip
