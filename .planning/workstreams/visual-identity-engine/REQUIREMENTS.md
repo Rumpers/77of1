@@ -64,4 +64,20 @@ Prove a LoRA-based image-generation pipeline can produce convincing on-model ima
 
 ## Traceability
 
-_(filled by roadmap)_
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| GATE-01 | Phase 1 — Legal and Ops Gates | Pending |
+| GATE-02 | Phase 1 — Legal and Ops Gates | Pending |
+| GATE-03 | Phase 1 — Legal and Ops Gates | Pending |
+| GATE-04 | Phase 1 — Legal and Ops Gates | Pending |
+| DATA-01 | Phase 2 — Dataset Curation and Preprocessing | Pending |
+| DATA-02 | Phase 2 — Dataset Curation and Preprocessing | Pending |
+| DATA-03 | Phase 2 — Dataset Curation and Preprocessing | Pending |
+| TRAIN-01 | Phase 3 — Training Run and Weights Archival | Pending |
+| TRAIN-02 | Phase 3 — Training Run and Weights Archival | Pending |
+| TRAIN-03 | Phase 3 — Training Run and Weights Archival | Pending |
+| EVAL-01 | Phase 4 — Eval Gallery Generation and Founder Review | Pending |
+| EVAL-02 | Phase 4 — Eval Gallery Generation and Founder Review | Pending |
+| EVAL-03 | Phase 4 — Eval Gallery Generation and Founder Review | Pending |
+| DOC-01 | Phase 5 — Findings Documentation and Go/No-Go Verdict | Pending |
+| DOC-02 | Phase 5 — Findings Documentation and Go/No-Go Verdict | Pending |
