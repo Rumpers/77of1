@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Marketing Site
-status: planning
-stopped_at: Design system "Luminous Infrastructure" locked in DESIGN.md; Phase 5 --mkt-* tokens retrofitted (quick 260601-f4l); ready for /gsd-ui-phase 6
-last_updated: "2026-06-01T02:53:30.876Z"
-last_activity: 2026-06-01
+status: executing
+stopped_at: "Design system locked (DESIGN.md) + Phase 5 --mkt-* tokens retrofitted (quick 260601-f4l). Next: /gsd-ui-phase 6 → /gsd-plan-phase 6"
+last_updated: "2026-06-01T08:37:52.550Z"
+last_activity: 2026-06-01 -- Phase 06 execution started
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 3
+  total_plans: 7
   completed_plans: 3
   percent: 33
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** A fan can open Telegram or `lala.la/[handle]`, have a convincing conversation with a creator's AI twin, and get nudged to her actual monetization platform — all within 30 seconds of first message.
-**Current focus:** Phase 6 — marketing components & navigation
+**Current focus:** Phase 06 — marketing-components-navigation
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-31
+Phase: 06 (marketing-components-navigation) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 06
+Last activity: 2026-06-01 -- Phase 06 execution started
 
 ```
 v2.0 progress: [          ] 0% (0/3 phases)
