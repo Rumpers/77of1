@@ -450,3 +450,17 @@
     --mkt-spacing-3xl:   4rem;
   }
 }
+
+/* ============================================================
+ * MARKETING REDUCED-MOTION GUARD
+ * Disables all CSS animations and transitions inside
+ * [data-surface="marketing"] when the user has requested
+ * reduced motion (prefers-reduced-motion: reduce).
+ * Phase 7 enforces this across scroll-reveal animations.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="marketing"] * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
