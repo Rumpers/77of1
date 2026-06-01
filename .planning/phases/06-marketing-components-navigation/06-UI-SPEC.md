@@ -5,6 +5,8 @@ status: draft
 shadcn_initialized: true
 preset: new-york (baseColor: neutral, cssVariables: true)
 created: 2026-06-01
+revised: 2026-06-01
+revision_note: Typography collapsed from 7 declared sizes to 4 (checker blocking fix). Component contracts updated to use only the 4 retained sizes.
 ---
 
 # Phase 6 — UI Design Contract: Marketing Components & Navigation
@@ -90,18 +92,28 @@ Source: DESIGN.md typography section + `index.css @layer marketing-tokens` verif
 or `style={{ fontFamily: "var(--mkt-font-sans)" }}` rather than the `font-sans` Tailwind utility class,
 because `font-sans` maps to `--app-font-sans` (the fan-page Inter stack), not `--mkt-font-sans` (Geist).
 
-| Role | CSS Var / Class | Size | Weight | Line Height | Usage |
-|------|----------------|------|--------|-------------|-------|
-| Hero headline | `--mkt-text-hero` | `clamp(2.25rem, 5vw, 4rem)` | 700–800 | 1.04 (tight) | `<h1>` in HeroSection only |
-| Section heading | `--mkt-text-section` | `clamp(1.5rem, 3vw, 2.25rem)` | 700 | 1.04 (tight) | `<h2>` in each content section |
-| Subheading / card title | `--mkt-text-2xl` | 1.5rem (24px) | 600 | 1.2 | `<h3>` in pillar cards, step headings, demo card title |
-| Body / description | `--mkt-text-base` | 1rem (16px) | 400 | 1.6 | Section subtitles, card descriptions, footer copy |
-| Small / muted | `--mkt-text-sm` | 0.875rem (14px) | 400 | 1.6 | Footer legal line, "coming soon" badge label, nav locale pills |
-| Eyebrow label | `--mkt-text-xs` | 0.75rem (12px) | 500 | 1.0 | Section eyebrow labels (uppercase, `letter-spacing: 0.14em`) |
-| Step numeral | `--mkt-text-3xl` | 1.875rem (30px) | 800 | 1.04 | HowItWorks step numerals ("01", "02", "03") — Bricolage Grotesque |
+### Phase 6 Declared Sizes (4 only)
 
-**Declared sizes:** hero-clamp, section-clamp, 1.875rem, 1.5rem, 1rem, 0.875rem, 0.75rem (7 sizes — all
-mapped to existing `--mkt-text-*` tokens; no new token values introduced).
+| # | Role | Size | Weight | Font | Line Height | Usage |
+|---|------|------|--------|------|-------------|-------|
+| 1 | **Display** | `clamp(2.25rem, 5vw, 4rem)` | 700–800 | Bricolage Grotesque | 1.04 | `<h1>` hero headline AND `<h2>` section headings — same clamp, rendered size differs by viewport |
+| 2 | **Subheading** | `1.5rem` (24px) | 600 (label) / 800 (numeral) | Bricolage Grotesque (numeral) / Geist (label) | 1.2 | Card titles `<h3>`, step label `<h3>`, step numeral — weight + font family differentiate; size is shared |
+| 3 | **Body** | `1rem` (16px) | 400 | Geist | 1.6 | Section subtitles, subheadlines, card descriptions, footer copy, hero subheadline |
+| 4 | **Small** | `0.875rem` (14px) | 400 | Geist | 1.6 | Section eyebrow labels, footer legal line, "coming soon" badge label, nav locale pills, twin attribution line |
+
+**Differentiation within Subheading (1.5rem):**
+- Step numerals ("01" / "02" / "03"): `1.5rem`, weight **800**, `var(--mkt-font-display)` (Bricolage Grotesque), color `--mkt-accent`
+- Step labels `<h3>` and card titles `<h3>`: `1.5rem`, weight **600**, `var(--mkt-font-sans)` (Geist), color `--mkt-fg`
+
+**Differentiation within Small (0.875rem):**
+- Eyebrow labels: `0.875rem`, weight 500, uppercase, `letter-spacing: 0.14em`, color `--mkt-accent`
+- Footer legal / badge / nav pills / attribution: `0.875rem`, weight 400, no transform
+
+**Available but unused in Phase 6 (`--mkt-text-*` tokens that exist in the token map but are NOT
+declared as Phase 6 in-use sizes):**
+`--mkt-text-xs` (0.75rem), `--mkt-text-lg` (1.125rem), `--mkt-text-xl` (1.25rem),
+`--mkt-text-3xl` (1.875rem) — these remain in CSS for completeness but no Phase 6 component
+renders at these sizes. If a future executor is tempted to use them, a new checker run is required first.
 
 **Declared weights:** 400 (regular) and 600 (semibold) for Geist body/UI. 700–800 for Bricolage
 Grotesque display. This satisfies the 2-weight body constraint; display font has its own weight range.
@@ -144,6 +156,7 @@ applied within the `[data-surface="marketing"]` scope only.
 4. `HeroOrb` radial-gradient bloom
 5. CTA button glow box-shadow (`color-mix(in oklch, var(--mkt-glow-from) 40%, transparent)`)
 6. Section eyebrow text (accent color, not fill)
+7. Step numerals in HowItWorksSection (accent color, weight 800, display font)
 
 Accent is NOT used for: body text, nav wordmark, card borders, icon fills (icons use `--mkt-muted-fg`
 at rest; `--mkt-fg` on hover).
@@ -174,6 +187,11 @@ at rest; `--mkt-fg` on hover).
 - `MarketingLocaleSwitcher` (see below)
 - `CtaButton` with `label={t.nav.cta_creator}` (EN: "Get started"), `variant="primary"`, `size="sm"`
 
+**Nav CTA copy note:** The i18n key `marketing.nav.cta_creator` currently resolves to "Get started"
+(no noun object). The checker recommends updating this to "Join as creator" or "Start for free" for
+clarity. This is flagged as a **Phase 7 copy-review item** — changing it requires updating all 3 locales
+simultaneously and verifying no other component depends on the key's current meaning before shipping.
+
 **Mobile (≤640px):** Nav collapses to wordmark + CtaButton only; `MarketingLocaleSwitcher` is hidden
 in the nav and duplicated in `MarketingFooter`. No hamburger menu needed — nav has no anchor links.
 
@@ -189,6 +207,7 @@ home). Does not pass a handle. Does not modify query params.
 
 **Rendered as:** Row of 3 pill buttons — EN | 日本語 | 繁中
 **Pill dimensions:** `px-3 py-1` (12px / 4px padding), `rounded-[--mkt-radius-pill]`.
+**Typography:** **Small** size — `0.875rem`, weight 400, `var(--mkt-font-sans)`
 **Active state:** `bg-[--mkt-accent] text-[--mkt-accent-fg]`
 **Inactive state:** `text-[--mkt-muted-fg]` with `hover:text-[--mkt-fg]` transition
 **Transition:** `transition-colors` (150ms ease-out)
@@ -207,7 +226,7 @@ home). Does not pass a handle. Does not modify query params.
 **Primary variant (`variant="primary"`):**
 - Element: `<a href={VITE_HERMES_BOT_URL} target="_blank" rel="noopener noreferrer">`
 - Background: `--mkt-accent` (`#7C3AED`)
-- Text: `--mkt-accent-fg` (`#FFFFFF`), weight 600, `var(--mkt-font-sans)`
+- Text: `--mkt-accent-fg` (`#FFFFFF`), weight 600, `var(--mkt-font-sans)`, **Body** size (1rem)
 - Border radius: `--mkt-radius-pill` (999px)
 - Padding: `px-6 py-3` (24px / 12px) for standard size; `px-4 py-2` for `size="sm"` (nav instance)
 - Box shadow: `0 0 24px color-mix(in oklch, var(--mkt-glow-from) 40%, transparent)` — violet glow halo
@@ -220,7 +239,7 @@ home). Does not pass a handle. Does not modify query params.
 
 **No-Telegram fallback (always rendered below the primary button):**
 - Element: `<a href="mailto:${VITE_CONTACT_EMAIL ?? 'contact@lala.la'}">`
-- Style: `text-[--mkt-muted-fg] text-sm underline underline-offset-4`
+- Style: `text-[--mkt-muted-fg] underline underline-offset-4` — **Small** size (0.875rem), weight 400
 - Always visible — not conditionally rendered based on Telegram detection (no reliable browser detection)
 
 **Deep-link URL:** `import.meta.env.VITE_HERMES_BOT_URL` (build-time injection).
@@ -243,17 +262,18 @@ Mobile: single column, HeroOrb hidden below 640px (use `hidden lg:block`).
 **Section padding:** `py-24 lg:py-32` (96px / 128px vertical).
 
 **Left column — text stack (top to bottom):**
-1. **Eyebrow:** `t.meta.title` or a short variant — EN: "lala.la" (or omit eyebrow in favor of wordmark-only nav). Decision: use a brief eyebrow if the designer wants section context; default to no eyebrow in the hero (wordmark in nav is sufficient). Use `--mkt-accent` color, `--mkt-text-xs`, uppercase, tracking `0.14em`.
+1. **Eyebrow** (optional): EN: "lala.la" or omit in favor of wordmark-only nav.
+   - If rendered: **Small** size — `0.875rem`, weight 500, uppercase, tracking `0.14em`, color `--mkt-accent`
 2. **Headline `<h1>`:** `t.hero.headline` — EN: **"Your AI twin, fully managed."**
    - Font: `var(--mkt-font-display)`, weight 700–800
-   - Size: `var(--mkt-text-hero)` (`clamp(2.25rem, 5vw, 4rem)`)
+   - Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`
    - Leading: 1.04
    - Tracking: `-0.02em`
    - Color: `--mkt-fg` — gradient accent span on "AI twin" or "fully managed" optional (planner's call)
    - **No `initial opacity:0`** — renders at full opacity on first paint (LCP element)
 3. **Subheadline `<p>`:** `t.hero.subheadline` — EN: **"We keep your fans engaged in your voice while you create."**
    - Font: `var(--mkt-font-sans)`, weight 400
-   - Size: `var(--mkt-text-xl)` (1.25rem / 20px)
+   - Size: **Body** — `1rem` (16px)
    - Leading: 1.6
    - Color: `--mkt-muted-fg`
    - Margin top: 16px (`mt-4`)
@@ -266,7 +286,7 @@ See HeroOrb contract below. Full opacity on first paint.
 **SB 243 disclosure pill** (DESIGN.md spec — in hero):
 - Pill: `border border-[--mkt-accent] rounded-[--mkt-radius-pill] px-3 py-1`
 - Content: glowing fuchsia dot (`--mkt-glow-to` color, 8px circle, `animate-pulse` — or static for Phase 6) + text "AI twin · not a real person"
-- Font: `var(--mkt-font-sans)`, `--mkt-text-xs`, `--mkt-muted-fg`
+- Font: `var(--mkt-font-sans)`, **Small** size (0.875rem), weight 400, `--mkt-muted-fg`
 - Position: below the CtaButton, margin top 24px (`mt-6`)
 - Note: DESIGN.md calls for this in the hero and repeated in footer. Phase 7 handles the full
   on-page prominent disclosure rendering (MKT-18). Phase 6 renders the compact hero pill as part
@@ -291,8 +311,11 @@ See HeroOrb contract below. Full opacity on first paint.
 
 ### 6. ValuePropSection (MKT-02)
 
-**Section heading:** `t.value_prop.title` — EN: **"We handle everything"**
-**Subtitle:** `t.value_prop.subtitle` — EN: **"From setup to daily fan engagement — you focus on creating."**
+**Section heading `<h2>`:** `t.value_prop.title` — EN: **"We handle everything"**
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`, weight 700, Bricolage Grotesque, leading 1.04
+
+**Subtitle `<p>`:** `t.value_prop.subtitle` — EN: **"From setup to daily fan engagement — you focus on creating."**
+- Size: **Body** — `1rem`, weight 400, Geist, leading 1.6, color `--mkt-muted-fg`
 
 **Layout:** `text-center` centered block, max width 640px, `mx-auto`. No card grid — this is a single
 statement section that frames the service. Padding: `py-20` (80px vertical).
@@ -308,7 +331,8 @@ can add the feature list once copy is finalized by a native-speaker review.
 
 ### 7. FourPillarsSection (MKT-03)
 
-**Section heading:** `t.pillars.title` — EN: **"What your twin can do"**
+**Section heading `<h2>`:** `t.pillars.title` — EN: **"What your twin can do"**
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`, weight 700, Bricolage Grotesque, leading 1.04
 
 **Grid:** `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`
 **Section padding:** `py-20` (80px).
@@ -325,19 +349,24 @@ can add the feature list once copy is finalized by a native-speaker review.
 **PillarCard anatomy:**
 - Container: `relative rounded-[--mkt-radius-md] border border-[--mkt-border] bg-[--mkt-surface-1] p-5`
 - Icon: lucide-react icon, 24px, `--mkt-muted-fg` color (suggested: `MessageCircle`, `Mic`, `Image`, `Video`)
-- Label `<h3>`: `--mkt-text-lg` (18px), weight 600, `--mkt-fg`, margin top 12px
-- Description `<p>`: `--mkt-text-sm` (14px), weight 400, `--mkt-muted-fg`, margin top 8px, leading 1.6
+- Label `<h3>`: **Subheading** — `1.5rem`, weight 600, `var(--mkt-font-sans)`, `--mkt-fg`, margin top 12px
+- Description `<p>`: **Small** — `0.875rem`, weight 400, `--mkt-muted-fg`, margin top 8px, leading 1.6
 - **"Coming soon" badge** (image and video only):
   - Position: `absolute right-3 top-3`
-  - Style: `rounded-[--mkt-radius-pill] border border-[--mkt-border] bg-[--mkt-surface-2] px-2 py-0.5 text-xs text-[--mkt-muted-fg]`
+  - Style: `rounded-[--mkt-radius-pill] border border-[--mkt-border] bg-[--mkt-surface-2] px-2 py-0.5`
+  - Typography: **Small** — `0.875rem`, weight 400, `--mkt-muted-fg`
   - Copy: `t.pillars.image_coming_soon` / `t.pillars.video_coming_soon` — EN: **"Coming soon"**
 
 ---
 
 ### 8. HowItWorksSection (MKT-04)
 
-**Section heading:** `t.onboarding.title` — EN: **"Get started in 3 steps"**
-**Subtitle:** `t.onboarding.subtitle` — EN: **"From zero to live twin in one session."**
+**Section heading `<h2>`:** `t.onboarding.title` — EN: **"Get started in 3 steps"**
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`, weight 700, Bricolage Grotesque, leading 1.04
+
+**Subtitle `<p>`:** `t.onboarding.subtitle` — EN: **"From zero to live twin in one session."**
+- Size: **Body** — `1rem`, weight 400, Geist, leading 1.6, color `--mkt-muted-fg`
+
 **Section padding:** `py-20` (80px).
 
 **Grid:** `grid grid-cols-1 md:grid-cols-3 gap-8`
@@ -352,17 +381,22 @@ can add the feature list once copy is finalized by a native-speaker review.
 
 **StepCard anatomy:**
 - Container: `flex flex-col gap-4` (no card border — open layout)
-- Step numeral: `--mkt-text-3xl` (1.875rem), weight 800, `var(--mkt-font-display)`,
-  color: `--mkt-accent`, leading 1.04 — renders "01" / "02" / "03"
-- Label `<h3>`: `--mkt-text-xl` (20px), weight 600, `--mkt-fg`
-- Description `<p>`: `--mkt-text-base` (16px), weight 400, `--mkt-muted-fg`, leading 1.6
+- Step numeral: **Subheading** — `1.5rem`, weight **800**, `var(--mkt-font-display)` (Bricolage Grotesque),
+  color `--mkt-accent`, leading 1.04 — renders "01" / "02" / "03"
+  (Differentiated from step labels via weight 800 + display font, not a separate size.)
+- Label `<h3>`: **Subheading** — `1.5rem`, weight **600**, `var(--mkt-font-sans)` (Geist), `--mkt-fg`
+- Description `<p>`: **Body** — `1rem`, weight 400, `--mkt-muted-fg`, leading 1.6
 
 ---
 
 ### 9. MultiChannelSection (MKT-05)
 
-**Section heading:** `t.channels.title` — EN: **"Where your twin lives"**
-**Subtitle:** `t.channels.subtitle` — EN: **"Meet your fans where they are."**
+**Section heading `<h2>`:** `t.channels.title` — EN: **"Where your twin lives"**
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`, weight 700, Bricolage Grotesque, leading 1.04
+
+**Subtitle `<p>`:** `t.channels.subtitle` — EN: **"Meet your fans where they are."**
+- Size: **Body** — `1rem`, weight 400, Geist, leading 1.6, color `--mkt-muted-fg`
+
 **Section padding:** `py-20` (80px).
 
 **Three channel blocks:**
@@ -376,13 +410,15 @@ can add the feature list once copy is finalized by a native-speaker review.
 **Layout:** `grid grid-cols-1 sm:grid-cols-3 gap-6` — text-centered channel cards.
 **Channel card:** `flex flex-col items-center gap-3 p-6 rounded-[--mkt-radius-lg] border border-[--mkt-border] bg-[--mkt-surface-1]`
 **Icon:** 32px lucide-react icon, `--mkt-accent` color
-**Label:** `--mkt-text-lg` (18px), weight 600, `--mkt-fg`, text-center
+**Label `<h3>`:** **Subheading** — `1.5rem`, weight 600, `var(--mkt-font-sans)`, `--mkt-fg`, text-center
 
 ---
 
 ### 10. DemoTranscriptSection (MKT-06)
 
-**Section heading:** `t.demo.title` — EN: **"See a demo"**
+**Section heading `<h2>`:** `t.demo.title` — EN: **"See a demo"**
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`, weight 700, Bricolage Grotesque, leading 1.04
+
 **Section padding:** `py-20` (80px).
 
 **Card:** `max-w-lg mx-auto rounded-[--mkt-radius-lg] border border-[--mkt-border] bg-[--mkt-surface-1] p-6`
@@ -392,9 +428,9 @@ The transcript messages are a hardcoded constant in `DemoTranscriptSection.tsx` 
 Phase 7 adds i18n keys if native-speaker copy is ready.
 
 **Transcript anatomy — 2-turn exchange:**
-- Fan message bubble: right-aligned, `bg-[--mkt-surface-2]`, `--mkt-text-sm`, `--mkt-fg`, `rounded-[--mkt-radius-md]`, `px-4 py-2`
-- Twin message bubble: left-aligned, `bg-[--mkt-accent]` at 15% opacity (`color-mix(in oklch, var(--mkt-accent) 15%, transparent)`), `--mkt-text-sm`, `--mkt-fg`, `rounded-[--mkt-radius-md]`, `px-4 py-2`
-- Twin label below twin bubble: `--mkt-text-xs`, `--mkt-muted-fg`, e.g. "AI twin · @claire_ai"
+- Fan message bubble: right-aligned, `bg-[--mkt-surface-2]`, **Small** size (0.875rem), `--mkt-fg`, `rounded-[--mkt-radius-md]`, `px-4 py-2`
+- Twin message bubble: left-aligned, `bg-[--mkt-accent]` at 15% opacity (`color-mix(in oklch, var(--mkt-accent) 15%, transparent)`), **Small** size (0.875rem), `--mkt-fg`, `rounded-[--mkt-radius-md]`, `px-4 py-2`
+- Twin label below twin bubble: **Small** size (0.875rem), `--mkt-muted-fg`, e.g. "AI twin · @claire_ai"
 - SB 243 disclosure inline: same label pattern — not a standalone element, embedded in twin attribution line
 
 **Suggested EN static transcript:**
@@ -415,15 +451,20 @@ in localized transcript content when native copy arrives.
 
 **Layout:** `text-center py-20`
 
-**Heading:** `t.cta.headline` — EN: **"Ready to meet your fans?"**
-- Font: `var(--mkt-font-display)`, weight 700, `--mkt-text-section` size, `--mkt-fg`, leading 1.04
+**Heading `<h2>`:** `t.cta.headline` — EN: **"Ready to meet your fans?"**
+- Font: `var(--mkt-font-display)`, weight 700
+- Size: **Display** — `clamp(2.25rem, 5vw, 4rem)`
+- Color: `--mkt-fg`, leading 1.04
 
-**Subheadline:** `t.cta.subheadline` — EN: **"Your first twin session is free."**
-- Font: `var(--mkt-font-sans)`, weight 400, `--mkt-text-lg`, `--mkt-muted-fg`, leading 1.6, margin top 16px
+**Subheadline `<p>`:** `t.cta.subheadline` — EN: **"Your first twin session is free."**
+- Font: `var(--mkt-font-sans)`, weight 400
+- Size: **Body** — `1rem`
+- Color: `--mkt-muted-fg`, leading 1.6, margin top 16px
 
 **CtaButton:** `t.cta.button` label — EN: **"Start with Telegram"** — centered, margin top 32px
 
-**Fallback link:** `t.cta.no_telegram` — EN: **"No Telegram? Contact us"** — centered, margin top 8px
+**Fallback link:** `t.cta.no_telegram` — EN: **"No Telegram? Contact us"** — centered, margin top 8px,
+**Small** size (0.875rem)
 
 **Optional background treatment:** Subtle radial bloom behind the heading (same HeroOrb technique
 at reduced scale, ~300px diameter, 40% opacity) — planner's call.
@@ -437,14 +478,14 @@ at reduced scale, ~300px diameter, 40% opacity) — planner's call.
 
 **Top block:**
 - **CtaButton (primary):** `t.cta.button` label — EN: **"Start with Telegram"** — same wording as all other instances
-- **Fallback link:** `t.cta.no_telegram` — below CTA, margin top 8px
+- **Fallback link:** `t.cta.no_telegram` — below CTA, margin top 8px, **Small** size (0.875rem)
 - **MarketingLocaleSwitcher:** below fallback, margin top 16px — this is the mobile-accessible locale switcher
 
 **Bottom block (legal row):**
-- **Tagline:** `t.footer.tagline` — EN: **"lala.la — AI Digital Twin for Creators"**, `--mkt-text-sm`, `--mkt-muted-fg`
-- **Privacy link:** `t.footer.privacy` — EN: **"Privacy Policy"** — links to `/:locale/account/data-request`, `--mkt-text-sm`, `--mkt-muted-fg`, underline
-- **Contact link:** `t.footer.contact` — EN: **"Contact"** — links to `mailto:contact@lala.la`, `--mkt-text-sm`, `--mkt-muted-fg`, underline
-- **AI disclosure notice:** `t.footer.ai_disclosure` — EN: **"AI-generated content · Not a real person"**, `--mkt-text-xs`, `--mkt-muted-fg`
+- **Tagline:** `t.footer.tagline` — EN: **"lala.la — AI Digital Twin for Creators"**, **Small** size (0.875rem), `--mkt-muted-fg`
+- **Privacy link:** `t.footer.privacy` — EN: **"Privacy Policy"** — links to `/:locale/account/data-request`, **Small** size (0.875rem), `--mkt-muted-fg`, underline
+- **Contact link:** `t.footer.contact` — EN: **"Contact"** — links to `mailto:contact@lala.la`, **Small** size (0.875rem), `--mkt-muted-fg`, underline
+- **AI disclosure notice:** `t.footer.ai_disclosure` — EN: **"AI-generated content · Not a real person"**, **Small** size (0.875rem), `--mkt-muted-fg`
 
 **Links row:** `flex flex-wrap gap-4 justify-center items-center`
 
@@ -481,6 +522,10 @@ typed `marketing` namespace; changes require updating all 3 locales simultaneous
 | Footer AI disclosure | **"AI-generated content · Not a real person"** | `marketing.footer.ai_disclosure` |
 | Hero AI disclosure pill | **"AI twin · not a real person"** | Hardcoded in HeroSection (not in i18n scaffold — planner adds key `marketing.hero.ai_disclosure` to all 3 locales, or hardcodes EN-only for Phase 6) |
 | Demo transcript (static) | Fan: "Are you really her?" / Twin: "I'm her AI twin — same energy, available whenever you are. The real one will check in too 💜" | Hardcoded constant in `DemoTranscriptSection.tsx` — not in i18n (Phase 7 adds keys) |
+
+**Nav CTA copy — Phase 7 review item:** `marketing.nav.cta_creator` currently resolves to "Get started".
+Consider updating to "Join as creator" or "Start for free" for clearer intent. Requires native-speaker
+sign-off and updating all 3 locale objects. Do not change in Phase 6 without explicit user approval.
 
 **Empty state:** No empty state in this phase — all sections render static content. Not applicable.
 **Error state:** No API calls in this phase. No error state. Not applicable.
@@ -668,11 +713,11 @@ wouter, class-variance-authority, clsx, tailwind-merge) are confirmed present in
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [ ] Dimension 1 Copywriting: pending re-check
+- [ ] Dimension 2 Visuals: PASS (carried from previous run)
+- [ ] Dimension 3 Color: PASS (carried from previous run)
+- [ ] Dimension 4 Typography: pending re-check (blocking fix applied — collapsed to 4 sizes)
+- [ ] Dimension 5 Spacing: PASS (carried from previous run)
+- [ ] Dimension 6 Registry Safety: PASS (carried from previous run)
 
 **Approval:** pending
