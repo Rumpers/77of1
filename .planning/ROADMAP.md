@@ -112,7 +112,7 @@ Replace the placeholder landing page with a polished, localized public marketing
 ### Phases (v2.0)
 
 - [x] **Phase 5: Foundation & Isolation** - CSS token isolation, typed i18n namespace, static SEO assets, CJK fonts, and fan-route safety locked before any section component is written (completed 2026-05-31)
-- [ ] **Phase 6: Marketing Components & Navigation** - All content sections, footer, locale-switching nav, Telegram CTA deep-link, and responsive layout built as isolated components
+- [x] **Phase 6: Marketing Components & Navigation** - All content sections, footer, locale-switching nav, Telegram CTA deep-link, and responsive layout built as isolated components (completed 2026-06-01)
 - [ ] **Phase 7: Assembly, Polish & Compliance** - Page assembled from components, locale verification across EN/JA/ZH-TW, scroll animations with reduced-motion respect, visible SB 243 disclosure, and no-overclaiming copy confirmed
 
 ### Phase Details (v2.0)
@@ -147,7 +147,7 @@ Replace the placeholder landing page with a polished, localized public marketing
 - [x] 06-01-PLAN.md — Wave 1: leaf primitives (CtaButton + always-visible mailto fallback, MarketingLocaleSwitcher → /:locale, static HeroOrb), full 12-name barrel, .env.example VITE vars, reduced-motion guard (MKT-08, MKT-09, MKT-14, MKT-11)
 - [x] 06-02-PLAN.md — Wave 2 (parallel with 06-03; disjoint files): HeroSection (LCP-safe single CTA + bloom), ValuePropSection, FourPillarsSection (chat/voice live, image/video coming-soon), DemoTranscriptSection (MKT-01, MKT-02, MKT-03, MKT-06)
 - [x] 06-03-PLAN.md — Wave 2 (parallel with 06-02; disjoint files): HowItWorksSection (3-step non-technical), MultiChannelSection (lala.la + Telegram + social), CtaSection (mid-page CTA repeat via shared primitive) (MKT-04, MKT-05, MKT-08)
-- [ ] 06-04-PLAN.md — Wave 3: MarketingNav (sticky, locale switcher hidden sm) + MarketingFooter (CTA + locale + privacy/contact/AI-disclosure) + home.tsx wholesale replacement (9-section shell) + QA gate (build, token-bleed grep, fan-route safety) + 375px human-verify checkpoint (MKT-07, MKT-08, MKT-11, MKT-14)
+- [x] 06-04-PLAN.md — Wave 3: MarketingNav (sticky, locale switcher hidden sm) + MarketingFooter (CTA + locale + privacy/contact/AI-disclosure) + home.tsx wholesale replacement (9-section shell) + QA gate (build, token-bleed grep, fan-route safety) + 375px human-verify checkpoint (MKT-07, MKT-08, MKT-11, MKT-14)
 **UI hint**: yes
 
 ### Phase 7: Assembly, Polish & Compliance
@@ -170,5 +170,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Foundation & Isolation | 3/3 | Complete   | 2026-05-31 |
-| 6. Marketing Components & Navigation | 3/4 | In Progress|  |
+| 6. Marketing Components & Navigation | 4/4 | Complete   | 2026-06-01 |
 | 7. Assembly, Polish & Compliance | 0/TBD | Not started | - |
